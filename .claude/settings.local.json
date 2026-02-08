@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"C:\\\\Users\\\\CypLeBgDu62\\\\.claude-worktrees\\\\forge-master\\\\compassionate-montalcini\")",
+      "Bash(git config:*)",
+      "Bash(dir:*)",
+      "Bash(pwsh:*)",
+      "Bash(cd:*)",
+      "Bash(git fetch:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(git clone:*)",
+      "Bash(git ls-tree:*)"
+    ]
+  }
+}

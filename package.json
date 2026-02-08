@@ -1,0 +1,19 @@
+{
+  "name": "forge-master",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Sparksx/forge-master#readme",
+  "bugs": {
+    "url": "https://github.com/Sparksx/forge-master/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sparksx/forge-master.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
