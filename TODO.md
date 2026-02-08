@@ -13,7 +13,7 @@
 - [ ] **Accessibilité (a11y)** — Modal sans `role="dialog"`, pas de `aria-label` sur les slots, focus non piégé, pas de bouton "Fermer"
 - [ ] **Système de rareté** — Commun / Rare / Épique / Légendaire avec couleurs, multiplicateurs de stats, feedback visuel
 - [ ] **Progression & endgame** — Niveaux joueur, XP, achievements, objectifs de jeu
-- [ ] **Déploiement GitHub Pages** — Ajouter `base: '/forge-master/'` dans vite.config.js + GitHub Action pour build & deploy auto
+- [x] **Déploiement GitHub Pages** — Ajouter `base: '/forge-master/'` dans vite.config.js + GitHub Action pour build & deploy auto
 - [ ] **ESLint + Prettier** — Config de linting, formatting, pre-commit hooks (husky)
 
 ## 🟢 Priorité basse
