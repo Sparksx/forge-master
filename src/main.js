@@ -1,8 +1,8 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, equipItem, getForgedItem, sellForgedItem } from './state.js';
+import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, showDecisionModal, hideDecisionModal, showItemDetailModal, hideItemDetailModal } from './ui.js';
+import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal } from './ui.js';
 import { initNavigation } from './navigation.js';
 
 // Wire events: state changes trigger UI updates
@@ -15,19 +15,14 @@ function init() {
     updateUI();
     initNavigation();
 
-    document.getElementById('forge-btn').addEventListener('click', forgeEquipment);
-
-    document.getElementById('equip-btn').addEventListener('click', () => {
-        const item = getForgedItem();
-        if (item) {
-            equipItem(item);
+    // Forge button: show pending item or forge new
+    document.getElementById('forge-btn').addEventListener('click', () => {
+        const pending = getForgedItem();
+        if (pending) {
+            showDecisionModal(pending);
+        } else {
+            forgeEquipment();
         }
-        hideDecisionModal();
-    });
-
-    document.getElementById('sell-btn').addEventListener('click', () => {
-        sellForgedItem();
-        hideDecisionModal();
     });
 
     // Equipment slot clicks -> item detail modal
@@ -39,6 +34,15 @@ function init() {
     });
 
     document.getElementById('item-detail-close').addEventListener('click', hideItemDetailModal);
+
+    // Click outside modal to close
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
 }
 
 window.addEventListener('DOMContentLoaded', init);
