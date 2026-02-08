@@ -13,7 +13,7 @@ const localStorageMock = (() => {
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
 // Import after mocking
-const { getEquipment, getGold, equipItem, sellForgedItem, setForgedItem, getForgedItem, saveGame, loadGame } = await import('../state.js');
+const { getEquipment, getGold, equipItem, sellForgedItem, setForgedItem, getForgedItem, saveGame, loadGame, resetGame } = await import('../state.js');
 const { createItem } = await import('../forge.js');
 
 describe('state', () => {
@@ -21,10 +21,7 @@ describe('state', () => {
         localStorageMock.clear();
         localStorageMock.getItem.mockClear();
         localStorageMock.setItem.mockClear();
-
-        // Reset state by loading empty save
-        localStorageMock.getItem.mockReturnValueOnce(null);
-        loadGame();
+        resetGame();
     });
 
     describe('equipItem', () => {

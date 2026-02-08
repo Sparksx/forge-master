@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY } from './config.js';
+import { EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS } from './config.js';
 import { gameEvents, EVENTS } from './events.js';
 
 function createEmptyEquipment() {
@@ -8,17 +8,19 @@ function createEmptyEquipment() {
 }
 
 function isValidItem(item) {
-    return item
-        && typeof item === 'object'
-        && typeof item.type === 'string'
-        && EQUIPMENT_TYPES.includes(item.type)
-        && typeof item.level === 'number'
-        && Number.isInteger(item.level)
-        && item.level >= 1
-        && item.level <= MAX_LEVEL
-        && typeof item.stats === 'number'
-        && typeof item.statType === 'string'
-        && (item.statType === 'health' || item.statType === 'damage');
+    if (!item || typeof item !== 'object') return false;
+    if (typeof item.type !== 'string' || !EQUIPMENT_TYPES.includes(item.type)) return false;
+    if (typeof item.level !== 'number' || !Number.isInteger(item.level)) return false;
+    if (item.level < 1 || item.level > MAX_LEVEL) return false;
+    if (typeof item.stats !== 'number') return false;
+    if (typeof item.statType !== 'string') return false;
+    if (item.statType !== 'health' && item.statType !== 'damage') return false;
+    // Bonus fields are optional (backward compat with old saves)
+    if (item.bonusType !== undefined) {
+        if (!BONUS_STAT_KEYS.includes(item.bonusType)) return false;
+        if (typeof item.bonusValue !== 'number' || item.bonusValue < 0) return false;
+    }
+    return true;
 }
 
 const gameState = {
@@ -26,6 +28,12 @@ const gameState = {
     forgedItem: null,
     gold: 0,
 };
+
+export function resetGame() {
+    gameState.equipment = createEmptyEquipment();
+    gameState.forgedItem = null;
+    gameState.gold = 0;
+}
 
 export function getEquipment() {
     return gameState.equipment;
@@ -48,6 +56,12 @@ export function getGold() {
 }
 
 export function equipItem(item) {
+    const oldItem = gameState.equipment[item.type];
+    if (oldItem) {
+        const goldEarned = oldItem.level;
+        gameState.gold += goldEarned;
+        gameEvents.emit(EVENTS.ITEM_SOLD, { item: oldItem, goldEarned });
+    }
     gameState.equipment[item.type] = item;
     gameState.forgedItem = null;
     saveGame();

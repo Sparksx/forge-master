@@ -9,13 +9,130 @@ html, body {
     overflow: hidden;
 }
 
+/* Tab Views */
+.tab-view {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+.tab-view.active {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+}
+
+/* Placeholder for future tabs */
+.placeholder-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #999;
+    font-size: clamp(1em, 2vw, 1.4em);
+    font-style: italic;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #d0d0d0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+    z-index: 500;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-tab.active {
+    color: #333;
+}
+
+.nav-tab:hover {
+    color: #555;
+}
+
+.nav-icon {
+    font-size: clamp(1.2em, 2.5vw, 1.6em);
+    line-height: 1;
+}
+
+.nav-label {
+    font-size: clamp(0.6em, 1.2vw, 0.75em);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sub-tab navigation (inside Upgrade) */
+.sub-tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.sub-tab {
+    flex: 1;
+    padding: 8px 4px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: #f5f5f5;
+    color: #888;
+    font-size: clamp(0.8em, 1.3vw, 0.95em);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.sub-tab.active {
+    background: #4a4a4a;
+    color: white;
+    border-color: #4a4a4a;
+}
+
+.sub-tab-content {
+    display: none;
+    flex: 1;
+    min-height: 0;
+}
+
+.sub-tab-content.active {
+    display: flex;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f5f5f5;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: stretch;
     padding: 12px;
+    padding-bottom: 64px;
 }
 
 .container {
@@ -40,15 +157,55 @@ h1 {
 
 /* Stats Panel */
 .stats-panel {
-    display: flex;
-    justify-content: center;
-    gap: clamp(16px, 4vw, 40px);
     margin-bottom: 12px;
-    padding: clamp(8px, 1.5vw, 16px);
+    padding: clamp(8px, 1.5vw, 12px);
     background: #e8e8e8;
     border-radius: 8px;
     border: 1px solid #d0d0d0;
     flex-shrink: 0;
+}
+
+.power-score-row {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #d0d0d0;
+}
+
+.power-label {
+    font-size: clamp(0.8em, 1.2vw, 1em);
+    font-weight: 700;
+    color: #555;
+}
+
+.power-value {
+    font-size: clamp(1.4em, 2.5vw, 2em);
+    font-weight: 900;
+    color: #333;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.stats-row-main {
+    gap: clamp(16px, 4vw, 40px);
+}
+
+.stats-row-bonus {
+    gap: clamp(8px, 2vw, 16px);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #d0d0d0;
+}
+
+.stats-row-bonus:empty {
+    display: none;
 }
 
 .stat {
@@ -59,18 +216,28 @@ h1 {
 }
 
 .stat-label {
-    font-size: clamp(0.8em, 1.2vw, 1.1em);
+    font-size: clamp(0.75em, 1.1vw, 0.95em);
     font-weight: 600;
     color: #555;
 }
 
 .stat-value {
-    font-size: clamp(1.2em, 2vw, 1.8em);
+    font-size: clamp(1.1em, 1.8vw, 1.6em);
     font-weight: bold;
     color: #333;
 }
 
-/* Equipment Display — fills remaining space */
+.bonus-stat {
+    font-size: clamp(0.7em, 1vw, 0.85em);
+    font-weight: 600;
+    color: #555;
+    padding: 2px 6px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Equipment Display */
 .equipment-display {
     flex: 1;
     min-height: 0;
@@ -91,17 +258,20 @@ h1 {
     padding: clamp(4px, 0.5vw, 8px);
 }
 
-/* Equipment Slots — grid items */
+/* Equipment Slots (compact) */
 .equipment-slot {
     background: #fafafa;
     border-radius: 8px;
-    padding: clamp(6px, 1vw, 12px);
+    padding: clamp(4px, 0.8vw, 8px);
     border: 1px solid #e0e0e0;
     transition: box-shadow 0.2s;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     min-width: 0;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .equipment-slot:hover {
@@ -109,55 +279,30 @@ h1 {
     z-index: 2;
 }
 
-.slot-header {
-    font-weight: bold;
-    font-size: clamp(0.8em, 1.2vw, 1.05em);
-    margin-bottom: 4px;
-    color: #333;
-    text-align: center;
-    flex-shrink: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.slot-icon {
+    font-size: clamp(1.4em, 2.5vw, 2em);
+    line-height: 1;
+    margin-bottom: 2px;
 }
 
 .slot-content {
-    background: white;
-    border-radius: 6px;
-    padding: clamp(4px, 0.8vw, 10px);
-    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    border: 1px solid #e8e8e8;
     min-height: 0;
 }
 
 .empty-slot {
     color: #999;
     font-style: italic;
-    font-size: clamp(0.75em, 1vw, 0.95em);
+    font-size: clamp(0.65em, 0.9vw, 0.8em);
 }
 
 .item-level {
     font-weight: bold;
     color: #555;
-    font-size: clamp(0.8em, 1.1vw, 1.05em);
-}
-
-.item-stat {
-    color: #666;
-    font-size: clamp(0.7em, 1vw, 0.9em);
-    margin-top: 2px;
-}
-
-.stat-health {
-    color: #666;
-}
-
-.stat-damage {
-    color: #666;
+    font-size: clamp(0.75em, 1vw, 0.95em);
 }
 
 /* Forge Button */
@@ -233,7 +378,8 @@ h1 {
     font-size: clamp(1.1em, 2vw, 1.4em);
 }
 
-#forged-item-info {
+#forged-item-info,
+#item-detail-info {
     background: #f5f5f5;
     border-radius: 8px;
     padding: clamp(12px, 2vw, 20px);
@@ -259,6 +405,13 @@ h1 {
 .forged-stat {
     font-size: clamp(0.9em, 1.3vw, 1.05em);
     color: #666;
+}
+
+.forged-bonus {
+    font-size: clamp(0.85em, 1.2vw, 1em);
+    color: #555;
+    margin-top: 4px;
+    font-weight: 600;
 }
 
 /* Comparison View */
@@ -338,6 +491,17 @@ h1 {
     background: #d0d0d0;
 }
 
+/* Stat comparison colors */
+.stat-better {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.stat-worse {
+    color: #c62828;
+    font-weight: bold;
+}
+
 /* Sell Value */
 .sell-value {
     margin-top: 10px;
@@ -353,6 +517,7 @@ h1 {
 @media (max-width: 600px) {
     body {
         padding: 6px;
+        padding-bottom: 64px;
     }
 
     .container {
@@ -400,8 +565,13 @@ h1 {
 
 /* Very short screens (landscape or small laptops) */
 @media (max-height: 600px) {
+    .bottom-nav {
+        height: 48px;
+    }
+
     body {
         padding: 4px;
+        padding-bottom: 48px;
     }
 
     .container {
@@ -416,6 +586,9 @@ h1 {
     .stats-panel {
         padding: 6px;
         margin-bottom: 6px;
+    }
+
+    .stats-row-main {
         gap: 16px;
     }
 
@@ -440,13 +613,8 @@ h1 {
         padding: 4px;
     }
 
-    .slot-header {
-        font-size: 0.75em;
-        margin-bottom: 2px;
-    }
-
-    .slot-content {
-        padding: 3px;
+    .slot-icon {
+        font-size: 1.2em;
     }
 
     .forge-btn {

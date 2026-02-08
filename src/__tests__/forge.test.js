@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createItem, calculateStats } from '../forge.js';
+import { createItem, calculateStats, calculatePowerScore } from '../forge.js';
+import { BONUS_STAT_KEYS, BONUS_STATS } from '../config.js';
 
 describe('createItem', () => {
     it('creates a health item for hat', () => {
@@ -65,6 +66,13 @@ describe('createItem', () => {
         expect(item.level).toBe(100);
         expect(item.stats).toBe(200);
     });
+
+    it('includes a valid bonus stat', () => {
+        const item = createItem('hat', 10);
+        expect(BONUS_STAT_KEYS).toContain(item.bonusType);
+        expect(item.bonusValue).toBeGreaterThanOrEqual(1);
+        expect(item.bonusValue).toBeLessThanOrEqual(BONUS_STATS[item.bonusType].max);
+    });
 });
 
 describe('calculateStats', () => {
@@ -73,9 +81,10 @@ describe('calculateStats', () => {
             hat: null, armor: null, belt: null, boots: null,
             gloves: null, necklace: null, ring: null, weapon: null,
         };
-        const { totalHealth, totalDamage } = calculateStats(equipment);
+        const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
         expect(totalHealth).toBe(0);
         expect(totalDamage).toBe(0);
+        BONUS_STAT_KEYS.forEach(key => expect(bonuses[key]).toBe(0));
     });
 
     it('sums health items correctly', () => {
@@ -123,5 +132,51 @@ describe('calculateStats', () => {
         const { totalHealth, totalDamage } = calculateStats({});
         expect(totalHealth).toBe(0);
         expect(totalDamage).toBe(0);
+    });
+
+    it('aggregates bonus stats from equipment', () => {
+        // Manually create items with known bonuses
+        const hat = { type: 'hat', level: 5, stats: 25, statType: 'health', bonusType: 'critChance', bonusValue: 5 };
+        const weapon = { type: 'weapon', level: 5, stats: 10, statType: 'damage', bonusType: 'critChance', bonusValue: 3 };
+        const equipment = {
+            hat, armor: null, belt: null, boots: null,
+            gloves: null, necklace: null, ring: null, weapon,
+        };
+        const { bonuses } = calculateStats(equipment);
+        expect(bonuses.critChance).toBe(8);
+    });
+
+    it('returns correct power score with no bonuses', () => {
+        const power = calculatePowerScore(100, 10, {});
+        // 100 + 10 = 110 (no multipliers)
+        expect(power).toBe(110);
+    });
+
+    it('returns correct power score with bonuses', () => {
+        const bonuses = {
+            healthMulti: 10, healthRegen: 5, lifeSteal: 5,
+            damageMulti: 10, attackSpeed: 20, critChance: 50, critMultiplier: 100,
+        };
+        // effectiveHealth = 100 * 1.10 * 1.10 = 121
+        // effectiveDamage = 50 * 1.10 * 1.20 * (1 + 0.50 * 1.00) = 50 * 1.1 * 1.2 * 1.5 = 99
+        // total = 220
+        const power = calculatePowerScore(100, 50, bonuses);
+        expect(power).toBe(220);
+    });
+
+    it('returns correct power score with no bonus object', () => {
+        const power = calculatePowerScore(200, 80, null);
+        expect(power).toBe(280);
+    });
+
+    it('handles items without bonus (backward compat)', () => {
+        const oldItem = { type: 'hat', level: 5, stats: 25, statType: 'health' };
+        const equipment = {
+            hat: oldItem, armor: null, belt: null, boots: null,
+            gloves: null, necklace: null, ring: null, weapon: null,
+        };
+        const { totalHealth, bonuses } = calculateStats(equipment);
+        expect(totalHealth).toBe(25);
+        BONUS_STAT_KEYS.forEach(key => expect(bonuses[key]).toBe(0));
     });
 });
