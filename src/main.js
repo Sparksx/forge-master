@@ -1,3 +1,4 @@
+import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, equipItem, getForgedItem, discardForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
