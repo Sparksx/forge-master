@@ -2,7 +2,7 @@ import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, equipItem, getForgedItem, sellForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, showDecisionModal, hideDecisionModal } from './ui.js';
+import { updateUI, showDecisionModal, hideDecisionModal, showItemDetailModal, hideItemDetailModal } from './ui.js';
 import { initNavigation } from './navigation.js';
 
 // Wire events: state changes trigger UI updates
@@ -29,6 +29,16 @@ function init() {
         sellForgedItem();
         hideDecisionModal();
     });
+
+    // Equipment slot clicks -> item detail modal
+    document.querySelector('.body-container').addEventListener('click', (e) => {
+        const slot = e.target.closest('.equipment-slot');
+        if (!slot) return;
+        const type = slot.dataset.type;
+        if (type) showItemDetailModal(type);
+    });
+
+    document.getElementById('item-detail-close').addEventListener('click', hideItemDetailModal);
 }
 
 window.addEventListener('DOMContentLoaded', init);

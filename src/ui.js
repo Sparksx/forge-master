@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE } from './config.js';
+import { EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE, BONUS_STATS, BONUS_STAT_KEYS } from './config.js';
 import { getEquipment, getEquipmentByType, getGold } from './state.js';
 import { calculateStats } from './forge.js';
 
@@ -6,7 +6,6 @@ function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Helper: create a DOM element with class and text content
 function createElement(tag, className, textContent) {
     const el = document.createElement(tag);
     if (className) el.className = className;
@@ -14,8 +13,26 @@ function createElement(tag, className, textContent) {
     return el;
 }
 
-// Build an item card (used in both slots and modal)
-// compareWith: optional item to compare against (adds color classes)
+function buildBonusLine(item, compareWith) {
+    if (!item.bonusType || !item.bonusValue) return null;
+    const cfg = BONUS_STATS[item.bonusType];
+    if (!cfg) return null;
+
+    const text = `${cfg.icon} ${cfg.label}: +${item.bonusValue}${cfg.unit}`;
+    const div = createElement('div', 'forged-bonus', text);
+
+    if (compareWith) {
+        const sameType = compareWith.bonusType === item.bonusType;
+        if (sameType) {
+            if (item.bonusValue > compareWith.bonusValue) div.classList.add('stat-better');
+            else if (item.bonusValue < compareWith.bonusValue) div.classList.add('stat-worse');
+        }
+        // Different bonus types = black text (no color)
+    }
+
+    return div;
+}
+
 function buildItemCard(item, compareWith) {
     const fragment = document.createDocumentFragment();
 
@@ -30,16 +47,34 @@ function buildItemCard(item, compareWith) {
     }
 
     fragment.append(typeDiv, levelDiv, statDiv);
+
+    const bonusDiv = buildBonusLine(item, compareWith);
+    if (bonusDiv) fragment.appendChild(bonusDiv);
+
     return fragment;
 }
 
 export function updateStats() {
     const equipment = getEquipment();
-    const { totalHealth, totalDamage } = calculateStats(equipment);
+    const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
 
     document.getElementById('total-health').textContent = BASE_HEALTH + totalHealth;
     document.getElementById('total-damage').textContent = BASE_DAMAGE + totalDamage;
     document.getElementById('gold-amount').textContent = getGold();
+
+    const bonusRow = document.getElementById('bonus-stats-row');
+    bonusRow.textContent = '';
+
+    const hasAnyBonus = BONUS_STAT_KEYS.some(key => bonuses[key] > 0);
+    if (hasAnyBonus) {
+        BONUS_STAT_KEYS.forEach(key => {
+            if (bonuses[key] <= 0) return;
+            const cfg = BONUS_STATS[key];
+            const div = createElement('div', 'bonus-stat', `${cfg.icon} ${bonuses[key]}${cfg.unit}`);
+            div.title = cfg.label;
+            bonusRow.appendChild(div);
+        });
+    }
 }
 
 export function updateEquipmentSlots() {
@@ -49,10 +84,8 @@ export function updateEquipmentSlots() {
         slotElement.textContent = '';
 
         if (item) {
-            const statIcon = item.statType === 'health' ? '❤️' : '⚔️';
-            const levelDiv = createElement('div', 'item-level', `Level ${item.level}`);
-            const statDiv = createElement('div', `item-stat ${item.statType === 'health' ? 'stat-health' : 'stat-damage'}`, `${statIcon} +${item.stats}`);
-            slotElement.append(levelDiv, statDiv);
+            const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
+            slotElement.appendChild(levelDiv);
         } else {
             const emptySpan = createElement('span', 'empty-slot', 'Empty');
             slotElement.appendChild(emptySpan);
@@ -63,6 +96,23 @@ export function updateEquipmentSlots() {
 export function updateUI() {
     updateStats();
     updateEquipmentSlots();
+}
+
+export function showItemDetailModal(type) {
+    const item = getEquipmentByType(type);
+    if (!item) return;
+
+    const modal = document.getElementById('item-detail-modal');
+    const info = document.getElementById('item-detail-info');
+    info.textContent = '';
+
+    info.appendChild(buildItemCard(item));
+
+    modal.classList.add('active');
+}
+
+export function hideItemDetailModal() {
+    document.getElementById('item-detail-modal').classList.remove('active');
 }
 
 export function showDecisionModal(item) {
@@ -77,16 +127,13 @@ export function showDecisionModal(item) {
     if (currentItem) {
         const container = createElement('div', 'comparison-container');
 
-        // Current item card (compared against new)
         const currentCard = createElement('div', 'item-comparison current-item');
         const currentLabel = createElement('div', 'comparison-label', 'Current');
         currentCard.appendChild(currentLabel);
         currentCard.appendChild(buildItemCard(currentItem, item));
 
-        // Arrow
         const arrow = createElement('div', 'comparison-arrow', '→');
 
-        // New item card (compared against current)
         const newCard = createElement('div', 'item-comparison new-item');
         const newLabel = createElement('div', 'comparison-label', 'New');
         newCard.appendChild(newLabel);
@@ -95,7 +142,6 @@ export function showDecisionModal(item) {
         container.append(currentCard, arrow, newCard);
         itemInfo.appendChild(container);
 
-        // Show sell value info
         const sellValue = createElement('div', 'sell-value', `💰 Sell new: ${item.level}g | Equip & sell old: ${currentItem.level}g`);
         itemInfo.appendChild(sellValue);
 

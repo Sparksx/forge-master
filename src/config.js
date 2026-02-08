@@ -24,3 +24,15 @@ export const MAX_LEVEL = 100;
 export const INITIAL_LEVEL_MAX = 10;
 
 export const SAVE_KEY = 'forgemaster_save';
+
+export const BONUS_STATS = {
+    attackSpeed:    { label: 'Attack Speed',    icon: '⚡', max: 15, unit: '%' },
+    critChance:     { label: 'Crit Chance',     icon: '🎯', max: 10, unit: '%' },
+    critMultiplier: { label: 'Crit Multiplier', icon: '💥', max: 20, unit: '%' },
+    healthMulti:    { label: 'Health Multi',    icon: '💗', max: 12, unit: '%' },
+    damageMulti:    { label: 'Damage Multi',    icon: '🗡️', max: 12, unit: '%' },
+    healthRegen:    { label: 'Health Regen',    icon: '🩹', max: 5,  unit: '%' },
+    lifeSteal:      { label: 'Life Steal',      icon: '🧛', max: 8,  unit: '%' },
+};
+
+export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);

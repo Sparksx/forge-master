@@ -5,23 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forge Master</title>
-    <!-- CSS is imported via src/main.js for Vite bundling -->
 </head>
 
 <body>
     <!-- Tab Views -->
-    <div class="tab-view" id="view-skills">
+    <div class="tab-view" id="view-pvp">
         <div class="container">
-            <h1>⚡ Skills</h1>
+            <h1>⚔️ PvP</h1>
             <div class="placeholder-content">
                 <p>Coming soon...</p>
             </div>
         </div>
     </div>
 
-    <div class="tab-view" id="view-pets">
+    <div class="tab-view" id="view-dungeon">
         <div class="container">
-            <h1>🐾 Pets</h1>
+            <h1>🏰 Dungeon</h1>
             <div class="placeholder-content">
                 <p>Coming soon...</p>
             </div>
@@ -32,76 +31,80 @@
         <div class="container">
             <h1>⚒️ Forge Master</h1>
 
-            <!-- Player Stats -->
+            <!-- Global Stats Panel -->
             <div class="stats-panel">
-                <div class="stat">
-                    <span class="stat-label">❤️ Health:</span>
-                    <span class="stat-value" id="total-health">100</span>
+                <div class="stats-row stats-row-main">
+                    <div class="stat">
+                        <span class="stat-label">❤️ Health</span>
+                        <span class="stat-value" id="total-health">100</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">⚔️ Damage</span>
+                        <span class="stat-value" id="total-damage">10</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">💰 Gold</span>
+                        <span class="stat-value" id="gold-amount">0</span>
+                    </div>
                 </div>
-                <div class="stat">
-                    <span class="stat-label">⚔️ Damage:</span>
-                    <span class="stat-value" id="total-damage">10</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">💰 Gold:</span>
-                    <span class="stat-value" id="gold-amount">0</span>
+                <div class="stats-row stats-row-bonus" id="bonus-stats-row">
                 </div>
             </div>
 
-            <!-- Equipment Display -->
+            <!-- Equipment Display (compact) -->
             <div class="equipment-display">
                 <div class="body-container">
                     <div class="equipment-slot" data-type="hat">
-                        <div class="slot-header">🎩 Hat</div>
+                        <div class="slot-icon">🎩</div>
                         <div class="slot-content" id="slot-hat">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="necklace">
-                        <div class="slot-header">📿 Necklace</div>
+                        <div class="slot-icon">📿</div>
                         <div class="slot-content" id="slot-necklace">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="armor">
-                        <div class="slot-header">🛡️ Armor</div>
+                        <div class="slot-icon">🛡️</div>
                         <div class="slot-content" id="slot-armor">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="weapon">
-                        <div class="slot-header">⚔️ Weapon</div>
+                        <div class="slot-icon">⚔️</div>
                         <div class="slot-content" id="slot-weapon">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="gloves">
-                        <div class="slot-header">🧤 Gloves</div>
+                        <div class="slot-icon">🧤</div>
                         <div class="slot-content" id="slot-gloves">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="ring">
-                        <div class="slot-header">💍 Ring</div>
+                        <div class="slot-icon">💍</div>
                         <div class="slot-content" id="slot-ring">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="belt">
-                        <div class="slot-header">📿 Belt</div>
+                        <div class="slot-icon">📿</div>
                         <div class="slot-content" id="slot-belt">
                             <span class="empty-slot">Empty</span>
                         </div>
                     </div>
 
                     <div class="equipment-slot" data-type="boots">
-                        <div class="slot-header">👢 Boots</div>
+                        <div class="slot-icon">👢</div>
                         <div class="slot-content" id="slot-boots">
                             <span class="empty-slot">Empty</span>
                         </div>
@@ -114,11 +117,22 @@
         </div>
     </div>
 
-    <div class="tab-view" id="view-dungeon">
+    <div class="tab-view" id="view-upgrade">
         <div class="container">
-            <h1>🏰 Dungeon</h1>
-            <div class="placeholder-content">
-                <p>Coming soon...</p>
+            <h1>⬆️ Upgrade</h1>
+            <div class="sub-tab-nav" id="upgrade-sub-nav">
+                <button class="sub-tab active" data-subtab="skills">⚡ Skills</button>
+                <button class="sub-tab" data-subtab="pets">🐾 Pets</button>
+                <button class="sub-tab" data-subtab="techs">🔧 Techs</button>
+            </div>
+            <div class="sub-tab-content active" id="subtab-skills">
+                <div class="placeholder-content"><p>Skills coming soon...</p></div>
+            </div>
+            <div class="sub-tab-content" id="subtab-pets">
+                <div class="placeholder-content"><p>Pets coming soon...</p></div>
+            </div>
+            <div class="sub-tab-content" id="subtab-techs">
+                <div class="placeholder-content"><p>Techs coming soon...</p></div>
             </div>
         </div>
     </div>
@@ -134,21 +148,21 @@
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav" id="bottom-nav">
-        <button class="nav-tab" data-tab="skills">
-            <span class="nav-icon">⚡</span>
-            <span class="nav-label">Skills</span>
+        <button class="nav-tab" data-tab="pvp">
+            <span class="nav-icon">⚔️</span>
+            <span class="nav-label">PvP</span>
         </button>
-        <button class="nav-tab" data-tab="pets">
-            <span class="nav-icon">🐾</span>
-            <span class="nav-label">Pets</span>
+        <button class="nav-tab" data-tab="dungeon">
+            <span class="nav-icon">🏰</span>
+            <span class="nav-label">Dungeon</span>
         </button>
         <button class="nav-tab active" data-tab="home">
             <span class="nav-icon">🏠</span>
             <span class="nav-label">Home</span>
         </button>
-        <button class="nav-tab" data-tab="dungeon">
-            <span class="nav-icon">🏰</span>
-            <span class="nav-label">Dungeon</span>
+        <button class="nav-tab" data-tab="upgrade">
+            <span class="nav-icon">⬆️</span>
+            <span class="nav-label">Upgrade</span>
         </button>
         <button class="nav-tab" data-tab="shop">
             <span class="nav-icon">🛒</span>
@@ -164,6 +178,17 @@
             <div class="modal-buttons">
                 <button class="btn btn-sell" id="sell-btn">💰 Sell</button>
                 <button class="btn btn-equip" id="equip-btn">✅ Equip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Item Details -->
+    <div class="modal" id="item-detail-modal">
+        <div class="modal-content">
+            <h2>Equipment Details</h2>
+            <div id="item-detail-info"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-equip" id="item-detail-close">Close</button>
             </div>
         </div>
     </div>
