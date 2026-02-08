@@ -1,0 +1,463 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 1000px;
+    width: 100%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px;
+    font-size: 2.5em;
+}
+
+/* Stats Panel */
+.stats-panel {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #e8e8e8;
+    border-radius: 8px;
+    border: 1px solid #d0d0d0;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.stat-label {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #555;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Equipment Display */
+.equipment-display {
+    position: relative;
+    margin-bottom: 30px;
+    min-height: 700px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.body-container {
+    position: relative;
+    width: 600px;
+    height: 700px;
+}
+
+/* Human Silhouette */
+.human-silhouette {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 450px;
+    background: linear-gradient(180deg, #e0e0e0 0%, #d0d0d0 100%);
+    border-radius: 60px 60px 20px 20px;
+    opacity: 0.3;
+    z-index: 0;
+}
+
+.human-silhouette::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 80px;
+    background: #d0d0d0;
+    border-radius: 50%;
+}
+
+.human-silhouette::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 60px;
+    background: #d0d0d0;
+    border-radius: 0 0 30px 30px;
+}
+
+/* Equipment Slots Positioning */
+.equipment-slot {
+    position: absolute;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 1;
+    min-width: 140px;
+}
+
+.equipment-slot:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+}
+
+/* Individual Slot Positions */
+.slot-hat {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-necklace {
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-armor {
+    top: 180px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-gloves-left {
+    top: 200px;
+    left: -10px;
+}
+
+.slot-ring {
+    top: 200px;
+    right: -10px;
+}
+
+.slot-belt {
+    top: 320px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-boots {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Weapon Corner */
+.weapon-corner {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.slot-weapon {
+    position: static;
+    min-width: 160px;
+    background: #f5f5f5;
+    border: 2px solid #d0d0d0;
+}
+
+.slot-header {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: #333;
+    text-align: center;
+}
+
+.slot-content {
+    background: white;
+    border-radius: 6px;
+    padding: 12px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #e8e8e8;
+}
+
+.empty-slot {
+    color: #999;
+    font-style: italic;
+}
+
+.item-level {
+    font-weight: bold;
+    color: #555;
+    font-size: 1.1em;
+}
+
+.item-stat {
+    color: #666;
+    font-size: 0.95em;
+    margin-top: 5px;
+}
+
+.stat-health {
+    color: #666;
+}
+
+.stat-damage {
+    color: #666;
+}
+
+/* Individual Slot Positions */
+.slot-hat {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-necklace {
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-armor {
+    top: 180px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-gloves-left {
+    top: 200px;
+    left: -10px;
+}
+
+.slot-ring {
+    top: 200px;
+    right: -10px;
+}
+
+.slot-belt {
+    top: 320px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.slot-boots {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Weapon Corner */
+.weapon-corner {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.slot-weapon {
+    position: static;
+    min-width: 160px;
+    background: #f5f5f5;
+    border: 2px solid #d0d0d0;
+}
+
+
+/* Forge Button */
+.forge-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 1.5em;
+    font-weight: bold;
+    background: #4a4a4a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.forge-btn:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
+
+.forge-btn:active {
+    transform: translateY(0);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-content h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+#forged-item-info {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+}
+
+.forged-type {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.forged-level {
+    font-size: 1.3em;
+    color: #555;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.forged-stat {
+    font-size: 1.1em;
+    color: #666;
+}
+
+/* Comparison View */
+.comparison-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.item-comparison {
+    flex: 1;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    border: 2px solid #e0e0e0;
+}
+
+.item-comparison.current-item {
+    border-color: #999;
+}
+
+.item-comparison.new-item {
+    border-color: #4a4a4a;
+}
+
+.comparison-label {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #888;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.comparison-arrow {
+    font-size: 2em;
+    color: #999;
+    font-weight: bold;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.btn {
+    flex: 1;
+    padding: 15px;
+    font-size: 1.2em;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-equip {
+    background: #5a5a5a;
+    color: white;
+}
+
+.btn-equip:hover {
+    background: #4a4a4a;
+}
+
+.btn-sell {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-sell:hover {
+    background: #d0d0d0;
+}
