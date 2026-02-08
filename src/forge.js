@@ -67,3 +67,15 @@ export function calculateStats(equipment) {
 
     return { totalHealth, totalDamage, bonuses };
 }
+
+export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
+    const b = bonuses || {};
+    const effectiveHealth = totalHealth
+        * (1 + (b.healthMulti || 0) / 100)
+        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
+    const effectiveDamage = totalDamage
+        * (1 + (b.damageMulti || 0) / 100)
+        * (1 + (b.attackSpeed || 0) / 100)
+        * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
+    return Math.round(effectiveHealth + effectiveDamage);
+}

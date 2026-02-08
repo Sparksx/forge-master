@@ -1,6 +1,6 @@
 import { EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE, BONUS_STATS, BONUS_STAT_KEYS } from './config.js';
 import { getEquipment, getEquipmentByType, getGold } from './state.js';
-import { calculateStats } from './forge.js';
+import { calculateStats, calculatePowerScore } from './forge.js';
 
 function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -58,9 +58,12 @@ export function updateStats() {
     const equipment = getEquipment();
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
 
-    document.getElementById('total-health').textContent = BASE_HEALTH + totalHealth;
-    document.getElementById('total-damage').textContent = BASE_DAMAGE + totalDamage;
+    const health = BASE_HEALTH + totalHealth;
+    const damage = BASE_DAMAGE + totalDamage;
+    document.getElementById('total-health').textContent = health;
+    document.getElementById('total-damage').textContent = damage;
     document.getElementById('gold-amount').textContent = getGold();
+    document.getElementById('power-score').textContent = calculatePowerScore(health, damage, bonuses);
 
     const bonusRow = document.getElementById('bonus-stats-row');
     bonusRow.textContent = '';

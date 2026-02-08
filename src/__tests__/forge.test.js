@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createItem, calculateStats } from '../forge.js';
+import { createItem, calculateStats, calculatePowerScore } from '../forge.js';
 import { BONUS_STAT_KEYS, BONUS_STATS } from '../config.js';
 
 describe('createItem', () => {
@@ -144,6 +144,29 @@ describe('calculateStats', () => {
         };
         const { bonuses } = calculateStats(equipment);
         expect(bonuses.critChance).toBe(8);
+    });
+
+    it('returns correct power score with no bonuses', () => {
+        const power = calculatePowerScore(100, 10, {});
+        // 100 + 10 = 110 (no multipliers)
+        expect(power).toBe(110);
+    });
+
+    it('returns correct power score with bonuses', () => {
+        const bonuses = {
+            healthMulti: 10, healthRegen: 5, lifeSteal: 5,
+            damageMulti: 10, attackSpeed: 20, critChance: 50, critMultiplier: 100,
+        };
+        // effectiveHealth = 100 * 1.10 * 1.10 = 121
+        // effectiveDamage = 50 * 1.10 * 1.20 * (1 + 0.50 * 1.00) = 50 * 1.1 * 1.2 * 1.5 = 99
+        // total = 220
+        const power = calculatePowerScore(100, 50, bonuses);
+        expect(power).toBe(220);
+    });
+
+    it('returns correct power score with no bonus object', () => {
+        const power = calculatePowerScore(200, 80, null);
+        expect(power).toBe(280);
     });
 
     it('handles items without bonus (backward compat)', () => {
