@@ -233,62 +233,6 @@ h1 {
     color: #666;
 }
 
-/* Individual Slot Positions */
-.slot-hat {
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.slot-necklace {
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.slot-armor {
-    top: 180px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.slot-gloves-left {
-    top: 200px;
-    left: -10px;
-}
-
-.slot-ring {
-    top: 200px;
-    right: -10px;
-}
-
-.slot-belt {
-    top: 320px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.slot-boots {
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-/* Weapon Corner */
-.weapon-corner {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-}
-
-.slot-weapon {
-    position: static;
-    min-width: 160px;
-    background: #f5f5f5;
-    border: 2px solid #d0d0d0;
-}
-
-
 /* Forge Button */
 .forge-btn {
     width: 100%;
