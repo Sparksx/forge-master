@@ -12,7 +12,8 @@ html, body {
 /* Tab Views */
 .tab-view {
     display: none;
-    height: calc(100% - 64px);
+    flex: 1;
+    min-height: 0;
     width: 100%;
 }
 
@@ -94,7 +95,7 @@ body {
     flex-direction: column;
     align-items: stretch;
     padding: 12px;
-    padding-bottom: 76px;
+    padding-bottom: 64px;
 }
 
 .container {
@@ -417,6 +418,17 @@ h1 {
     background: #d0d0d0;
 }
 
+/* Stat comparison colors */
+.stat-better {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.stat-worse {
+    color: #c62828;
+    font-weight: bold;
+}
+
 /* Sell Value */
 .sell-value {
     margin-top: 10px;
@@ -432,7 +444,7 @@ h1 {
 @media (max-width: 600px) {
     body {
         padding: 6px;
-        padding-bottom: 70px;
+        padding-bottom: 64px;
     }
 
     .container {
@@ -484,13 +496,9 @@ h1 {
         height: 48px;
     }
 
-    .tab-view {
-        height: calc(100% - 48px);
-    }
-
     body {
         padding: 4px;
-        padding-bottom: 52px;
+        padding-bottom: 48px;
     }
 
     .container {

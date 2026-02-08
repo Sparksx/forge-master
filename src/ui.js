@@ -15,13 +15,19 @@ function createElement(tag, className, textContent) {
 }
 
 // Build an item card (used in both slots and modal)
-function buildItemCard(item) {
+// compareWith: optional item to compare against (adds color classes)
+function buildItemCard(item, compareWith) {
     const fragment = document.createDocumentFragment();
 
     const typeDiv = createElement('div', 'forged-type', `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`);
     const levelDiv = createElement('div', 'forged-level', `Level ${item.level}`);
     const statLabel = item.statType === 'health' ? '❤️ Health' : '⚔️ Damage';
     const statDiv = createElement('div', 'forged-stat', `${statLabel}: +${item.stats}`);
+
+    if (compareWith) {
+        if (item.stats > compareWith.stats) statDiv.classList.add('stat-better');
+        else if (item.stats < compareWith.stats) statDiv.classList.add('stat-worse');
+    }
 
     fragment.append(typeDiv, levelDiv, statDiv);
     return fragment;
@@ -71,29 +77,29 @@ export function showDecisionModal(item) {
     if (currentItem) {
         const container = createElement('div', 'comparison-container');
 
-        // Current item card
+        // Current item card (compared against new)
         const currentCard = createElement('div', 'item-comparison current-item');
         const currentLabel = createElement('div', 'comparison-label', 'Current');
         currentCard.appendChild(currentLabel);
-        currentCard.appendChild(buildItemCard(currentItem));
+        currentCard.appendChild(buildItemCard(currentItem, item));
 
         // Arrow
         const arrow = createElement('div', 'comparison-arrow', '→');
 
-        // New item card
+        // New item card (compared against current)
         const newCard = createElement('div', 'item-comparison new-item');
         const newLabel = createElement('div', 'comparison-label', 'New');
         newCard.appendChild(newLabel);
-        newCard.appendChild(buildItemCard(item));
+        newCard.appendChild(buildItemCard(item, currentItem));
 
         container.append(currentCard, arrow, newCard);
         itemInfo.appendChild(container);
 
-        // Show sell value
-        const sellValue = createElement('div', 'sell-value', `💰 Sell value: ${item.level} gold`);
+        // Show sell value info
+        const sellValue = createElement('div', 'sell-value', `💰 Sell new: ${item.level}g | Equip & sell old: ${currentItem.level}g`);
         itemInfo.appendChild(sellValue);
 
-        equipBtn.textContent = '✅ Equip New';
+        equipBtn.textContent = `✅ Equip (+${currentItem.level}g)`;
         sellBtn.textContent = `💰 Sell (+${item.level}g)`;
     } else {
         itemInfo.appendChild(buildItemCard(item));

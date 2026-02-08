@@ -27,6 +27,12 @@ const gameState = {
     gold: 0,
 };
 
+export function resetGame() {
+    gameState.equipment = createEmptyEquipment();
+    gameState.forgedItem = null;
+    gameState.gold = 0;
+}
+
 export function getEquipment() {
     return gameState.equipment;
 }
@@ -48,6 +54,12 @@ export function getGold() {
 }
 
 export function equipItem(item) {
+    const oldItem = gameState.equipment[item.type];
+    if (oldItem) {
+        const goldEarned = oldItem.level;
+        gameState.gold += goldEarned;
+        gameEvents.emit(EVENTS.ITEM_SOLD, { item: oldItem, goldEarned });
+    }
     gameState.equipment[item.type] = item;
     gameState.forgedItem = null;
     saveGame();
