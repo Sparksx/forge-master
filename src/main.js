@@ -1,6 +1,6 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, equipItem, getForgedItem, discardForgedItem } from './state.js';
+import { loadGame, equipItem, getForgedItem, sellForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
 import { updateUI, showDecisionModal, hideDecisionModal } from './ui.js';
 
@@ -24,7 +24,7 @@ function init() {
     });
 
     document.getElementById('sell-btn').addEventListener('click', () => {
-        discardForgedItem();
+        sellForgedItem();
         hideDecisionModal();
     });
 }
