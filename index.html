@@ -9,89 +9,152 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>⚒️ Forge Master</h1>
-
-        <!-- Player Stats -->
-        <div class="stats-panel">
-            <div class="stat">
-                <span class="stat-label">❤️ Health:</span>
-                <span class="stat-value" id="total-health">100</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">⚔️ Damage:</span>
-                <span class="stat-value" id="total-damage">10</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">💰 Gold:</span>
-                <span class="stat-value" id="gold-amount">0</span>
+    <!-- Tab Views -->
+    <div class="tab-view" id="view-skills">
+        <div class="container">
+            <h1>⚡ Skills</h1>
+            <div class="placeholder-content">
+                <p>Coming soon...</p>
             </div>
         </div>
-
-        <!-- Equipment Display -->
-        <div class="equipment-display">
-            <div class="body-container">
-                <div class="equipment-slot" data-type="hat">
-                    <div class="slot-header">🎩 Hat</div>
-                    <div class="slot-content" id="slot-hat">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="necklace">
-                    <div class="slot-header">📿 Necklace</div>
-                    <div class="slot-content" id="slot-necklace">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="armor">
-                    <div class="slot-header">🛡️ Armor</div>
-                    <div class="slot-content" id="slot-armor">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="weapon">
-                    <div class="slot-header">⚔️ Weapon</div>
-                    <div class="slot-content" id="slot-weapon">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="gloves">
-                    <div class="slot-header">🧤 Gloves</div>
-                    <div class="slot-content" id="slot-gloves">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="ring">
-                    <div class="slot-header">💍 Ring</div>
-                    <div class="slot-content" id="slot-ring">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="belt">
-                    <div class="slot-header">📿 Belt</div>
-                    <div class="slot-content" id="slot-belt">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-
-                <div class="equipment-slot" data-type="boots">
-                    <div class="slot-header">👢 Boots</div>
-                    <div class="slot-content" id="slot-boots">
-                        <span class="empty-slot">Empty</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Forge Button -->
-        <button class="forge-btn" id="forge-btn">⚒️ Forge Equipment</button>
     </div>
+
+    <div class="tab-view" id="view-pets">
+        <div class="container">
+            <h1>🐾 Pets</h1>
+            <div class="placeholder-content">
+                <p>Coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-view active" id="view-home">
+        <div class="container">
+            <h1>⚒️ Forge Master</h1>
+
+            <!-- Player Stats -->
+            <div class="stats-panel">
+                <div class="stat">
+                    <span class="stat-label">❤️ Health:</span>
+                    <span class="stat-value" id="total-health">100</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">⚔️ Damage:</span>
+                    <span class="stat-value" id="total-damage">10</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">💰 Gold:</span>
+                    <span class="stat-value" id="gold-amount">0</span>
+                </div>
+            </div>
+
+            <!-- Equipment Display -->
+            <div class="equipment-display">
+                <div class="body-container">
+                    <div class="equipment-slot" data-type="hat">
+                        <div class="slot-header">🎩 Hat</div>
+                        <div class="slot-content" id="slot-hat">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="necklace">
+                        <div class="slot-header">📿 Necklace</div>
+                        <div class="slot-content" id="slot-necklace">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="armor">
+                        <div class="slot-header">🛡️ Armor</div>
+                        <div class="slot-content" id="slot-armor">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="weapon">
+                        <div class="slot-header">⚔️ Weapon</div>
+                        <div class="slot-content" id="slot-weapon">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="gloves">
+                        <div class="slot-header">🧤 Gloves</div>
+                        <div class="slot-content" id="slot-gloves">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="ring">
+                        <div class="slot-header">💍 Ring</div>
+                        <div class="slot-content" id="slot-ring">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="belt">
+                        <div class="slot-header">📿 Belt</div>
+                        <div class="slot-content" id="slot-belt">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+
+                    <div class="equipment-slot" data-type="boots">
+                        <div class="slot-header">👢 Boots</div>
+                        <div class="slot-content" id="slot-boots">
+                            <span class="empty-slot">Empty</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forge Button -->
+            <button class="forge-btn" id="forge-btn">⚒️ Forge Equipment</button>
+        </div>
+    </div>
+
+    <div class="tab-view" id="view-dungeon">
+        <div class="container">
+            <h1>🏰 Dungeon</h1>
+            <div class="placeholder-content">
+                <p>Coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-view" id="view-shop">
+        <div class="container">
+            <h1>🛒 Shop</h1>
+            <div class="placeholder-content">
+                <p>Coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottom-nav">
+        <button class="nav-tab" data-tab="skills">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-label">Skills</span>
+        </button>
+        <button class="nav-tab" data-tab="pets">
+            <span class="nav-icon">🐾</span>
+            <span class="nav-label">Pets</span>
+        </button>
+        <button class="nav-tab active" data-tab="home">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Home</span>
+        </button>
+        <button class="nav-tab" data-tab="dungeon">
+            <span class="nav-icon">🏰</span>
+            <span class="nav-label">Dungeon</span>
+        </button>
+        <button class="nav-tab" data-tab="shop">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-label">Shop</span>
+        </button>
+    </nav>
 
     <!-- Modal for Equip/Sell Decision -->
     <div class="modal" id="decision-modal">

@@ -3,6 +3,7 @@ import { gameEvents, EVENTS } from './events.js';
 import { loadGame, equipItem, getForgedItem, sellForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
 import { updateUI, showDecisionModal, hideDecisionModal } from './ui.js';
+import { initNavigation } from './navigation.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
@@ -12,6 +13,7 @@ gameEvents.on(EVENTS.ITEM_FORGED, showDecisionModal);
 function init() {
     loadGame();
     updateUI();
+    initNavigation();
 
     document.getElementById('forge-btn').addEventListener('click', forgeEquipment);
 
