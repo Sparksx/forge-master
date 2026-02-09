@@ -1,8 +1,8 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, getForgedItem, upgradeForge } from './state.js';
+import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal } from './ui.js';
+import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal, showForgeUpgradeModal } from './ui.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 
@@ -32,9 +32,9 @@ function init() {
     // Shop
     initShop();
 
-    // Forge upgrade button
-    document.getElementById('upgrade-forge-btn').addEventListener('click', () => {
-        upgradeForge();
+    // Forge info row -> open forge upgrade modal
+    document.getElementById('forge-info-row').addEventListener('click', () => {
+        showForgeUpgradeModal();
     });
 
     // Action buttons

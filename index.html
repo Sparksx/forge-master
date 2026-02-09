@@ -8,6 +8,18 @@
 </head>
 
 <body>
+    <!-- Persistent Header (always visible, even over modals) -->
+    <div class="app-header" id="app-header">
+        <div class="header-row">
+            <button class="header-btn" id="profile-btn">👤</button>
+            <div class="gold-display" id="gold-display">
+                <span class="gold-icon">💰</span>
+                <span class="gold-value" id="gold-amount">0</span>
+                <button class="gold-add-btn" id="gold-add-btn">+</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tab Views -->
     <div class="tab-view" id="view-pvp">
         <div class="container">
@@ -29,15 +41,6 @@
 
     <div class="tab-view active" id="view-home">
         <div class="container">
-            <div class="header-row">
-                <button class="header-btn" id="profile-btn">👤</button>
-                <div class="gold-display" id="gold-display">
-                    <span class="gold-icon">💰</span>
-                    <span class="gold-value" id="gold-amount">0</span>
-                    <button class="gold-add-btn" id="gold-add-btn">+</button>
-                </div>
-            </div>
-
             <!-- Global Stats Panel -->
             <div class="stats-panel">
                 <div class="power-score-row">
@@ -119,10 +122,10 @@
                 </div>
             </div>
 
-            <!-- Forge Info Row -->
-            <div class="forge-info-row">
+            <!-- Forge Info Row (clickable -> opens upgrade modal) -->
+            <div class="forge-info-row clickable" id="forge-info-row">
                 <span class="forge-level-label">⚒️ Forge Nv.<span id="forge-level">1</span></span>
-                <button class="btn-upgrade-forge" id="upgrade-forge-btn">200g</button>
+                <span class="forge-info-arrow">▶</span>
             </div>
 
             <!-- Action Row -->
@@ -226,6 +229,14 @@
             <div class="modal-buttons">
                 <button class="btn btn-equip" id="item-detail-close">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Forge Upgrade Modal -->
+    <div class="modal" id="forge-upgrade-modal">
+        <div class="modal-content">
+            <h2>⚒️ Forge</h2>
+            <div id="forge-upgrade-info"></div>
         </div>
     </div>
 
