@@ -3,7 +3,8 @@ import { gameEvents, EVENTS } from './events.js';
 import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
 import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal } from './ui.js';
-import { initNavigation } from './navigation.js';
+import { initNavigation, switchTab } from './navigation.js';
+import { initShop } from './shop.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
@@ -24,6 +25,12 @@ function init() {
             forgeEquipment();
         }
     });
+
+    // Gold "+" button -> navigate to shop
+    document.getElementById('gold-add-btn').addEventListener('click', () => switchTab('shop'));
+
+    // Shop
+    initShop();
 
     // Action buttons
     document.getElementById('profile-btn').addEventListener('click', () => showWipModal('👤 Profile'));
