@@ -30,7 +30,7 @@
     <div class="tab-view active" id="view-home">
         <div class="container">
             <div class="header-row">
-                <h1>⚒️ Forge Master</h1>
+                <button class="header-btn" id="profile-btn">👤</button>
                 <div class="gold-display">
                     <span class="gold-icon">💰</span>
                     <span class="gold-value" id="gold-amount">0</span>
@@ -118,8 +118,12 @@
                 </div>
             </div>
 
-            <!-- Forge Button -->
-            <button class="forge-btn" id="forge-btn">⚒️ Forge Equipment</button>
+            <!-- Action Row -->
+            <div class="action-row">
+                <button class="forge-btn" id="forge-btn">⚒️ Forge</button>
+                <button class="action-icon-btn" id="upgrade-action-btn" title="Upgrade">⬆️</button>
+                <button class="action-icon-btn" id="auto-action-btn" title="Auto">🤖</button>
+            </div>
         </div>
     </div>
 
@@ -191,6 +195,16 @@
             <div id="item-detail-info"></div>
             <div class="modal-buttons">
                 <button class="btn btn-equip" id="item-detail-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIP Modal (reusable) -->
+    <div class="modal" id="wip-modal">
+        <div class="modal-content">
+            <h2 id="wip-modal-title">Coming Soon</h2>
+            <div class="wip-content">
+                <p>🚧 Work in progress...</p>
             </div>
         </div>
     </div>

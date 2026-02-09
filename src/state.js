@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS } from './config.js';
+import { EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS, HEALTH_ITEMS, HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL } from './config.js';
 import { gameEvents, EVENTS } from './events.js';
 
 function createEmptyEquipment() {
@@ -107,7 +107,10 @@ export function loadGame() {
 
         EQUIPMENT_TYPES.forEach(type => {
             if (isValidItem(equipmentData[type])) {
-                gameState.equipment[type] = equipmentData[type];
+                const item = { ...equipmentData[type] };
+                const isHealthItem = HEALTH_ITEMS.includes(item.type);
+                item.stats = isHealthItem ? item.level * HEALTH_PER_LEVEL : item.level * DAMAGE_PER_LEVEL;
+                gameState.equipment[type] = item;
             }
         });
 

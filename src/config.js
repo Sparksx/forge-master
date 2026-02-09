@@ -16,7 +16,7 @@ export const EQUIPMENT_ICONS = {
 
 export const BASE_HEALTH = 100;
 export const BASE_DAMAGE = 10;
-export const HEALTH_PER_LEVEL = 5;
+export const HEALTH_PER_LEVEL = 10;
 export const DAMAGE_PER_LEVEL = 2;
 
 export const LEVEL_RANGE = 10;

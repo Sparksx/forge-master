@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createItem, calculateStats, calculatePowerScore } from '../forge.js';
-import { BONUS_STAT_KEYS, BONUS_STATS } from '../config.js';
+import { BONUS_STAT_KEYS, BONUS_STATS, HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL } from '../config.js';
 
 describe('createItem', () => {
     it('creates a health item for hat', () => {
@@ -8,25 +8,25 @@ describe('createItem', () => {
         expect(item.type).toBe('hat');
         expect(item.level).toBe(10);
         expect(item.statType).toBe('health');
-        expect(item.stats).toBe(50); // 10 * HEALTH_PER_LEVEL (5)
+        expect(item.stats).toBe(10 * HEALTH_PER_LEVEL);
     });
 
     it('creates a health item for armor', () => {
         const item = createItem('armor', 5);
         expect(item.statType).toBe('health');
-        expect(item.stats).toBe(25); // 5 * 5
+        expect(item.stats).toBe(5 * HEALTH_PER_LEVEL);
     });
 
     it('creates a health item for belt', () => {
         const item = createItem('belt', 1);
         expect(item.statType).toBe('health');
-        expect(item.stats).toBe(5);
+        expect(item.stats).toBe(1 * HEALTH_PER_LEVEL);
     });
 
     it('creates a health item for boots', () => {
         const item = createItem('boots', 20);
         expect(item.statType).toBe('health');
-        expect(item.stats).toBe(100);
+        expect(item.stats).toBe(20 * HEALTH_PER_LEVEL);
     });
 
     it('creates a damage item for weapon', () => {
@@ -58,13 +58,13 @@ describe('createItem', () => {
     it('handles level 1 (minimum)', () => {
         const item = createItem('hat', 1);
         expect(item.level).toBe(1);
-        expect(item.stats).toBe(5);
+        expect(item.stats).toBe(1 * HEALTH_PER_LEVEL);
     });
 
     it('handles level 100 (maximum)', () => {
         const item = createItem('weapon', 100);
         expect(item.level).toBe(100);
-        expect(item.stats).toBe(200);
+        expect(item.stats).toBe(100 * DAMAGE_PER_LEVEL);
     });
 
     it('includes a valid bonus stat', () => {
@@ -89,13 +89,13 @@ describe('calculateStats', () => {
 
     it('sums health items correctly', () => {
         const equipment = {
-            hat: createItem('hat', 10),       // +50 health
-            armor: createItem('armor', 5),     // +25 health
+            hat: createItem('hat', 10),
+            armor: createItem('armor', 5),
             belt: null, boots: null,
             gloves: null, necklace: null, ring: null, weapon: null,
         };
         const { totalHealth, totalDamage } = calculateStats(equipment);
-        expect(totalHealth).toBe(75);
+        expect(totalHealth).toBe(15 * HEALTH_PER_LEVEL);
         expect(totalDamage).toBe(0);
     });
 
@@ -114,18 +114,18 @@ describe('calculateStats', () => {
 
     it('sums mixed equipment correctly', () => {
         const equipment = {
-            hat: createItem('hat', 10),          // +50 health
-            armor: createItem('armor', 10),      // +50 health
-            belt: createItem('belt', 10),        // +50 health
-            boots: createItem('boots', 10),      // +50 health
-            gloves: createItem('gloves', 10),    // +20 damage
-            necklace: createItem('necklace', 10),// +20 damage
-            ring: createItem('ring', 10),        // +20 damage
-            weapon: createItem('weapon', 10),    // +20 damage
+            hat: createItem('hat', 10),
+            armor: createItem('armor', 10),
+            belt: createItem('belt', 10),
+            boots: createItem('boots', 10),
+            gloves: createItem('gloves', 10),
+            necklace: createItem('necklace', 10),
+            ring: createItem('ring', 10),
+            weapon: createItem('weapon', 10),
         };
         const { totalHealth, totalDamage } = calculateStats(equipment);
-        expect(totalHealth).toBe(200);
-        expect(totalDamage).toBe(80);
+        expect(totalHealth).toBe(40 * HEALTH_PER_LEVEL);
+        expect(totalDamage).toBe(40 * DAMAGE_PER_LEVEL);
     });
 
     it('handles empty object', () => {
