@@ -3,7 +3,7 @@ import {
     LEVEL_RANGE, MAX_LEVEL, INITIAL_LEVEL_MAX, BONUS_STATS, BONUS_STAT_KEYS,
     GROWTH_EXPONENT, TIERS, FORGE_LEVELS
 } from './config.js';
-import { getEquipmentByType, setForgedItem, getForgeLevel } from './state.js';
+import { getEquipmentByType, getHighestLevelForTier, setForgedItem, getForgeLevel } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
 function rollBonuses(count) {
@@ -56,18 +56,19 @@ export function rollTier(forgeLevel) {
 
 export function forgeEquipment() {
     const randomType = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
-    const currentItem = getEquipmentByType(randomType);
+    const tier = rollTier(getForgeLevel());
+
+    const highestLevelForTier = getHighestLevelForTier(tier);
 
     let randomLevel;
-    if (currentItem) {
-        const minLevel = Math.max(1, currentItem.level - LEVEL_RANGE);
-        const maxLevel = Math.min(MAX_LEVEL, currentItem.level + LEVEL_RANGE);
+    if (highestLevelForTier !== null) {
+        const minLevel = Math.max(1, highestLevelForTier - LEVEL_RANGE);
+        const maxLevel = Math.min(MAX_LEVEL, highestLevelForTier + LEVEL_RANGE);
         randomLevel = Math.floor(Math.random() * (maxLevel - minLevel + 1)) + minLevel;
     } else {
         randomLevel = Math.floor(Math.random() * INITIAL_LEVEL_MAX) + 1;
     }
 
-    const tier = rollTier(getForgeLevel());
     const item = createItem(randomType, randomLevel, tier);
     setForgedItem(item);
     gameEvents.emit(EVENTS.ITEM_FORGED, item);

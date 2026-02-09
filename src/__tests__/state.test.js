@@ -17,9 +17,10 @@ const {
     getEquipment, getGold, equipItem, sellForgedItem, setForgedItem, getForgedItem,
     saveGame, loadGame, resetGame, getForgeLevel, getSellValue, getForgeUpgradeCost,
     upgradeForge, startForgeUpgrade, getForgeUpgradeStatus, getForgeUpgradeState,
-    speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold
+    speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold, getHighestLevelForTier
 } = await import('../state.js');
-const { createItem, calculateItemStats } = await import('../forge.js');
+const { createItem, calculateItemStats, forgeEquipment } = await import('../forge.js');
+const { INITIAL_LEVEL_MAX, LEVEL_RANGE, MAX_LEVEL } = await import('../config.js');
 
 describe('state', () => {
     beforeEach(() => {
@@ -196,6 +197,32 @@ describe('state', () => {
         });
     });
 
+    describe('getHighestLevelForTier', () => {
+        it('returns null when no equipment of that tier exists', () => {
+            expect(getHighestLevelForTier(1)).toBeNull();
+        });
+
+        it('returns the level of the only equipped item of that tier', () => {
+            equipItem(createItem('hat', 30, 2));
+            expect(getHighestLevelForTier(2)).toBe(30);
+        });
+
+        it('returns the highest level among multiple items of the same tier', () => {
+            equipItem(createItem('hat', 20, 1));
+            equipItem(createItem('armor', 50, 1));
+            equipItem(createItem('weapon', 35, 1));
+            expect(getHighestLevelForTier(1)).toBe(50);
+        });
+
+        it('ignores items of different tiers', () => {
+            equipItem(createItem('hat', 90, 1));
+            equipItem(createItem('armor', 30, 2));
+            expect(getHighestLevelForTier(2)).toBe(30);
+            expect(getHighestLevelForTier(1)).toBe(90);
+            expect(getHighestLevelForTier(3)).toBeNull();
+        });
+    });
+
     describe('loadGame', () => {
         it('loads valid save data with tier and bonuses', () => {
             const saveData = JSON.stringify({
@@ -325,6 +352,59 @@ describe('state', () => {
         it('handles null localStorage gracefully', () => {
             localStorageMock.getItem.mockReturnValueOnce(null);
             expect(() => loadGame()).not.toThrow();
+        });
+    });
+
+    describe('forgeEquipment level calculation', () => {
+        it('uses initial level range when no item of the rolled tier is equipped', () => {
+            // Equip a high-level tier 1 item
+            equipItem(createItem('hat', 90, 1));
+
+            // Forge many items — any item with a tier != 1 should use initial range
+            for (let i = 0; i < 50; i++) {
+                const item = forgeEquipment();
+                if (item.tier !== 1) {
+                    expect(item.level).toBeGreaterThanOrEqual(1);
+                    expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                }
+            }
+        });
+
+        it('uses highest level of same tier for level range', () => {
+            // Equip items of specific tiers at known levels
+            equipItem(createItem('hat', 50, 1));
+            equipItem(createItem('armor', 80, 1));
+            equipItem(createItem('weapon', 30, 2));
+
+            for (let i = 0; i < 100; i++) {
+                const item = forgeEquipment();
+                if (item.tier === 1) {
+                    // Should be based on highest tier 1 level (80), so range [70, 90]
+                    const minExpected = Math.max(1, 80 - LEVEL_RANGE);
+                    const maxExpected = Math.min(MAX_LEVEL, 80 + LEVEL_RANGE);
+                    expect(item.level).toBeGreaterThanOrEqual(minExpected);
+                    expect(item.level).toBeLessThanOrEqual(maxExpected);
+                } else if (item.tier === 2) {
+                    // Should be based on highest tier 2 level (30), so range [20, 40]
+                    const minExpected = Math.max(1, 30 - LEVEL_RANGE);
+                    const maxExpected = Math.min(MAX_LEVEL, 30 + LEVEL_RANGE);
+                    expect(item.level).toBeGreaterThanOrEqual(minExpected);
+                    expect(item.level).toBeLessThanOrEqual(maxExpected);
+                }
+            }
+        });
+
+        it('does not inherit level from different tier', () => {
+            // Equip only a high-level tier 1 item
+            equipItem(createItem('hat', 95, 1));
+
+            // All items of other tiers should start at initial range, not near 95
+            for (let i = 0; i < 50; i++) {
+                const item = forgeEquipment();
+                if (item.tier > 1) {
+                    expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                }
+            }
         });
     });
 });
