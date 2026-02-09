@@ -41,13 +41,15 @@
         <div class="app-header" id="app-header">
             <div class="header-row">
                 <button class="header-btn" id="profile-btn">👤</button>
+                <div class="header-power" id="header-power">
+                    <span class="header-power-icon">🔥</span>
+                    <span class="header-power-value" id="header-power-value">110</span>
+                </div>
                 <div class="gold-display" id="gold-display">
                     <span class="gold-icon">💰</span>
                     <span class="gold-value" id="gold-amount">0</span>
                     <button class="gold-add-btn" id="gold-add-btn">+</button>
                 </div>
-                <button class="header-btn" id="chat-toggle">💬</button>
-                <button class="header-btn" id="logout-btn">🚪</button>
             </div>
         </div>
 
@@ -167,25 +169,6 @@
 
             <!-- Bottom Half: Equipment & Forge -->
             <div class="forge-zone" id="forge-zone">
-                <!-- Global Stats Panel -->
-                <div class="stats-panel">
-                    <div class="power-score-row">
-                        <span class="power-label">🔥 Power</span>
-                        <span class="power-value" id="power-score">110</span>
-                    </div>
-                    <div class="stats-row stats-row-main">
-                        <div class="stat">
-                            <span class="stat-label">❤️ Health</span>
-                            <span class="stat-value" id="total-health">100</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">⚔️ Damage</span>
-                            <span class="stat-value" id="total-damage">10</span>
-                        </div>
-                    </div>
-                    <div class="stats-row stats-row-bonus" id="bonus-stats-row">
-                    </div>
-                </div>
 
                 <!-- Equipment Display (compact) -->
                 <div class="equipment-display">
@@ -255,6 +238,14 @@
                         <span class="forge-btn-level" id="forge-level">1</span>
                     </button>
                     <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge">🤖</button>
+                </div>
+
+                <!-- Chat Preview (2 lines, click to open full chat) -->
+                <div class="chat-preview" id="chat-preview">
+                    <div class="chat-preview-label">💬 Chat</div>
+                    <div class="chat-preview-messages" id="chat-preview-messages">
+                        <div class="chat-preview-empty">No messages yet</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -336,11 +327,11 @@
             </button>
         </nav>
 
-        <!-- Chat Panel (slide-in) -->
-        <div class="chat-panel" id="chat-panel">
+        <!-- Full-page Chat Overlay -->
+        <div class="chat-fullpage" id="chat-panel">
             <div class="chat-header">
-                <span>Chat</span>
-                <button class="chat-close-btn" id="chat-close">X</button>
+                <span>💬 Chat</span>
+                <button class="chat-close-btn" id="chat-close">✕</button>
             </div>
             <div class="chat-messages" id="chat-messages"></div>
             <div class="chat-input-row">
@@ -384,13 +375,11 @@
             </div>
         </div>
 
-        <!-- WIP Modal (reusable) -->
-        <div class="modal" id="wip-modal">
+        <!-- Profile Modal -->
+        <div class="modal" id="profile-modal">
             <div class="modal-content">
-                <h2 id="wip-modal-title">Coming Soon</h2>
-                <div class="wip-content">
-                    <p>🚧 Work in progress...</p>
-                </div>
+                <h2>👤 Profile</h2>
+                <div id="profile-info"></div>
             </div>
         </div>
     </div>

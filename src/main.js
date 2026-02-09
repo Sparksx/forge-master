@@ -4,7 +4,7 @@ import { loadGame, loadGameFromServer, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
-    hideItemDetailModal, showWipModal, showForgeUpgradeModal, handleAutoForgeClick,
+    hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
     showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
     triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus
@@ -12,7 +12,7 @@ import {
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 import { startCombat, refreshPlayerStats } from './combat.js';
-import { initAuth, setAuthSuccessCallback } from './auth.js';
+import { initAuth, setAuthSuccessCallback, getCurrentUser, performLogout } from './auth.js';
 import { connectSocket } from './socket-client.js';
 import { initChat, refreshChatSocket } from './chat.js';
 import { initPvp, refreshPvpSocket } from './pvp.js';
@@ -110,7 +110,9 @@ async function startGame() {
     });
 
     // Profile
-    document.getElementById('profile-btn').addEventListener('click', () => showWipModal('Profile'));
+    document.getElementById('profile-btn').addEventListener('click', () => {
+        showProfileModal(getCurrentUser(), performLogout);
+    });
 
     // Equipment slot clicks -> item detail modal
     document.querySelector('.body-container').addEventListener('click', (e) => {
