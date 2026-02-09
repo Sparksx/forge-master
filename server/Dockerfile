@@ -9,9 +9,8 @@ COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 COPY prisma ./prisma
-ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+ARG DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
 RUN npx prisma generate
-ENV DATABASE_URL=""
 
 COPY src ./src
 
