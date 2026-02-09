@@ -1,8 +1,0 @@
-[phases.install]
-cmds = ['npm install --ignore-scripts']
-
-[phases.build]
-cmds = ['DATABASE_URL=postgresql://placeholder:5432/db npx prisma generate', 'npm run build']
-
-[start]
-cmd = 'npx prisma db push && node server/index.js'
