@@ -2,13 +2,15 @@ import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal } from './ui.js';
+import { updateUI, handleItemForged, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal, showForgeUpgradeModal, handleAutoForgeClick, showForgeToast, showSellToast } from './ui.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
-gameEvents.on(EVENTS.ITEM_FORGED, showDecisionModal);
+gameEvents.on(EVENTS.ITEM_FORGED, handleItemForged);
+gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
+gameEvents.on(EVENTS.ITEM_SOLD, showSellToast);
 
 // Wire DOM interactions
 function init() {
@@ -32,10 +34,18 @@ function init() {
     // Shop
     initShop();
 
-    // Action buttons
-    document.getElementById('profile-btn').addEventListener('click', () => showWipModal('👤 Profile'));
-    document.getElementById('upgrade-action-btn').addEventListener('click', () => showWipModal('⬆️ Upgrade'));
-    document.getElementById('auto-action-btn').addEventListener('click', () => showWipModal('🤖 Auto'));
+    // Forge upgrade icon button -> open forge upgrade modal
+    document.getElementById('forge-upgrade-btn').addEventListener('click', () => {
+        showForgeUpgradeModal();
+    });
+
+    // Auto-forge button
+    document.getElementById('auto-action-btn').addEventListener('click', () => {
+        handleAutoForgeClick();
+    });
+
+    // Profile
+    document.getElementById('profile-btn').addEventListener('click', () => showWipModal('Profile'));
 
     // Equipment slot clicks -> item detail modal
     document.querySelector('.body-container').addEventListener('click', (e) => {

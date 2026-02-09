@@ -8,6 +8,18 @@
 </head>
 
 <body>
+    <!-- Persistent Header (always visible, even over modals) -->
+    <div class="app-header" id="app-header">
+        <div class="header-row">
+            <button class="header-btn" id="profile-btn">👤</button>
+            <div class="gold-display" id="gold-display">
+                <span class="gold-icon">💰</span>
+                <span class="gold-value" id="gold-amount">0</span>
+                <button class="gold-add-btn" id="gold-add-btn">+</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tab Views -->
     <div class="tab-view" id="view-pvp">
         <div class="container">
@@ -29,15 +41,6 @@
 
     <div class="tab-view active" id="view-home">
         <div class="container">
-            <div class="header-row">
-                <button class="header-btn" id="profile-btn">👤</button>
-                <div class="gold-display" id="gold-display">
-                    <span class="gold-icon">💰</span>
-                    <span class="gold-value" id="gold-amount">0</span>
-                    <button class="gold-add-btn" id="gold-add-btn">+</button>
-                </div>
-            </div>
-
             <!-- Global Stats Panel -->
             <div class="stats-panel">
                 <div class="power-score-row">
@@ -122,8 +125,10 @@
             <!-- Action Row -->
             <div class="action-row">
                 <button class="forge-btn" id="forge-btn">⚒️ Forge</button>
-                <button class="action-icon-btn" id="upgrade-action-btn" title="Upgrade">⬆️</button>
-                <button class="action-icon-btn" id="auto-action-btn" title="Auto">🤖</button>
+                <button class="action-icon-btn forge-level-btn" id="forge-upgrade-btn" title="Forge Upgrade">
+                    <span class="forge-btn-level" id="forge-level">1</span>
+                </button>
+                <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge">🤖</button>
             </div>
         </div>
     </div>
@@ -224,6 +229,22 @@
         </div>
     </div>
 
+    <!-- Forge Upgrade Modal -->
+    <div class="modal" id="forge-upgrade-modal">
+        <div class="modal-content">
+            <h2>⚒️ Forge</h2>
+            <div id="forge-upgrade-info"></div>
+        </div>
+    </div>
+
+    <!-- Auto Forge Modal -->
+    <div class="modal" id="auto-forge-modal">
+        <div class="modal-content">
+            <h2>🤖 Auto Forge</h2>
+            <div id="auto-forge-info"></div>
+        </div>
+    </div>
+
     <!-- WIP Modal (reusable) -->
     <div class="modal" id="wip-modal">
         <div class="modal-content">
@@ -233,6 +254,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
 
     <script type="module" src="src/main.js"></script>
 </body>
