@@ -1,9 +1,52 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { requireAuth } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+const VALID_SLOTS = ['hat', 'armor', 'belt', 'boots', 'gloves', 'necklace', 'ring', 'weapon'];
+
+function isValidItem(item) {
+    if (item === null) return true;
+    if (typeof item !== 'object' || Array.isArray(item)) return false;
+    if (typeof item.level !== 'number' || item.level < 1) return false;
+    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > 6) return false;
+    if (typeof item.type !== 'string' || !VALID_SLOTS.includes(item.type)) return false;
+    if (item.bonuses !== undefined) {
+        if (!Array.isArray(item.bonuses)) return false;
+        for (const b of item.bonuses) {
+            if (typeof b !== 'object' || !b.type || typeof b.value !== 'number') return false;
+        }
+    }
+    return true;
+}
+
+function isValidEquipment(equipment) {
+    if (typeof equipment !== 'object' || Array.isArray(equipment) || equipment === null) return false;
+    for (const [slot, item] of Object.entries(equipment)) {
+        if (!VALID_SLOTS.includes(slot)) return false;
+        if (!isValidItem(item)) return false;
+    }
+    return true;
+}
+
+function isValidCombat(combat) {
+    if (typeof combat !== 'object' || Array.isArray(combat) || combat === null) return false;
+    const { currentWave, currentSubWave, highestWave, highestSubWave } = combat;
+    if (typeof currentWave !== 'number' || currentWave < 1) return false;
+    if (typeof currentSubWave !== 'number' || currentSubWave < 1) return false;
+    if (typeof highestWave !== 'number' || highestWave < 1) return false;
+    if (typeof highestSubWave !== 'number' || highestSubWave < 1) return false;
+    return true;
+}
+
+function isValidForgeUpgrade(forgeUpgrade) {
+    if (forgeUpgrade === null) return true;
+    if (typeof forgeUpgrade !== 'object' || Array.isArray(forgeUpgrade)) return false;
+    if (typeof forgeUpgrade.targetLevel !== 'number' || forgeUpgrade.targetLevel < 2) return false;
+    if (typeof forgeUpgrade.startedAt !== 'number' && typeof forgeUpgrade.startedAt !== 'string') return false;
+    return true;
+}
 
 // GET /api/game/state — load player's game state
 router.get('/state', requireAuth, async (req, res) => {
@@ -44,11 +87,26 @@ router.put('/state', requireAuth, async (req, res) => {
 
     try {
         const data = {};
-        if (equipment !== undefined) data.equipment = equipment;
+        if (equipment !== undefined) {
+            if (!isValidEquipment(equipment)) {
+                return res.status(400).json({ error: 'Invalid equipment structure' });
+            }
+            data.equipment = equipment;
+        }
         if (typeof gold === 'number' && gold >= 0) data.gold = Math.floor(gold);
         if (typeof forgeLevel === 'number' && forgeLevel >= 1) data.forgeLevel = Math.floor(forgeLevel);
-        if (forgeUpgrade !== undefined) data.forgeUpgrade = forgeUpgrade;
-        if (combat !== undefined) data.combat = combat;
+        if (forgeUpgrade !== undefined) {
+            if (!isValidForgeUpgrade(forgeUpgrade)) {
+                return res.status(400).json({ error: 'Invalid forgeUpgrade structure' });
+            }
+            data.forgeUpgrade = forgeUpgrade;
+        }
+        if (combat !== undefined) {
+            if (!isValidCombat(combat)) {
+                return res.status(400).json({ error: 'Invalid combat structure' });
+            }
+            data.combat = combat;
+        }
 
         const state = await prisma.gameState.upsert({
             where: { userId: req.user.userId },

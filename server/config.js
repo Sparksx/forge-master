@@ -9,3 +9,5 @@ export const JWT_ACCESS_EXPIRY = '15m';
 export const JWT_REFRESH_EXPIRY = '7d';
 
 export const DATABASE_URL = process.env.DATABASE_URL;
+
+export const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' ? 'https://sparksx.github.io' : '*');
