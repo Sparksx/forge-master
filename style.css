@@ -10,6 +10,14 @@ html, body {
     overflow: hidden;
 }
 
+/* Game container – must be a flex column so child .tab-view can flex: 1 */
+#game-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
 /* Tab Views */
 .tab-view {
     display: none;
@@ -1083,25 +1091,23 @@ h1 {
 }
 
 #view-home .combat-zone {
-    flex: 1 1 50%;
+    flex: 1;
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     padding: clamp(6px, 1.2vw, 12px);
     min-height: 0;
-    max-height: 50%;
     position: relative;
     overflow: hidden;
 }
 
 #view-home .forge-zone {
-    flex: 1 1 50%;
+    flex: 1;
     display: flex;
     flex-direction: column;
     background: white;
     padding: clamp(8px, 1.5vw, 16px);
     min-height: 0;
-    max-height: 50%;
     overflow-y: auto;
     border-top: 2px solid #d0d0d0;
 }
