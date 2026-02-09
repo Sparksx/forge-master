@@ -3,8 +3,12 @@ import {
     LEVEL_RANGE, MAX_LEVEL, INITIAL_LEVEL_MAX, BONUS_STATS, BONUS_STAT_KEYS,
     GROWTH_EXPONENT, TIERS, FORGE_LEVELS
 } from './config.js';
+import { calculateItemStats, calculateStats } from '../shared/stats.js';
 import { getEquipmentByType, getHighestLevelForTier, setForgedItem, getForgeLevel } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
+
+// Re-export shared functions so existing imports keep working
+export { calculateItemStats, calculateStats };
 
 function rollBonuses(count) {
     const bonuses = [];
@@ -19,12 +23,6 @@ function rollBonuses(count) {
         bonuses.push({ type: key, value });
     }
     return bonuses;
-}
-
-export function calculateItemStats(level, tier, isHealthItem) {
-    const effectiveLevel = (tier - 1) * 100 + level;
-    const perLevel = isHealthItem ? HEALTH_PER_LEVEL : DAMAGE_PER_LEVEL;
-    return Math.floor(perLevel * Math.pow(effectiveLevel, GROWTH_EXPONENT));
 }
 
 export function createItem(type, level, tier = 1) {
@@ -74,32 +72,6 @@ export function forgeEquipment() {
     gameEvents.emit(EVENTS.ITEM_FORGED, item);
 
     return item;
-}
-
-export function calculateStats(equipment) {
-    let totalHealth = 0;
-    let totalDamage = 0;
-    const bonuses = {};
-
-    BONUS_STAT_KEYS.forEach(key => { bonuses[key] = 0; });
-
-    Object.values(equipment).forEach(item => {
-        if (!item) return;
-        if (item.statType === 'health') {
-            totalHealth += item.stats;
-        } else {
-            totalDamage += item.stats;
-        }
-        if (item.bonuses && Array.isArray(item.bonuses)) {
-            item.bonuses.forEach(bonus => {
-                if (bonus.type && bonus.value) {
-                    bonuses[bonus.type] = (bonuses[bonus.type] || 0) + bonus.value;
-                }
-            });
-        }
-    });
-
-    return { totalHealth, totalDamage, bonuses };
 }
 
 export function calculatePowerScore(totalHealth, totalDamage, bonuses) {

@@ -21,11 +21,18 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "lint": "eslint src/ server/ shared/",
+    "lint:fix": "eslint src/ server/ shared/ --fix",
+    "format": "prettier --write \"src/**/*.js\" \"server/**/*.js\" \"shared/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"server/**/*.js\" \"shared/**/*.js\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push"
   },
   "devDependencies": {
+    "eslint": "^10.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
     "prisma": "^5.22.0",
     "socket.io-client": "^4.8.3",
     "vite": "^6.1.0",

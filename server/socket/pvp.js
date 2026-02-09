@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import { computeStatsFromEquipment } from '../../shared/stats.js';
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
 const queue = new Map();
@@ -26,6 +27,7 @@ export function registerPvpHandlers(io, socket) {
             userId: socket.user.userId,
             username: socket.user.username,
             stats,
+            queuedAt: Date.now(),
         });
 
         socket.emit('pvp:queued', {});
@@ -59,13 +61,43 @@ export function registerPvpHandlers(io, socket) {
     });
 }
 
+// Elo range starts at 100 and widens by 50 every 5 seconds of waiting
+const BASE_ELO_RANGE = 100;
+const ELO_RANGE_EXPANSION = 50;
+const ELO_RANGE_INTERVAL = 5000; // ms
+
 function tryMatch(io) {
     if (queue.size < 2) return;
 
     const entries = Array.from(queue.values());
-    const p1 = entries[0];
-    const p2 = entries[1];
+    const now = Date.now();
 
+    // Find the best Elo-compatible pair
+    let bestPair = null;
+    let bestDiff = Infinity;
+
+    for (let i = 0; i < entries.length; i++) {
+        for (let j = i + 1; j < entries.length; j++) {
+            const a = entries[i];
+            const b = entries[j];
+            const diff = Math.abs(a.stats.rating - b.stats.rating);
+
+            // Calculate allowed range based on how long each player has been waiting
+            const waitA = now - (a.queuedAt || now);
+            const waitB = now - (b.queuedAt || now);
+            const maxWait = Math.max(waitA, waitB);
+            const allowedRange = BASE_ELO_RANGE + Math.floor(maxWait / ELO_RANGE_INTERVAL) * ELO_RANGE_EXPANSION;
+
+            if (diff <= allowedRange && diff < bestDiff) {
+                bestDiff = diff;
+                bestPair = [a, b];
+            }
+        }
+    }
+
+    if (!bestPair) return; // No compatible pair yet, range will widen over time
+
+    const [p1, p2] = bestPair;
     queue.delete(p1.socket.id);
     queue.delete(p2.socket.id);
 
@@ -321,47 +353,4 @@ async function getPlayerStats(userId) {
     }
 }
 
-// Server-side stat computation (mirrors client logic for anti-cheat)
-function computeStatsFromEquipment(equipment) {
-    const HEALTH_ITEMS = ['hat', 'armor', 'belt', 'boots'];
-    const BASE_HEALTH = 100;
-    const BASE_DAMAGE = 10;
-    const HEALTH_PER_LEVEL = 10;
-    const DAMAGE_PER_LEVEL = 2;
-    const GROWTH_EXPONENT = 1.2;
-
-    let totalHealth = 0;
-    let totalDamage = 0;
-    const bonuses = {};
-
-    for (const [slot, item] of Object.entries(equipment)) {
-        if (!item) continue;
-        const tier = item.tier || 1;
-        const level = item.level || 1;
-        const effectiveLevel = (tier - 1) * 100 + level;
-        const isHealth = HEALTH_ITEMS.includes(slot);
-        const perLevel = isHealth ? HEALTH_PER_LEVEL : DAMAGE_PER_LEVEL;
-        const stats = Math.floor(perLevel * Math.pow(effectiveLevel, GROWTH_EXPONENT));
-
-        if (isHealth) totalHealth += stats;
-        else totalDamage += stats;
-
-        if (item.bonuses && Array.isArray(item.bonuses)) {
-            for (const b of item.bonuses) {
-                if (b.type && typeof b.value === 'number') {
-                    bonuses[b.type] = (bonuses[b.type] || 0) + b.value;
-                }
-            }
-        }
-    }
-
-    const maxHP = BASE_HEALTH + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
-    const damage = BASE_DAMAGE + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
-
-    return {
-        maxHP,
-        damage,
-        critChance: bonuses.critChance || 0,
-        critMultiplier: bonuses.critMultiplier || 0,
-    };
-}
+// computeStatsFromEquipment is now imported from shared/stats.js

@@ -22,23 +22,23 @@
 - [x] **CORS restrictif en production** — `app.use(cors())` autorise toutes les origines. Restreindre à `https://web-production-aeea.up.railway.app` en production via une variable d'environnement
 - [x] **Nettoyage des refresh tokens expirés** — Les `RefreshToken` expirés ne sont jamais supprimés de la DB. Ajouter un job périodique ou un nettoyage au démarrage (ex: `deleteMany({ where: { expiresAt: { lt: new Date() } } })`)
 
-## 🟡 Priorité moyenne — Architecture & Code
+## 🟡 Priorité moyenne — Architecture & Code — Complété
 
-- [ ] **Duplication du calcul de stats serveur/client** — `server/socket/pvp.js:computeStatsFromEquipment()` (lignes 327-369) duplique la logique de `src/forge.js` et `src/config.js` avec des constantes en dur. Si l'équilibrage change, les deux versions divergeront. Extraire les constantes et la logique de calcul dans un module partagé (`shared/stats.js`)
-- [ ] **Découpage de `ui.js`** — Le fichier fait ~950 lignes et gère le rendu de la forge, du combat, des modales, du profil, de l'auto-forge et des toasts. Découper en modules : `ui/forge-ui.js`, `ui/combat-ui.js`, `ui/profile-ui.js`, `ui/modals.js`
-- [ ] **EventEmitter robuste** — Ajouter try-catch dans `emit()` pour isoler les erreurs des listeners. Un listener qui throw casse tous les listeners suivants du même événement (`src/events.js:20`)
-- [ ] **ESLint + Prettier** — Config de linting, formatting, pre-commit hooks (husky). Assurerait une cohérence de style dans tout le projet
+- [x] **Duplication du calcul de stats serveur/client** — Extrait dans `shared/stats.js`, module partagé importé par le client (`src/forge.js`, `src/config.js`) et le serveur (`server/socket/pvp.js`)
+- [x] **Découpage de `ui.js`** — Découpé en `src/ui/helpers.js`, `src/ui/forge-ui.js`, `src/ui/combat-ui.js`, `src/ui/profile-ui.js`. `src/ui.js` est un barrel re-export
+- [x] **EventEmitter robuste** — try-catch ajouté dans `emit()` pour isoler les erreurs des listeners (`src/events.js`)
+- [x] **ESLint + Prettier** — Configuration ajoutée (`eslint.config.js`, `.prettierrc`), scripts `lint`, `lint:fix`, `format`, `format:check` dans `package.json`
 
-## 🟡 Priorité moyenne — Accessibilité & UX
+## 🟡 Priorité moyenne — Accessibilité & UX — Complété
 
-- [ ] **Accessibilité (a11y)** — Modal sans `role="dialog"`, pas de `aria-label` sur les slots, focus non piégé, pas de bouton "Fermer" accessible au clavier. Ajouter les attributs ARIA, le piège de focus dans les modales, et la navigation clavier
+- [x] **Accessibilité (a11y)** — Ajout de `role="dialog"` + `aria-modal` sur les modales, `aria-label` sur les slots/boutons, `role="tablist"`/`role="tab"` sur la navigation, `.sr-only` labels, `:focus-visible` style, fermeture par Escape, navigation clavier sur les equipment slots
 
-## 🟡 Priorité moyenne — Gameplay
+## 🟡 Priorité moyenne — Gameplay — Complété
 
-- [ ] **Progression & endgame** — Niveaux joueur, XP, achievements, objectifs de jeu. Actuellement la progression repose uniquement sur le forge level et le donjon
-- [ ] **Boutique réaliste** — `shop.js` ajoute de l'or gratuitement sans aucune vérification de paiement. Soit retirer les prix affichés et en faire une mécanique de jeu (récompenses), soit intégrer un vrai système de paiement
-- [ ] **Matchmaking PvP amélioré** — Actuellement les 2 premiers joueurs en file sont appairés (FIFO dans `server/socket/pvp.js:tryMatch()`). Implémenter un matching basé sur le rating Elo pour des combats plus équilibrés
-- [ ] **Vitesse d'attaque des monstres** — `combat.js:190` utilise `monstersInWave[0]?.attackSpeed` pour le timing d'attaque de tous les monstres. Chaque monstre devrait attaquer avec sa propre vitesse
+- [x] **Progression & endgame** — Système XP/niveaux joueur (max 100) avec XP gagné par monstre vaincu, affichage dans le header, persistance locale et serveur
+- [x] **Boutique réaliste** — Remplacé les faux achats IAP par un système de récompenses quotidiennes (daily reward avec streak) et de milestones liés à la progression donjon
+- [x] **Matchmaking PvP amélioré** — Matching basé sur le rating Elo avec plage de recherche qui s'élargit progressivement (100 Elo de base + 50 par tranche de 5 secondes)
+- [x] **Vitesse d'attaque des monstres** — Chaque monstre attaque maintenant indépendamment avec sa propre vitesse via des timers individuels (`lastMonsterAttacks[]`)
 
 ## 🟢 Priorité basse — Optimisations
 

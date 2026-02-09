@@ -1,6 +1,6 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem, addXP } from './state.js';
 import { forgeEquipment } from './forge.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
@@ -50,8 +50,12 @@ gameEvents.on(EVENTS.COMBAT_PLAYER_LIFESTEAL, ({ amount }) => {
     showDamageNumber(amount, 'heal', false);
 });
 
-gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, () => {
+gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, ({ monster }) => {
     showCombatResult('Victory!', 'victory');
+    // Award XP based on monster's wave/sub-wave
+    const stage = ((monster?.wave || 1) - 1) * 10 + (monster?.subWave || 1);
+    const xp = 5 + Math.floor(stage * 2.5);
+    addXP(xp);
 });
 
 gameEvents.on(EVENTS.COMBAT_PLAYER_DEFEATED, () => {
@@ -132,6 +136,28 @@ async function startGame() {
                 modal.classList.remove('active');
             }
         });
+    });
+
+    // Keyboard: Escape closes active modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const activeModal = document.querySelector('.modal.active');
+            if (activeModal) {
+                activeModal.classList.remove('active');
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Keyboard: Enter/Space on equipment slots
+    document.querySelector('.body-container').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            const slot = e.target.closest('.equipment-slot');
+            if (!slot) return;
+            e.preventDefault();
+            const type = slot.dataset.type;
+            if (type) showItemDetailModal(type);
+        }
     });
 
     // Start combat system
