@@ -499,6 +499,11 @@ function updateAutoForgeButton() {
     if (btn) {
         btn.classList.toggle('auto-active', autoForge.active);
     }
+    const forgeBtn = document.getElementById('forge-btn');
+    if (forgeBtn) {
+        forgeBtn.disabled = autoForge.active;
+        forgeBtn.classList.toggle('forge-btn-disabled', autoForge.active);
+    }
 }
 
 export function handleAutoForgeClick() {
@@ -840,6 +845,13 @@ export function renderProfileContent(user, onLogout) {
     const info = document.getElementById('profile-info');
     if (!info) return;
     info.textContent = '';
+
+    // Close button
+    const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
+    closeBtn.addEventListener('click', () => {
+        document.getElementById('profile-modal').classList.remove('active');
+    });
+    info.appendChild(closeBtn);
 
     // Player info section
     if (currentUser) {

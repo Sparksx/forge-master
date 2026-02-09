@@ -636,6 +636,12 @@ h1 {
     transform: translateY(0);
 }
 
+.forge-btn.forge-btn-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .action-icon-btn {
     width: 48px;
     font-size: 1.3em;
@@ -678,12 +684,13 @@ h1 {
 }
 
 .modal-content {
+    position: relative;
     background: white;
     border-radius: 8px;
     padding: clamp(20px, 3vw, 40px);
     max-width: 500px;
     width: 90%;
-    max-height: 90vh;
+    max-height: 85dvh;
     overflow-y: auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     animation: slideIn 0.3s ease-out;
@@ -699,6 +706,24 @@ h1 {
         transform: translateY(0);
         opacity: 1;
     }
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.modal-close-btn:hover {
+    color: #333;
 }
 
 .modal-content h2 {
@@ -1487,6 +1512,7 @@ h1 {
     .modal-content {
         width: 95%;
         padding: 16px;
+        max-height: 80dvh;
     }
 
     .comparison-container {
@@ -1785,7 +1811,7 @@ h1 {
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    height: 100dvh;
     background: #1a1a2e;
     display: none;
     flex-direction: column;
@@ -1864,6 +1890,7 @@ h1 {
 .chat-input-row {
     display: flex;
     padding: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
     gap: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1875,7 +1902,7 @@ h1 {
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
-    font-size: 0.9em;
+    font-size: 16px;
     outline: none;
 }
 
