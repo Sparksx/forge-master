@@ -4,6 +4,7 @@ import {
     GROWTH_EXPONENT, SPEED_UP_GOLD_PER_SECOND
 } from './config.js';
 import { gameEvents, EVENTS } from './events.js';
+import { apiFetch, getAccessToken } from './api.js';
 
 function createEmptyEquipment() {
     const equipment = {};
@@ -269,7 +270,11 @@ export function setCombatWave(wave, subWave) {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
+let saveTimeout = null;
+const SAVE_DEBOUNCE = 2000; // 2 seconds
+
 export function saveGame() {
+    // Always save to localStorage as fallback
     try {
         const data = {
             equipment: gameState.equipment,
@@ -282,7 +287,86 @@ export function saveGame() {
         }
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (error) {
-        console.error('Error saving game:', error);
+        console.error('Error saving game locally:', error);
+    }
+
+    // Debounced save to server
+    if (getAccessToken()) {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveToServer, SAVE_DEBOUNCE);
+    }
+}
+
+async function saveToServer() {
+    try {
+        const data = {
+            equipment: gameState.equipment,
+            gold: gameState.gold,
+            forgeLevel: gameState.forgeLevel,
+            forgeUpgrade: gameState.forgeUpgrade || null,
+            combat: gameState.combat,
+        };
+        await apiFetch('/api/game/state', {
+            method: 'PUT',
+            body: data,
+        });
+    } catch (error) {
+        console.error('Error saving game to server:', error);
+    }
+}
+
+function applyLoadedData(loaded) {
+    if (typeof loaded !== 'object' || loaded === null) return;
+
+    // Support both old format (flat equipment) and new format ({equipment, gold})
+    const equipmentData = loaded.equipment || loaded;
+
+    EQUIPMENT_TYPES.forEach(type => {
+        if (isValidItem(equipmentData[type])) {
+            let item = migrateItem(equipmentData[type]);
+            item = recalculateStats(item);
+            gameState.equipment[type] = item;
+        }
+    });
+
+    if (typeof loaded.gold === 'number' && loaded.gold >= 0) {
+        gameState.gold = Math.floor(loaded.gold);
+    }
+
+    if (typeof loaded.forgeLevel === 'number' && loaded.forgeLevel >= 1 && loaded.forgeLevel <= MAX_FORGE_LEVEL) {
+        gameState.forgeLevel = Math.floor(loaded.forgeLevel);
+    }
+
+    // Restore combat progress
+    if (loaded.combat && typeof loaded.combat === 'object') {
+        const { currentWave, currentSubWave, highestWave, highestSubWave } = loaded.combat;
+        if (typeof currentWave === 'number' && currentWave >= 1 && currentWave <= 10) {
+            gameState.combat.currentWave = Math.floor(currentWave);
+        }
+        if (typeof currentSubWave === 'number' && currentSubWave >= 1 && currentSubWave <= 10) {
+            gameState.combat.currentSubWave = Math.floor(currentSubWave);
+        }
+        if (typeof highestWave === 'number' && highestWave >= 1) {
+            gameState.combat.highestWave = Math.floor(highestWave);
+        }
+        if (typeof highestSubWave === 'number' && highestSubWave >= 1) {
+            gameState.combat.highestSubWave = Math.floor(highestSubWave);
+        }
+    }
+
+    // Restore forge upgrade timer
+    if (loaded.forgeUpgrade && typeof loaded.forgeUpgrade === 'object') {
+        const { targetLevel, startedAt, duration } = loaded.forgeUpgrade;
+        if (typeof targetLevel === 'number' && typeof startedAt === 'number' && typeof duration === 'number') {
+            const elapsed = (Date.now() - startedAt) / 1000;
+            if (elapsed >= duration) {
+                // Upgrade completed while offline
+                gameState.forgeLevel = Math.min(targetLevel, MAX_FORGE_LEVEL);
+                gameState.forgeUpgrade = null;
+            } else {
+                gameState.forgeUpgrade = { targetLevel, startedAt, duration };
+            }
+        }
     }
 }
 
@@ -292,62 +376,30 @@ export function loadGame() {
         if (!savedData) return;
 
         const loaded = JSON.parse(savedData);
-        if (typeof loaded !== 'object' || loaded === null) return;
-
-        // Support both old format (flat equipment) and new format ({equipment, gold})
-        const equipmentData = loaded.equipment || loaded;
-
-        EQUIPMENT_TYPES.forEach(type => {
-            if (isValidItem(equipmentData[type])) {
-                let item = migrateItem(equipmentData[type]);
-                item = recalculateStats(item);
-                gameState.equipment[type] = item;
-            }
-        });
-
-        if (typeof loaded.gold === 'number' && loaded.gold >= 0) {
-            gameState.gold = Math.floor(loaded.gold);
-        }
-
-        if (typeof loaded.forgeLevel === 'number' && loaded.forgeLevel >= 1 && loaded.forgeLevel <= MAX_FORGE_LEVEL) {
-            gameState.forgeLevel = Math.floor(loaded.forgeLevel);
-        }
-
-        // Restore combat progress
-        if (loaded.combat && typeof loaded.combat === 'object') {
-            const { currentWave, currentSubWave, highestWave, highestSubWave } = loaded.combat;
-            if (typeof currentWave === 'number' && currentWave >= 1 && currentWave <= 10) {
-                gameState.combat.currentWave = Math.floor(currentWave);
-            }
-            if (typeof currentSubWave === 'number' && currentSubWave >= 1 && currentSubWave <= 10) {
-                gameState.combat.currentSubWave = Math.floor(currentSubWave);
-            }
-            if (typeof highestWave === 'number' && highestWave >= 1) {
-                gameState.combat.highestWave = Math.floor(highestWave);
-            }
-            if (typeof highestSubWave === 'number' && highestSubWave >= 1) {
-                gameState.combat.highestSubWave = Math.floor(highestSubWave);
-            }
-        }
-
-        // Restore forge upgrade timer
-        if (loaded.forgeUpgrade && typeof loaded.forgeUpgrade === 'object') {
-            const { targetLevel, startedAt, duration } = loaded.forgeUpgrade;
-            if (typeof targetLevel === 'number' && typeof startedAt === 'number' && typeof duration === 'number') {
-                const elapsed = (Date.now() - startedAt) / 1000;
-                if (elapsed >= duration) {
-                    // Upgrade completed while offline
-                    gameState.forgeLevel = Math.min(targetLevel, MAX_FORGE_LEVEL);
-                    gameState.forgeUpgrade = null;
-                } else {
-                    gameState.forgeUpgrade = { targetLevel, startedAt, duration };
-                }
-            }
-        }
+        applyLoadedData(loaded);
 
         gameEvents.emit(EVENTS.GAME_LOADED);
         gameEvents.emit(EVENTS.STATE_CHANGED);
     } catch (error) {
         console.error('Error loading save:', error);
+    }
+}
+
+export async function loadGameFromServer() {
+    try {
+        const res = await apiFetch('/api/game/state');
+        if (!res.ok) {
+            console.warn('Failed to load from server, falling back to localStorage');
+            loadGame();
+            return;
+        }
+        const loaded = await res.json();
+        applyLoadedData(loaded);
+
+        gameEvents.emit(EVENTS.GAME_LOADED);
+        gameEvents.emit(EVENTS.STATE_CHANGED);
+    } catch (error) {
+        console.error('Error loading from server:', error);
+        loadGame(); // fallback
     }
 }

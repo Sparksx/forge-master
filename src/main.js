@@ -1,6 +1,6 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, getForgedItem } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
@@ -12,6 +12,11 @@ import {
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 import { startCombat, refreshPlayerStats } from './combat.js';
+import { initAuth, setAuthSuccessCallback } from './auth.js';
+import { connectSocket } from './socket-client.js';
+import { initChat, refreshChatSocket } from './chat.js';
+import { initPvp, refreshPvpSocket } from './pvp.js';
+import { getAccessToken } from './api.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
@@ -66,9 +71,15 @@ gameEvents.on(EVENTS.ITEM_EQUIPPED, () => {
     refreshPlayerStats();
 });
 
-// Wire DOM interactions
-function init() {
-    loadGame();
+// Start the game after successful auth
+async function startGame() {
+    // Load game state from server if authenticated, otherwise localStorage
+    if (getAccessToken()) {
+        await loadGameFromServer();
+    } else {
+        loadGame();
+    }
+
     updateUI();
     initNavigation();
 
@@ -123,6 +134,27 @@ function init() {
     // Start combat system
     updateWaveDisplay();
     startCombat();
+
+    // Connect socket and init chat/PvP
+    connectSocket();
+    initChat();
+    initPvp();
+}
+
+// Wire DOM interactions
+function init() {
+    // Set up auth callback — when user logs in, start the game
+    setAuthSuccessCallback(async (user) => {
+        await startGame();
+    });
+
+    // Try to restore session (auto-login from stored refresh token)
+    initAuth().then(async (user) => {
+        if (user) {
+            await startGame();
+        }
+        // If no user, auth screen is shown — startGame will be called via callback on login
+    });
 }
 
 window.addEventListener('DOMContentLoaded', init);

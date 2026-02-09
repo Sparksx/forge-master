@@ -1592,3 +1592,414 @@ h1 {
         gap: 3px;
     }
 }
+
+/* =============================================
+   AUTH SCREEN
+   ============================================= */
+
+.hidden {
+    display: none !important;
+}
+
+.auth-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.auth-container {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 40px 32px;
+    width: 90%;
+    max-width: 380px;
+    text-align: center;
+}
+
+.auth-title {
+    color: #f0c040;
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+
+.auth-subtitle {
+    color: #aaa;
+    font-size: 0.9em;
+    margin-bottom: 24px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-form input {
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.auth-form input:focus {
+    border-color: #f0c040;
+}
+
+.auth-form input::placeholder {
+    color: #888;
+}
+
+.auth-btn {
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #f0c040;
+    color: #1a1a2e;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.auth-btn:hover {
+    background: #ffd700;
+}
+
+.auth-error {
+    color: #ff6b6b;
+    font-size: 0.85em;
+    min-height: 1.2em;
+}
+
+.auth-switch {
+    color: #aaa;
+    font-size: 0.85em;
+    margin-top: 8px;
+}
+
+.auth-switch a {
+    color: #f0c040;
+    text-decoration: none;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+
+/* =============================================
+   CHAT PANEL
+   ============================================= */
+
+.chat-panel {
+    position: fixed;
+    right: -320px;
+    top: 0;
+    bottom: 64px;
+    width: 320px;
+    max-width: 90vw;
+    background: #1a1a2e;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: right 0.3s ease;
+}
+
+.chat-panel.open {
+    right: 0;
+}
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #f0c040;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.chat-close-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.chat-close-btn:hover {
+    color: #fff;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chat-msg {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
+    max-width: 85%;
+}
+
+.chat-msg-own {
+    align-self: flex-end;
+    background: rgba(240, 192, 64, 0.15);
+}
+
+.chat-sender {
+    color: #f0c040;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.chat-time {
+    color: #666;
+    font-size: 0.7em;
+}
+
+.chat-text {
+    color: #ddd;
+    font-size: 0.9em;
+    margin-top: 4px;
+    word-break: break-word;
+}
+
+.chat-input-row {
+    display: flex;
+    padding: 8px;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 0.9em;
+    outline: none;
+}
+
+.chat-input:focus {
+    border-color: #f0c040;
+}
+
+.chat-send-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #f0c040;
+    color: #1a1a2e;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.chat-send-btn:hover {
+    background: #ffd700;
+}
+
+#chat-toggle.has-unread {
+    position: relative;
+}
+
+#chat-toggle.has-unread::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    background: #ff6b6b;
+    border-radius: 50%;
+}
+
+/* =============================================
+   PVP
+   ============================================= */
+
+.pvp-section {
+    padding: 16px 0;
+}
+
+.pvp-idle-content,
+.pvp-queue-content,
+.pvp-result-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 0;
+}
+
+.pvp-btn {
+    padding: 14px 32px;
+    border: none;
+    border-radius: 10px;
+    background: #f0c040;
+    color: #1a1a2e;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.pvp-btn:hover {
+    background: #ffd700;
+    transform: scale(1.02);
+}
+
+.pvp-cancel-btn {
+    background: #555;
+    color: #ddd;
+}
+
+.pvp-cancel-btn:hover {
+    background: #666;
+}
+
+.pvp-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(240, 192, 64, 0.2);
+    border-top-color: #f0c040;
+    border-radius: 50%;
+    animation: pvp-spin 0.8s linear infinite;
+}
+
+@keyframes pvp-spin {
+    to { transform: rotate(360deg); }
+}
+
+.pvp-arena {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+}
+
+.pvp-fighter {
+    flex: 1;
+    text-align: center;
+}
+
+.pvp-fighter-label {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: #f0c040;
+}
+
+.pvp-fighter-rating {
+    font-size: 0.85em;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+
+.pvp-vs {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #ff6b6b;
+}
+
+.pvp-turn-info {
+    text-align: center;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #f0c040;
+    padding: 8px;
+}
+
+.pvp-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+}
+
+.pvp-action-btn {
+    padding: 12px 24px;
+    border: 2px solid rgba(240, 192, 64, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ddd;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pvp-action-btn:hover:not(:disabled) {
+    background: rgba(240, 192, 64, 0.15);
+    border-color: #f0c040;
+    color: #f0c040;
+}
+
+.pvp-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pvp-action-btn[data-action="attack"] { border-color: rgba(255, 107, 107, 0.4); }
+.pvp-action-btn[data-action="attack"]:hover:not(:disabled) { border-color: #ff6b6b; color: #ff6b6b; }
+.pvp-action-btn[data-action="defend"] { border-color: rgba(107, 170, 255, 0.4); }
+.pvp-action-btn[data-action="defend"]:hover:not(:disabled) { border-color: #6baaff; color: #6baaff; }
+.pvp-action-btn[data-action="special"] { border-color: rgba(200, 107, 255, 0.4); }
+.pvp-action-btn[data-action="special"]:hover:not(:disabled) { border-color: #c86bff; color: #c86bff; }
+
+.pvp-combat-log {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 8px 16px;
+    font-size: 0.85em;
+    color: #999;
+}
+
+.pvp-log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pvp-result-title {
+    font-size: 2em;
+}
+
+.pvp-result-title.win { color: #4ade80; }
+.pvp-result-title.loss { color: #ff6b6b; }
+.pvp-result-title.draw { color: #f0c040; }
+
+.pvp-rating-change {
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+.pvp-rating-change.positive { color: #4ade80; }
+.pvp-rating-change.negative { color: #ff6b6b; }
+
+.pvp-error {
+    color: #ff6b6b;
+    text-align: center;
+    min-height: 1.2em;
+    font-size: 0.9em;
+}
