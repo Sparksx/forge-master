@@ -2,13 +2,15 @@ import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, handleItemForged, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal, showForgeUpgradeModal, handleAutoForgeClick } from './ui.js';
+import { updateUI, handleItemForged, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal, showForgeUpgradeModal, handleAutoForgeClick, showForgeToast, showSellToast } from './ui.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
 gameEvents.on(EVENTS.ITEM_FORGED, handleItemForged);
+gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
+gameEvents.on(EVENTS.ITEM_SOLD, showSellToast);
 
 // Wire DOM interactions
 function init() {

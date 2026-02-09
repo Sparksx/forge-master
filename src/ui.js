@@ -96,6 +96,31 @@ function buildItemCard(item, compareWith) {
     return fragment;
 }
 
+// ===== Toast Notifications =====
+
+function showToast(message, type = 'forge', duration = 1500) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = createElement('div', `toast toast-${type}`, message);
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, duration);
+}
+
+export function showForgeToast(item) {
+    const tierDef = TIERS[(item.tier || 1) - 1];
+    const icon = EQUIPMENT_ICONS[item.type] || '';
+    showToast(`${icon} ${tierDef.name} ${capitalizeFirst(item.type)} forged!`, 'forge');
+}
+
+export function showSellToast({ item, goldEarned }) {
+    showToast(`+${formatNumber(goldEarned)}g`, 'sell');
+}
+
 // ===== Stats & Equipment =====
 
 export function updateStats() {
@@ -469,8 +494,8 @@ function updateAutoForgeButton() {
 
 export function handleAutoForgeClick() {
     if (autoForge.active) {
-        // Stop auto-forge at end of current cycle
-        autoForge.stopping = true;
+        // Immediately stop auto-forge and cleanup
+        cleanupAutoForge();
         return;
     }
     // Show auto-forge config modal
