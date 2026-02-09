@@ -16,11 +16,11 @@
 
 ## 🔴 Priorité haute — Sécurité & Robustesse
 
-- [ ] **Instances PrismaClient multiples** — `server/routes/auth.js`, `server/routes/game.js`, `server/socket/pvp.js` et `server/socket/chat.js` créent chacun leur propre `new PrismaClient()`. Centraliser dans un singleton (`server/lib/prisma.js`) pour éviter les fuites de connexion en production
-- [ ] **Rate limiting sur l'authentification** — Les routes `POST /api/auth/login` et `/register` n'ont aucun rate limiting. Un attaquant peut brute-force les mots de passe. Ajouter `express-rate-limit` (ex: 5 tentatives/minute par IP)
-- [ ] **Validation du game state côté serveur** — `PUT /api/game/state` (`server/routes/game.js`) accepte n'importe quel JSON pour `equipment`, `combat`, `forgeUpgrade` sans validation de structure. Un client malveillant peut sauvegarder des données arbitraires. Ajouter une validation similaire à `isValidItem()` côté serveur
-- [ ] **CORS restrictif en production** — `app.use(cors())` autorise toutes les origines. Restreindre à `https://sparksx.github.io` et au domaine du serveur en production via une variable d'environnement
-- [ ] **Nettoyage des refresh tokens expirés** — Les `RefreshToken` expirés ne sont jamais supprimés de la DB. Ajouter un job périodique ou un nettoyage au démarrage (ex: `deleteMany({ where: { expiresAt: { lt: new Date() } } })`)
+- [x] **Instances PrismaClient multiples** — `server/routes/auth.js`, `server/routes/game.js`, `server/socket/pvp.js` et `server/socket/chat.js` créent chacun leur propre `new PrismaClient()`. Centraliser dans un singleton (`server/lib/prisma.js`) pour éviter les fuites de connexion en production
+- [x] **Rate limiting sur l'authentification** — Les routes `POST /api/auth/login` et `/register` n'ont aucun rate limiting. Un attaquant peut brute-force les mots de passe. Ajouter `express-rate-limit` (ex: 5 tentatives/minute par IP)
+- [x] **Validation du game state côté serveur** — `PUT /api/game/state` (`server/routes/game.js`) accepte n'importe quel JSON pour `equipment`, `combat`, `forgeUpgrade` sans validation de structure. Un client malveillant peut sauvegarder des données arbitraires. Ajouter une validation similaire à `isValidItem()` côté serveur
+- [x] **CORS restrictif en production** — `app.use(cors())` autorise toutes les origines. Restreindre à `https://web-production-aeea.up.railway.app` en production via une variable d'environnement
+- [x] **Nettoyage des refresh tokens expirés** — Les `RefreshToken` expirés ne sont jamais supprimés de la DB. Ajouter un job périodique ou un nettoyage au démarrage (ex: `deleteMany({ where: { expiresAt: { lt: new Date() } } })`)
 
 ## 🟡 Priorité moyenne — Architecture & Code
 

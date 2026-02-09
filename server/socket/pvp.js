@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma.js';
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
 const queue = new Map();

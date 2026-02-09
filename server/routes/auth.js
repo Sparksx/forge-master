@@ -1,16 +1,24 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { body, validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
 import {
     JWT_SECRET, JWT_REFRESH_SECRET,
     JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY
 } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 
 const router = Router();
-const prisma = new PrismaClient();
+
+const authLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5, // 5 attempts per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many attempts, please try again later' },
+});
 
 function generateAccessToken(user) {
     return jwt.sign(
@@ -29,7 +37,7 @@ function generateRefreshToken(user) {
 }
 
 // POST /api/auth/register
-router.post('/register', [
+router.post('/register', authLimiter, [
     body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
@@ -91,7 +99,7 @@ router.post('/register', [
 });
 
 // POST /api/auth/login
-router.post('/login', [
+router.post('/login', authLimiter, [
     body('login').trim().notEmpty().withMessage('Username or email required'),
     body('password').notEmpty().withMessage('Password required'),
 ], async (req, res) => {

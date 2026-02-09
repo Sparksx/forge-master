@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { CORS_ORIGIN } from '../config.js';
 import { socketAuth } from '../middleware/auth.js';
 import { registerChatHandlers } from './chat.js';
 import { registerPvpHandlers } from './pvp.js';
@@ -6,7 +7,7 @@ import { registerPvpHandlers } from './pvp.js';
 export function setupSocket(server) {
     const io = new Server(server, {
         cors: {
-            origin: '*',
+            origin: CORS_ORIGIN === '*' ? '*' : CORS_ORIGIN,
             methods: ['GET', 'POST']
         }
     });
