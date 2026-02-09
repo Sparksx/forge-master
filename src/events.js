@@ -41,4 +41,5 @@ export const EVENTS = {
     COMBAT_MONSTER_DEFEATED: 'combat:monster_defeated',
     COMBAT_PLAYER_DEFEATED: 'combat:player_defeated',
     COMBAT_WAVE_CHANGED: 'combat:wave_changed',
+    COMBAT_FOCUS_CHANGED: 'combat:focus_changed',
 };

@@ -7,7 +7,7 @@ import {
     hideItemDetailModal, showWipModal, showForgeUpgradeModal, handleAutoForgeClick,
     showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
-    updateWaveDisplay
+    triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus
 } from './ui.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
@@ -29,14 +29,14 @@ gameEvents.on(EVENTS.COMBAT_TICK, () => {
     updateCombatUI();
 });
 
-gameEvents.on(EVENTS.COMBAT_PLAYER_HIT, ({ damage, isCrit }) => {
+gameEvents.on(EVENTS.COMBAT_PLAYER_HIT, ({ damage, isCrit, monsterIndex }) => {
     triggerAttackAnimation('player');
     triggerHitAnimation('monster');
-    showDamageNumber(damage, 'monster', isCrit);
+    showDamageNumber(damage, 'monster', isCrit, monsterIndex);
 });
 
-gameEvents.on(EVENTS.COMBAT_MONSTER_HIT, ({ damage }) => {
-    triggerAttackAnimation('monster');
+gameEvents.on(EVENTS.COMBAT_MONSTER_HIT, ({ damage, monsterIndex }) => {
+    triggerMonsterHitAnimation(monsterIndex);
     triggerHitAnimation('player');
     showDamageNumber(damage, 'player', false);
 });
@@ -55,6 +55,10 @@ gameEvents.on(EVENTS.COMBAT_PLAYER_DEFEATED, () => {
 
 gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, () => {
     updateWaveDisplay();
+});
+
+gameEvents.on(EVENTS.COMBAT_FOCUS_CHANGED, (data) => {
+    updateMonsterFocus(data);
 });
 
 // Refresh player combat stats when equipment changes

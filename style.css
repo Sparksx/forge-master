@@ -1147,14 +1147,15 @@ h1 {
     min-height: 0;
 }
 
-/* Combatants */
+/* Player combatant */
 .combatant {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: clamp(2px, 0.5vw, 6px);
-    max-width: 160px;
+    max-width: 140px;
+    position: relative;
 }
 
 .combatant-emoji {
@@ -1175,19 +1176,71 @@ h1 {
     max-width: 100%;
 }
 
-/* Monster counter (e.g. "2/3") */
-.monster-counter {
-    font-size: clamp(0.6em, 0.9vw, 0.75em);
-    font-weight: 800;
-    color: #ffd740;
-    background: rgba(0,0,0,0.4);
-    padding: 1px 6px;
-    border-radius: 8px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+/* Monster side: vertical stack of 1-3 monsters */
+.monsters-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(3px, 0.5vw, 6px);
+    max-width: 180px;
+    min-width: 0;
 }
 
-.monster-counter:empty {
-    display: none;
+.monster-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(4px, 0.8vw, 8px);
+    padding: clamp(2px, 0.4vw, 4px) clamp(4px, 0.6vw, 6px);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, opacity 0.3s;
+    position: relative;
+}
+
+.monster-row.monster-focused {
+    border-color: #ffd740;
+    background: rgba(255, 215, 64, 0.08);
+}
+
+.monster-row.monster-dead {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.monster-row-emoji {
+    font-size: clamp(1.4em, 3vw, 2.2em);
+    line-height: 1;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4));
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.monster-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.monster-row-name {
+    font-size: clamp(0.55em, 0.85vw, 0.7em);
+    font-weight: 700;
+    color: #b0bec5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Monster row attack animation */
+.monster-row.attacking .monster-row-emoji {
+    animation: attackLeft 0.3s ease-out;
+}
+
+/* Monster row hit shake */
+.monster-row.hit .monster-row-emoji {
+    animation: hitShake 0.3s ease-out;
 }
 
 /* HP Bars */
@@ -1250,15 +1303,26 @@ h1 {
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* Damage numbers */
+/* Damage numbers — per-side containers */
 .damage-numbers {
     position: absolute;
-    top: -20px;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.damage-numbers-player {
+    top: -8px;
     left: 50%;
     transform: translateX(-50%);
-    width: 120px;
-    height: 60px;
-    pointer-events: none;
+    width: 100px;
+    height: 50px;
+}
+
+.damage-numbers-monster {
+    top: -4px;
+    right: -4px;
+    width: 70px;
+    height: 40px;
 }
 
 .damage-number {
@@ -1266,11 +1330,11 @@ h1 {
     bottom: 0;
     left: 50%;
     font-weight: 900;
-    font-size: clamp(0.8em, 1.3vw, 1em);
+    font-size: clamp(0.7em, 1.1vw, 0.9em);
     white-space: nowrap;
     pointer-events: none;
-    animation: damageFloat 0.8s ease-out forwards;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    animation: damageFloat 0.7s ease-out forwards;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 
 .damage-player {
@@ -1286,28 +1350,24 @@ h1 {
 }
 
 .damage-crit {
-    font-size: clamp(1em, 1.6vw, 1.3em) !important;
+    font-size: clamp(0.85em, 1.3vw, 1.1em) !important;
     color: #ffd740 !important;
 }
 
 @keyframes damageFloat {
     0% {
         opacity: 1;
-        transform: translate(calc(-50% + var(--offset-x, 0px)), 0) scale(1);
+        transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scale(1);
     }
     100% {
         opacity: 0;
-        transform: translate(calc(-50% + var(--offset-x, 0px)), -50px) scale(0.7);
+        transform: translate(calc(-50% + var(--offset-x, 0px)), calc(var(--offset-y, 0px) - 35px)) scale(0.7);
     }
 }
 
-/* Attack animation */
+/* Attack animation (player side only — monster animations are on .monster-row) */
 .combatant-player.attacking .combatant-emoji {
     animation: attackRight 0.3s ease-out;
-}
-
-.combatant-monster.attacking .combatant-emoji {
-    animation: attackLeft 0.3s ease-out;
 }
 
 @keyframes attackRight {
@@ -1418,6 +1478,10 @@ h1 {
         font-size: 2em;
     }
 
+    .monster-row-emoji {
+        font-size: 1.4em;
+    }
+
     .hp-text {
         font-size: 0.55em;
     }
@@ -1515,7 +1579,16 @@ h1 {
         font-size: 1.8em;
     }
 
+    .monster-row-emoji {
+        font-size: 1.2em;
+    }
+
     .hp-bar-container {
         height: 12px;
+    }
+
+    .monster-row {
+        padding: 1px 3px;
+        gap: 3px;
     }
 }

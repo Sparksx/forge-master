@@ -60,24 +60,16 @@
                         <div class="hp-bar hp-bar-player" id="player-hp-bar"></div>
                         <span class="hp-text" id="player-hp-text">100 / 100</span>
                     </div>
+                    <div class="damage-numbers damage-numbers-player" id="damage-numbers-player"></div>
                 </div>
 
                 <!-- VS indicator -->
                 <div class="combat-vs">
                     <span class="vs-text">⚔️</span>
-                    <div class="damage-numbers" id="damage-numbers"></div>
                 </div>
 
-                <!-- Monster Side -->
-                <div class="combatant combatant-monster" id="combatant-monster">
-                    <div class="monster-counter" id="monster-counter"></div>
-                    <div class="combatant-emoji" id="monster-emoji">🐀</div>
-                    <div class="combatant-name" id="monster-name">Rat Scout</div>
-                    <div class="hp-bar-container">
-                        <div class="hp-bar hp-bar-monster" id="monster-hp-bar"></div>
-                        <span class="hp-text" id="monster-hp-text">50 / 50</span>
-                    </div>
-                </div>
+                <!-- Monster Side (dynamically populated) -->
+                <div class="monsters-side" id="monsters-side"></div>
             </div>
 
             <!-- Combat result overlay -->
