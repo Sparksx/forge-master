@@ -12,7 +12,7 @@ const localStorageMock = (() => {
 })();
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 
-const { getMonsterForWave, getWaveLabel, WAVE_COUNT, SUB_WAVE_COUNT, WAVE_THEMES } = await import('../monsters.js');
+const { getMonsterForWave, getWaveLabel, getMonsterCount, WAVE_COUNT, SUB_WAVE_COUNT, WAVE_THEMES } = await import('../monsters.js');
 const { resetGame, getCombatProgress, setCombatWave, equipItem } = await import('../state.js');
 const { createItem } = await import('../forge.js');
 
@@ -73,6 +73,42 @@ describe('monsters', () => {
         const m10 = getMonsterForWave(10, 10);
         expect(m10.attackSpeed).toBeLessThanOrEqual(m1.attackSpeed);
         expect(m10.attackSpeed).toBeGreaterThanOrEqual(800);
+    });
+
+    it('wave 1 monsters are significantly harder than old scaling', () => {
+        // With the new formula, wave 1-1 should have substantially more HP
+        // than the old formula (which was BASE_HP=50 * 1^1.8 * 1^1.15 = 50)
+        const m = getMonsterForWave(1, 1);
+        expect(m.maxHP).toBeGreaterThan(80);
+        expect(m.damage).toBeGreaterThan(10);
+    });
+
+    it('wave 2 monsters are much harder than wave 1', () => {
+        const m1_10 = getMonsterForWave(1, 10);
+        const m2_1 = getMonsterForWave(2, 1);
+        // Wave 2 first monster should be harder than wave 1 last monster
+        expect(m2_1.maxHP).toBeGreaterThan(m1_10.maxHP);
+    });
+});
+
+describe('monster count', () => {
+    it('sub-waves 1-3 have 1 monster', () => {
+        expect(getMonsterCount(1)).toBe(1);
+        expect(getMonsterCount(2)).toBe(1);
+        expect(getMonsterCount(3)).toBe(1);
+    });
+
+    it('sub-waves 4-7 have 2 monsters', () => {
+        expect(getMonsterCount(4)).toBe(2);
+        expect(getMonsterCount(5)).toBe(2);
+        expect(getMonsterCount(6)).toBe(2);
+        expect(getMonsterCount(7)).toBe(2);
+    });
+
+    it('sub-waves 8-10 have 3 monsters', () => {
+        expect(getMonsterCount(8)).toBe(3);
+        expect(getMonsterCount(9)).toBe(3);
+        expect(getMonsterCount(10)).toBe(3);
     });
 });
 

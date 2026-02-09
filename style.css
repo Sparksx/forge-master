@@ -1175,6 +1175,21 @@ h1 {
     max-width: 100%;
 }
 
+/* Monster counter (e.g. "2/3") */
+.monster-counter {
+    font-size: clamp(0.6em, 0.9vw, 0.75em);
+    font-weight: 800;
+    color: #ffd740;
+    background: rgba(0,0,0,0.4);
+    padding: 1px 6px;
+    border-radius: 8px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.monster-counter:empty {
+    display: none;
+}
+
 /* HP Bars */
 .hp-bar-container {
     width: 100%;
@@ -1377,11 +1392,6 @@ h1 {
 
     .stats-panel {
         margin-bottom: 6px;
-    }
-
-    .body-container {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: repeat(4, 1fr);
     }
 
     .forge-btn {

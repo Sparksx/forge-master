@@ -11,7 +11,7 @@ import {
     getCombatProgress
 } from './state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from './forge.js';
-import { getPlayerCombatState, getMonsterCombatState } from './combat.js';
+import { getPlayerCombatState, getMonsterCombatState, getMonsterProgress } from './combat.js';
 import { getWaveLabel, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
 
 let forgeTimerInterval = null;
@@ -642,7 +642,7 @@ function getHPColorClass(pct) {
 
 export function updateCombatInfo(data) {
     if (!data) return;
-    const { player, monster } = data;
+    const { player, monster, monsterProgress } = data;
 
     // Update monster info
     const monsterEmoji = document.getElementById('monster-emoji');
@@ -653,8 +653,24 @@ export function updateCombatInfo(data) {
         monsterName.style.color = monster.color;
     }
 
+    // Update monster counter (e.g. "2/3")
+    updateMonsterCounter(monsterProgress);
+
     // Update wave label
     updateWaveDisplay();
+}
+
+function updateMonsterCounter(monsterProgress) {
+    const counterEl = document.getElementById('monster-counter');
+    if (!counterEl) return;
+
+    if (!monsterProgress || monsterProgress.total <= 1) {
+        counterEl.textContent = '';
+        counterEl.style.display = 'none';
+    } else {
+        counterEl.textContent = `${monsterProgress.current}/${monsterProgress.total}`;
+        counterEl.style.display = '';
+    }
 }
 
 export function updateWaveDisplay() {

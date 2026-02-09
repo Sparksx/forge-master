@@ -2,7 +2,7 @@ import { BASE_HEALTH, BASE_DAMAGE } from './config.js';
 import { getEquipment, getCombatProgress, setCombatWave } from './state.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 import { gameEvents, EVENTS } from './events.js';
-import { getMonsterForWave, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
+import { getMonsterForWave, getMonsterCount, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
 
 // Combat tick rate (ms)
 const TICK_RATE = 100;
@@ -14,6 +14,11 @@ let monsterState = null;
 let lastPlayerAttack = 0;
 let lastMonsterAttack = 0;
 let combatPaused = false;
+
+// Multi-monster state
+let monstersInWave = [];     // all monsters for current sub-wave
+let currentMonsterIndex = 0; // which monster is currently being fought
+let totalMonstersInWave = 0; // total count for UI display
 
 export function getPlayerCombatState() {
     return playerState;
@@ -29,6 +34,11 @@ export function isCombatRunning() {
 
 export function isCombatPaused() {
     return combatPaused;
+}
+
+/** Returns { current, total } for the monster counter UI */
+export function getMonsterProgress() {
+    return { current: currentMonsterIndex + 1, total: totalMonstersInWave };
 }
 
 function getPlayerStats() {
@@ -48,13 +58,23 @@ function getPlayerStats() {
     };
 }
 
-function spawnMonster() {
+function spawnWaveMonsters() {
     const { currentWave, currentSubWave } = getCombatProgress();
-    const monster = getMonsterForWave(currentWave, currentSubWave);
-    monsterState = {
-        ...monster,
-        currentHP: monster.maxHP,
-    };
+    const count = getMonsterCount(currentSubWave);
+    totalMonstersInWave = count;
+    currentMonsterIndex = 0;
+    monstersInWave = [];
+
+    for (let i = 0; i < count; i++) {
+        const monster = getMonsterForWave(currentWave, currentSubWave);
+        monstersInWave.push({
+            ...monster,
+            currentHP: monster.maxHP,
+        });
+    }
+
+    // Set the first monster as active
+    monsterState = monstersInWave[0];
     return monsterState;
 }
 
@@ -71,6 +91,18 @@ function initPlayerState() {
         lifeSteal: stats.lifeSteal,
     };
     return playerState;
+}
+
+function resetPlayerToFull() {
+    const stats = getPlayerStats();
+    playerState.maxHP = stats.maxHP;
+    playerState.currentHP = stats.maxHP;
+    playerState.damage = stats.damage;
+    playerState.attackSpeed = stats.attackSpeed;
+    playerState.critChance = stats.critChance;
+    playerState.critMultiplier = stats.critMultiplier;
+    playerState.healthRegen = stats.healthRegen;
+    playerState.lifeSteal = stats.lifeSteal;
 }
 
 export function refreshPlayerStats() {
@@ -91,12 +123,16 @@ export function startCombat() {
     if (combatInterval) return;
 
     initPlayerState();
-    spawnMonster();
+    spawnWaveMonsters();
     lastPlayerAttack = 0;
     lastMonsterAttack = 0;
     combatPaused = false;
 
-    gameEvents.emit(EVENTS.COMBAT_START, { player: playerState, monster: monsterState });
+    gameEvents.emit(EVENTS.COMBAT_START, {
+        player: playerState,
+        monster: monsterState,
+        monsterProgress: getMonsterProgress(),
+    });
 
     combatInterval = setInterval(() => {
         if (combatPaused) return;
@@ -200,11 +236,34 @@ function monsterAttack() {
 }
 
 function onMonsterDefeated() {
-    gameEvents.emit(EVENTS.COMBAT_MONSTER_DEFEATED, { monster: { ...monsterState } });
+    gameEvents.emit(EVENTS.COMBAT_MONSTER_DEFEATED, {
+        monster: { ...monsterState },
+        monsterProgress: getMonsterProgress(),
+    });
 
+    // Check if there are more monsters in this sub-wave
+    if (currentMonsterIndex < monstersInWave.length - 1) {
+        // Next monster — player HP does NOT reset
+        currentMonsterIndex++;
+        monsterState = monstersInWave[currentMonsterIndex];
+        lastMonsterAttack = 0;
+
+        // Brief pause before next monster appears
+        combatPaused = true;
+        setTimeout(() => {
+            combatPaused = false;
+            gameEvents.emit(EVENTS.COMBAT_START, {
+                player: playerState,
+                monster: monsterState,
+                monsterProgress: getMonsterProgress(),
+            });
+        }, 600);
+        return;
+    }
+
+    // All monsters in sub-wave defeated — advance to next sub-wave
     const { currentWave, currentSubWave } = getCombatProgress();
 
-    // Advance to next sub-wave
     let nextWave = currentWave;
     let nextSubWave = currentSubWave + 1;
 
@@ -221,23 +280,19 @@ function onMonsterDefeated() {
 
     setCombatWave(nextWave, nextSubWave);
 
-    // Reset player HP for next fight
-    const stats = getPlayerStats();
-    playerState.maxHP = stats.maxHP;
-    playerState.currentHP = stats.maxHP;
-    playerState.damage = stats.damage;
-    playerState.attackSpeed = stats.attackSpeed;
-    playerState.critChance = stats.critChance;
-    playerState.critMultiplier = stats.critMultiplier;
-    playerState.healthRegen = stats.healthRegen;
-    playerState.lifeSteal = stats.lifeSteal;
+    // Reset player HP for next sub-wave
+    resetPlayerToFull();
 
-    // Spawn next monster
-    spawnMonster();
+    // Spawn all monsters for next sub-wave
+    spawnWaveMonsters();
     lastPlayerAttack = 0;
     lastMonsterAttack = 0;
 
-    gameEvents.emit(EVENTS.COMBAT_START, { player: playerState, monster: monsterState });
+    gameEvents.emit(EVENTS.COMBAT_START, {
+        player: playerState,
+        monster: monsterState,
+        monsterProgress: getMonsterProgress(),
+    });
 }
 
 function onPlayerDefeated() {
@@ -256,18 +311,10 @@ function onPlayerDefeated() {
     setCombatWave(nextWave, nextSubWave);
 
     // Reset player HP
-    const stats = getPlayerStats();
-    playerState.maxHP = stats.maxHP;
-    playerState.currentHP = stats.maxHP;
-    playerState.damage = stats.damage;
-    playerState.attackSpeed = stats.attackSpeed;
-    playerState.critChance = stats.critChance;
-    playerState.critMultiplier = stats.critMultiplier;
-    playerState.healthRegen = stats.healthRegen;
-    playerState.lifeSteal = stats.lifeSteal;
+    resetPlayerToFull();
 
-    // Spawn monster for the wave we're sent back to
-    spawnMonster();
+    // Spawn monsters for the wave we're sent back to
+    spawnWaveMonsters();
     lastPlayerAttack = 0;
     lastMonsterAttack = 0;
 
@@ -275,6 +322,10 @@ function onPlayerDefeated() {
     combatPaused = true;
     setTimeout(() => {
         combatPaused = false;
-        gameEvents.emit(EVENTS.COMBAT_START, { player: playerState, monster: monsterState });
+        gameEvents.emit(EVENTS.COMBAT_START, {
+            player: playerState,
+            monster: monsterState,
+            monsterProgress: getMonsterProgress(),
+        });
     }, 1500);
 }

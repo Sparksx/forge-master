@@ -3,6 +3,8 @@
 // Lose at X-Y (Y>1) → go back to X-(Y-1)
 // Lose at X-1 → restart X-1
 
+import { HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, GROWTH_EXPONENT } from './config.js';
+
 export const WAVE_COUNT = 10;
 export const SUB_WAVE_COUNT = 10;
 
@@ -23,30 +25,48 @@ export const WAVE_THEMES = [
 // Sub-wave name suffixes
 const SUB_NAMES = ['Scout', 'Grunt', 'Fighter', 'Warrior', 'Veteran', 'Elite', 'Champion', 'Warlord', 'Tyrant', 'Boss'];
 
-// Base monster stats (wave 1-1)
-const BASE_MONSTER_HP = 50;
-const BASE_MONSTER_DMG = 5;
-const BASE_MONSTER_ATTACK_SPEED = 2000; // ms between attacks
+// Base monster attack speed (ms)
+const BASE_MONSTER_ATTACK_SPEED = 2000;
 
-// Scaling exponents
-const HP_WAVE_SCALE = 1.8;
-const HP_SUB_SCALE = 1.15;
-const DMG_WAVE_SCALE = 1.6;
-const DMG_SUB_SCALE = 1.12;
+// Difficulty multipliers applied on top of the stat curve
+const HP_MULTIPLIER = 2.0;
+const DMG_MULTIPLIER = 1.5;
 
+/**
+ * How many monsters in a sub-wave:
+ *   sub 1-3 → 1 monster
+ *   sub 4-7 → 2 monsters
+ *   sub 8-10 → 3 monsters
+ */
+export function getMonsterCount(subWave) {
+    if (subWave <= 3) return 1;
+    if (subWave <= 7) return 2;
+    return 3;
+}
+
+/**
+ * Monster stats use the same exponential curve as player equipment,
+ * mapped through an effective level derived from the stage number.
+ *
+ * Difficulty targets (T1 = Common tier, no bonus stats):
+ *   T1 lvl 15-20 → barely clears wave 1 (stages 1-7)
+ *   T1 lvl 90+   → barely clears wave 2 (stages 11-18)
+ *   T2+ gear needed for wave 3+
+ */
 export function getMonsterForWave(wave, subWave) {
     const theme = WAVE_THEMES[wave - 1];
     const subName = SUB_NAMES[subWave - 1];
 
-    const waveMultHP = Math.pow(wave, HP_WAVE_SCALE);
-    const subMultHP = Math.pow(subWave, HP_SUB_SCALE);
-    const hp = Math.floor(BASE_MONSTER_HP * waveMultHP * subMultHP);
+    const stage = (wave - 1) * SUB_WAVE_COUNT + subWave; // 1-100
 
-    const waveMultDMG = Math.pow(wave, DMG_WAVE_SCALE);
-    const subMultDMG = Math.pow(subWave, DMG_SUB_SCALE);
-    const damage = Math.floor(BASE_MONSTER_DMG * waveMultDMG * subMultDMG);
+    // Effective level grows as a power curve of stage
+    const effLevel = 3 + 1.2 * Math.pow(stage, 1.48);
 
-    // Monsters get slightly faster at higher waves
+    // Use same stat formula as items: perLevel × effLevel^GROWTH_EXPONENT × multiplier
+    const hp = Math.max(30, Math.floor(HEALTH_PER_LEVEL * Math.pow(effLevel, GROWTH_EXPONENT) * HP_MULTIPLIER));
+    const damage = Math.max(5, Math.floor(DAMAGE_PER_LEVEL * Math.pow(effLevel, GROWTH_EXPONENT) * DMG_MULTIPLIER));
+
+    // Monsters get slightly faster at higher waves but not below 800ms
     const attackSpeed = Math.max(800, BASE_MONSTER_ATTACK_SPEED - (wave - 1) * 80 - (subWave - 1) * 15);
 
     return {
