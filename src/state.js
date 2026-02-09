@@ -97,6 +97,18 @@ export function getEquipmentByType(type) {
     return gameState.equipment[type];
 }
 
+export function getHighestLevelForTier(tier) {
+    let highest = null;
+    Object.values(gameState.equipment).forEach(item => {
+        if (item && item.tier === tier) {
+            if (highest === null || item.level > highest) {
+                highest = item.level;
+            }
+        }
+    });
+    return highest;
+}
+
 export function getForgedItem() {
     return gameState.forgedItem;
 }
