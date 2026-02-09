@@ -40,7 +40,44 @@
     </div>
 
     <div class="tab-view active" id="view-home">
-        <div class="container">
+        <!-- Top Half: Combat Zone -->
+        <div class="combat-zone" id="combat-zone">
+            <!-- Wave indicator -->
+            <div class="wave-indicator">
+                <span class="wave-label" id="wave-label">Wave 1-1</span>
+                <div class="wave-progress-bar">
+                    <div class="wave-progress-fill" id="wave-progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Combat Arena -->
+            <div class="combat-arena">
+                <!-- Player Side -->
+                <div class="combatant combatant-player" id="combatant-player">
+                    <div class="combatant-emoji" id="player-emoji">🧙</div>
+                    <div class="combatant-name">You</div>
+                    <div class="hp-bar-container">
+                        <div class="hp-bar hp-bar-player" id="player-hp-bar"></div>
+                        <span class="hp-text" id="player-hp-text">100 / 100</span>
+                    </div>
+                    <div class="damage-numbers damage-numbers-player" id="damage-numbers-player"></div>
+                </div>
+
+                <!-- VS indicator -->
+                <div class="combat-vs">
+                    <span class="vs-text">⚔️</span>
+                </div>
+
+                <!-- Monster Side (dynamically populated) -->
+                <div class="monsters-side" id="monsters-side"></div>
+            </div>
+
+            <!-- Combat result overlay -->
+            <div class="combat-result" id="combat-result"></div>
+        </div>
+
+        <!-- Bottom Half: Equipment & Forge -->
+        <div class="forge-zone" id="forge-zone">
             <!-- Global Stats Panel -->
             <div class="stats-panel">
                 <div class="power-score-row">

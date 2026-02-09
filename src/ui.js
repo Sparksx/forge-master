@@ -7,9 +7,12 @@ import {
     getEquipment, getEquipmentByType, getGold, getForgedItem,
     equipItem, sellForgedItem, getSellValue, getForgeLevel,
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
-    getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete
+    getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
+    getCombatProgress
 } from './state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from './forge.js';
+import { getPlayerCombatState, getMonsterCombatState, getAllMonsters, getCurrentMonsterIndex, getMonsterProgress } from './combat.js';
+import { getWaveLabel, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
 
 let forgeTimerInterval = null;
 let decisionModalCallback = null;
@@ -601,6 +604,219 @@ export function showItemDetailModal(type) {
 
 export function hideItemDetailModal() {
     document.getElementById('item-detail-modal').classList.remove('active');
+}
+
+// ===== Combat UI =====
+
+let renderedMonsterCount = 0; // tracks how many monster rows are in the DOM
+
+/**
+ * Build (or rebuild) the monster-side DOM to match the current wave's monsters.
+ * Called on COMBAT_START when a new sub-wave begins.
+ */
+export function renderMonsters(data) {
+    if (!data) return;
+    const { monsters, focusIndex } = data;
+    const container = document.getElementById('monsters-side');
+    if (!container) return;
+
+    container.textContent = '';
+    renderedMonsterCount = monsters.length;
+
+    monsters.forEach((m, i) => {
+        const row = createElement('div', `monster-row${i === focusIndex ? ' monster-focused' : ''}${m.currentHP <= 0 ? ' monster-dead' : ''}`);
+        row.dataset.index = i;
+
+        const emoji = createElement('div', 'monster-row-emoji', m.emoji);
+        const info = createElement('div', 'monster-row-info');
+
+        const name = createElement('div', 'monster-row-name', m.name);
+        name.style.color = m.color;
+
+        const hpContainer = createElement('div', 'hp-bar-container');
+        const hpBar = createElement('div', 'hp-bar hp-bar-monster');
+        hpBar.id = `monster-hp-bar-${i}`;
+        const hpText = createElement('span', 'hp-text');
+        hpText.id = `monster-hp-text-${i}`;
+        hpContainer.append(hpBar, hpText);
+
+        // Damage numbers container for this monster
+        const dmgContainer = createElement('div', 'damage-numbers damage-numbers-monster');
+        dmgContainer.id = `damage-numbers-monster-${i}`;
+
+        info.append(name, hpContainer);
+        row.append(emoji, info, dmgContainer);
+        container.appendChild(row);
+    });
+
+    // Initial HP update
+    updateAllMonstersHP(monsters, focusIndex);
+}
+
+/** Update focus highlight when player switches target. */
+export function updateMonsterFocus(data) {
+    if (!data) return;
+    const { focusIndex, monsters } = data;
+    const container = document.getElementById('monsters-side');
+    if (!container) return;
+
+    container.querySelectorAll('.monster-row').forEach((row, i) => {
+        row.classList.toggle('monster-focused', i === focusIndex);
+        row.classList.toggle('monster-dead', monsters[i].currentHP <= 0);
+    });
+}
+
+export function updateCombatUI() {
+    const player = getPlayerCombatState();
+    const monsters = getAllMonsters();
+    if (!player || monsters.length === 0) return;
+
+    // Player HP bar
+    const playerHPBar = document.getElementById('player-hp-bar');
+    const playerHPText = document.getElementById('player-hp-text');
+    if (playerHPBar && playerHPText) {
+        const playerHPPct = Math.max(0, (player.currentHP / player.maxHP) * 100);
+        playerHPBar.style.width = `${playerHPPct}%`;
+        playerHPBar.className = `hp-bar hp-bar-player ${getHPColorClass(playerHPPct)}`;
+        playerHPText.textContent = `${formatNumber(Math.ceil(player.currentHP))} / ${formatNumber(player.maxHP)}`;
+    }
+
+    // All monster HP bars
+    updateAllMonstersHP(monsters, getCurrentMonsterIndex());
+}
+
+function updateAllMonstersHP(monsters, focusIndex) {
+    monsters.forEach((m, i) => {
+        const bar = document.getElementById(`monster-hp-bar-${i}`);
+        const text = document.getElementById(`monster-hp-text-${i}`);
+        if (!bar || !text) return;
+
+        const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
+        bar.style.width = `${pct}%`;
+        bar.className = `hp-bar hp-bar-monster ${getHPColorClass(pct)}`;
+        text.textContent = `${formatNumber(Math.max(0, Math.ceil(m.currentHP)))} / ${formatNumber(m.maxHP)}`;
+
+        // Update dead state
+        const row = bar.closest('.monster-row');
+        if (row) {
+            row.classList.toggle('monster-dead', m.currentHP <= 0);
+            row.classList.toggle('monster-focused', i === focusIndex && m.currentHP > 0);
+        }
+    });
+}
+
+function getHPColorClass(pct) {
+    if (pct > 60) return 'hp-high';
+    if (pct > 30) return 'hp-mid';
+    return 'hp-low';
+}
+
+export function updateCombatInfo(data) {
+    if (!data) return;
+    // renderMonsters handles the full UI setup
+    renderMonsters(data);
+    updateWaveDisplay();
+}
+
+export function updateWaveDisplay() {
+    const { currentWave, currentSubWave } = getCombatProgress();
+    const waveLabel = document.getElementById('wave-label');
+    if (waveLabel) waveLabel.textContent = `Wave ${getWaveLabel(currentWave, currentSubWave)}`;
+
+    const progressFill = document.getElementById('wave-progress-fill');
+    if (progressFill) {
+        const total = WAVE_COUNT * SUB_WAVE_COUNT;
+        const current = (currentWave - 1) * SUB_WAVE_COUNT + currentSubWave;
+        progressFill.style.width = `${(current / total) * 100}%`;
+    }
+}
+
+/**
+ * Show a floating damage number.
+ * type: 'player' (red, near player), 'monster' (green, near focused monster), 'heal' (blue, near player)
+ */
+export function showDamageNumber(damage, type, isCrit, monsterIndex) {
+    let container;
+
+    if (type === 'monster') {
+        // Damage dealt TO a monster → show near that monster
+        const idx = monsterIndex !== undefined ? monsterIndex : getCurrentMonsterIndex();
+        container = document.getElementById(`damage-numbers-monster-${idx}`);
+    } else {
+        // Damage taken by player or heal → show near player
+        container = document.getElementById('damage-numbers-player');
+    }
+    if (!container) return;
+
+    // Limit simultaneous numbers to reduce clutter
+    if (container.children.length >= 4) {
+        container.firstChild?.remove();
+    }
+
+    const dmgEl = createElement('div', `damage-number damage-${type}${isCrit ? ' damage-crit' : ''}`,
+        `${type === 'heal' ? '+' : '-'}${formatNumber(damage)}`);
+
+    // Random horizontal offset
+    const offsetX = (Math.random() - 0.5) * 30;
+    dmgEl.style.setProperty('--offset-x', `${offsetX}px`);
+    // Random vertical start offset to prevent stacking
+    const offsetY = Math.random() * -12;
+    dmgEl.style.setProperty('--offset-y', `${offsetY}px`);
+
+    container.appendChild(dmgEl);
+    dmgEl.addEventListener('animationend', () => dmgEl.remove());
+}
+
+export function showCombatResult(text, type) {
+    const el = document.getElementById('combat-result');
+    if (!el) return;
+
+    el.textContent = text;
+    el.className = `combat-result combat-result-${type} combat-result-show`;
+
+    setTimeout(() => {
+        el.classList.remove('combat-result-show');
+    }, 1200);
+}
+
+export function triggerAttackAnimation(side) {
+    if (side === 'player') {
+        const el = document.getElementById('combatant-player');
+        if (!el) return;
+        el.classList.add('attacking');
+        setTimeout(() => el.classList.remove('attacking'), 300);
+    } else {
+        // Animate the focused monster row
+        const idx = getCurrentMonsterIndex();
+        const row = document.querySelector(`.monster-row[data-index="${idx}"]`);
+        if (!row) return;
+        row.classList.add('attacking');
+        setTimeout(() => row.classList.remove('attacking'), 300);
+    }
+}
+
+export function triggerHitAnimation(side) {
+    if (side === 'player') {
+        const el = document.getElementById('combatant-player');
+        if (!el) return;
+        el.classList.add('hit');
+        setTimeout(() => el.classList.remove('hit'), 300);
+    } else {
+        // Shake the hit monster row
+        const idx = getCurrentMonsterIndex();
+        const row = document.querySelector(`.monster-row[data-index="${idx}"]`);
+        if (!row) return;
+        row.classList.add('hit');
+        setTimeout(() => row.classList.remove('hit'), 300);
+    }
+}
+
+/** Trigger hit shake on a specific monster by index */
+export function triggerMonsterHitAnimation(monsterIndex) {
+    const row = document.querySelector(`.monster-row[data-index="${monsterIndex}"]`);
+    if (!row) return;
+    row.classList.add('attacking');
+    setTimeout(() => row.classList.remove('attacking'), 300);
 }
 
 export function showWipModal(title) {

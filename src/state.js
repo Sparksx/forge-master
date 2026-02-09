@@ -72,6 +72,12 @@ const gameState = {
     gold: 0,
     forgeLevel: 1,
     forgeUpgrade: null, // { targetLevel, startedAt, duration } or null
+    combat: {
+        currentWave: 1,
+        currentSubWave: 1,
+        highestWave: 1,
+        highestSubWave: 1,
+    },
 };
 
 export function resetGame() {
@@ -80,6 +86,7 @@ export function resetGame() {
     gameState.gold = 0;
     gameState.forgeLevel = 1;
     gameState.forgeUpgrade = null;
+    gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
 }
 
 export function getEquipment() {
@@ -231,12 +238,32 @@ export function sellForgedItem() {
     return goldEarned;
 }
 
+// --- Combat state ---
+
+export function getCombatProgress() {
+    return { ...gameState.combat };
+}
+
+export function setCombatWave(wave, subWave) {
+    gameState.combat.currentWave = wave;
+    gameState.combat.currentSubWave = subWave;
+    if (wave > gameState.combat.highestWave ||
+        (wave === gameState.combat.highestWave && subWave > gameState.combat.highestSubWave)) {
+        gameState.combat.highestWave = wave;
+        gameState.combat.highestSubWave = subWave;
+    }
+    saveGame();
+    gameEvents.emit(EVENTS.COMBAT_WAVE_CHANGED, { wave, subWave });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
 export function saveGame() {
     try {
         const data = {
             equipment: gameState.equipment,
             gold: gameState.gold,
             forgeLevel: gameState.forgeLevel,
+            combat: gameState.combat,
         };
         if (gameState.forgeUpgrade) {
             data.forgeUpgrade = gameState.forgeUpgrade;
@@ -272,6 +299,23 @@ export function loadGame() {
 
         if (typeof loaded.forgeLevel === 'number' && loaded.forgeLevel >= 1 && loaded.forgeLevel <= MAX_FORGE_LEVEL) {
             gameState.forgeLevel = Math.floor(loaded.forgeLevel);
+        }
+
+        // Restore combat progress
+        if (loaded.combat && typeof loaded.combat === 'object') {
+            const { currentWave, currentSubWave, highestWave, highestSubWave } = loaded.combat;
+            if (typeof currentWave === 'number' && currentWave >= 1 && currentWave <= 10) {
+                gameState.combat.currentWave = Math.floor(currentWave);
+            }
+            if (typeof currentSubWave === 'number' && currentSubWave >= 1 && currentSubWave <= 10) {
+                gameState.combat.currentSubWave = Math.floor(currentSubWave);
+            }
+            if (typeof highestWave === 'number' && highestWave >= 1) {
+                gameState.combat.highestWave = Math.floor(highestWave);
+            }
+            if (typeof highestSubWave === 'number' && highestSubWave >= 1) {
+                gameState.combat.highestSubWave = Math.floor(highestSubWave);
+            }
         }
 
         // Restore forge upgrade timer
