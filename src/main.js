@@ -2,7 +2,7 @@ import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, getForgedItem } from './state.js';
 import { forgeEquipment } from './forge.js';
-import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal } from './ui.js';
+import { updateUI, showDecisionModal, showItemDetailModal, hideItemDetailModal, showWipModal } from './ui.js';
 import { initNavigation } from './navigation.js';
 
 // Wire events: state changes trigger UI updates
@@ -24,6 +24,11 @@ function init() {
             forgeEquipment();
         }
     });
+
+    // Action buttons
+    document.getElementById('profile-btn').addEventListener('click', () => showWipModal('👤 Profile'));
+    document.getElementById('upgrade-action-btn').addEventListener('click', () => showWipModal('⬆️ Upgrade'));
+    document.getElementById('auto-action-btn').addEventListener('click', () => showWipModal('🤖 Auto'));
 
     // Equipment slot clicks -> item detail modal
     document.querySelector('.body-container').addEventListener('click', (e) => {

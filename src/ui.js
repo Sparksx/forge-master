@@ -186,3 +186,9 @@ export function showDecisionModal(item) {
 export function hideDecisionModal() {
     document.getElementById('decision-modal').classList.remove('active');
 }
+
+export function showWipModal(title) {
+    const modal = document.getElementById('wip-modal');
+    document.getElementById('wip-modal-title').textContent = title;
+    modal.classList.add('active');
+}
