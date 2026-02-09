@@ -1,6 +1,7 @@
 import {
     EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS, HEALTH_ITEMS,
-    HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL, GROWTH_EXPONENT
+    HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL,
+    GROWTH_EXPONENT, SPEED_UP_GOLD_PER_SECOND
 } from './config.js';
 import { gameEvents, EVENTS } from './events.js';
 
@@ -70,6 +71,7 @@ const gameState = {
     forgedItem: null,
     gold: 0,
     forgeLevel: 1,
+    forgeUpgrade: null, // { targetLevel, startedAt, duration } or null
 };
 
 export function resetGame() {
@@ -77,6 +79,7 @@ export function resetGame() {
     gameState.forgedItem = null;
     gameState.gold = 0;
     gameState.forgeLevel = 1;
+    gameState.forgeUpgrade = null;
 }
 
 export function getEquipment() {
@@ -118,16 +121,87 @@ export function getForgeUpgradeCost() {
     return FORGE_LEVELS[gameState.forgeLevel].cost;
 }
 
-export function upgradeForge() {
+export function getForgeUpgradeTime() {
+    if (gameState.forgeLevel >= MAX_FORGE_LEVEL) return null;
+    return FORGE_LEVELS[gameState.forgeLevel].time;
+}
+
+export function getForgeUpgradeState() {
+    return gameState.forgeUpgrade;
+}
+
+export function startForgeUpgrade() {
+    if (gameState.forgeUpgrade) return false; // already upgrading
     const cost = getForgeUpgradeCost();
     if (cost === null) return false;
     if (gameState.gold < cost) return false;
+
+    const duration = getForgeUpgradeTime();
     gameState.gold -= cost;
-    gameState.forgeLevel += 1;
+
+    if (duration === 0) {
+        // Instant upgrade (level 1 has time=0, but cost=0 so it's the initial state)
+        gameState.forgeLevel += 1;
+        saveGame();
+        gameEvents.emit(EVENTS.FORGE_UPGRADED, gameState.forgeLevel);
+        gameEvents.emit(EVENTS.STATE_CHANGED);
+        return true;
+    }
+
+    gameState.forgeUpgrade = {
+        targetLevel: gameState.forgeLevel + 1,
+        startedAt: Date.now(),
+        duration, // seconds
+    };
+    saveGame();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+export function getForgeUpgradeStatus() {
+    if (!gameState.forgeUpgrade) return null;
+    const { startedAt, duration } = gameState.forgeUpgrade;
+    const elapsed = (Date.now() - startedAt) / 1000;
+    const remaining = Math.max(0, duration - elapsed);
+    const progress = Math.min(1, elapsed / duration);
+    const speedUpCost = Math.ceil(remaining * SPEED_UP_GOLD_PER_SECOND);
+    return { remaining, progress, speedUpCost, duration };
+}
+
+export function checkForgeUpgradeComplete() {
+    if (!gameState.forgeUpgrade) return false;
+    const status = getForgeUpgradeStatus();
+    if (status.remaining <= 0) {
+        gameState.forgeLevel = gameState.forgeUpgrade.targetLevel;
+        gameState.forgeUpgrade = null;
+        saveGame();
+        gameEvents.emit(EVENTS.FORGE_UPGRADED, gameState.forgeLevel);
+        gameEvents.emit(EVENTS.STATE_CHANGED);
+        return true;
+    }
+    return false;
+}
+
+export function speedUpForgeUpgrade() {
+    if (!gameState.forgeUpgrade) return false;
+    const status = getForgeUpgradeStatus();
+    if (!status || status.remaining <= 0) {
+        return checkForgeUpgradeComplete();
+    }
+    if (gameState.gold < status.speedUpCost) return false;
+
+    gameState.gold -= status.speedUpCost;
+    gameState.forgeLevel = gameState.forgeUpgrade.targetLevel;
+    gameState.forgeUpgrade = null;
     saveGame();
     gameEvents.emit(EVENTS.FORGE_UPGRADED, gameState.forgeLevel);
     gameEvents.emit(EVENTS.STATE_CHANGED);
     return true;
+}
+
+// Legacy wrapper for backward compat in tests
+export function upgradeForge() {
+    return startForgeUpgrade();
 }
 
 export function equipItem(item) {
@@ -159,12 +233,15 @@ export function sellForgedItem() {
 
 export function saveGame() {
     try {
-        const saveData = JSON.stringify({
+        const data = {
             equipment: gameState.equipment,
             gold: gameState.gold,
             forgeLevel: gameState.forgeLevel,
-        });
-        localStorage.setItem(SAVE_KEY, saveData);
+        };
+        if (gameState.forgeUpgrade) {
+            data.forgeUpgrade = gameState.forgeUpgrade;
+        }
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (error) {
         console.error('Error saving game:', error);
     }
@@ -195,6 +272,21 @@ export function loadGame() {
 
         if (typeof loaded.forgeLevel === 'number' && loaded.forgeLevel >= 1 && loaded.forgeLevel <= MAX_FORGE_LEVEL) {
             gameState.forgeLevel = Math.floor(loaded.forgeLevel);
+        }
+
+        // Restore forge upgrade timer
+        if (loaded.forgeUpgrade && typeof loaded.forgeUpgrade === 'object') {
+            const { targetLevel, startedAt, duration } = loaded.forgeUpgrade;
+            if (typeof targetLevel === 'number' && typeof startedAt === 'number' && typeof duration === 'number') {
+                const elapsed = (Date.now() - startedAt) / 1000;
+                if (elapsed >= duration) {
+                    // Upgrade completed while offline
+                    gameState.forgeLevel = Math.min(targetLevel, MAX_FORGE_LEVEL);
+                    gameState.forgeUpgrade = null;
+                } else {
+                    gameState.forgeUpgrade = { targetLevel, startedAt, duration };
+                }
+            }
         }
 
         gameEvents.emit(EVENTS.GAME_LOADED);

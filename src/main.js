@@ -32,8 +32,8 @@ function init() {
     // Shop
     initShop();
 
-    // Forge info row -> open forge upgrade modal
-    document.getElementById('forge-info-row').addEventListener('click', () => {
+    // Forge upgrade icon button -> open forge upgrade modal
+    document.getElementById('forge-upgrade-btn').addEventListener('click', () => {
         showForgeUpgradeModal();
     });
 

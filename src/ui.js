@@ -5,9 +5,12 @@ import {
 import {
     getEquipment, getEquipmentByType, getGold, getForgedItem,
     equipItem, sellForgedItem, getSellValue, getForgeLevel,
-    getForgeUpgradeCost, upgradeForge
+    getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
+    getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete
 } from './state.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
+
+let forgeTimerInterval = null;
 
 function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -127,6 +130,20 @@ export function updateForgeInfo() {
     const forgeLevelEl = document.getElementById('forge-level');
     if (forgeLevelEl) forgeLevelEl.textContent = forgeLevel;
 
+    // Show upgrade status on info row
+    const upgradeState = getForgeUpgradeState();
+    const statusEl = document.getElementById('forge-upgrade-status');
+    if (statusEl) {
+        if (upgradeState) {
+            const status = getForgeUpgradeStatus();
+            statusEl.textContent = `⏳ ${formatTime(status.remaining)}`;
+            statusEl.style.display = '';
+        } else {
+            statusEl.textContent = '';
+            statusEl.style.display = 'none';
+        }
+    }
+
     // Also refresh the modal content if it's currently open
     const modal = document.getElementById('forge-upgrade-modal');
     if (modal && modal.classList.contains('active')) {
@@ -134,23 +151,106 @@ export function updateForgeInfo() {
     }
 }
 
-function buildChancesTable(chances, highlight) {
-    const table = createElement('div', 'forge-chances-table');
+function formatTime(seconds) {
+    if (seconds <= 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    return `${s}s`;
+}
+
+function buildSideBySideChances(currentChances, nextChances) {
+    const table = createElement('div', 'forge-chances-compare');
+
+    // Header row
+    const header = createElement('div', 'forge-compare-row forge-compare-header');
+    header.append(
+        createElement('span', 'forge-compare-cell forge-compare-name', 'Tier'),
+        createElement('span', 'forge-compare-cell forge-compare-cur', 'Actuel'),
+        createElement('span', 'forge-compare-cell forge-compare-arrow', ''),
+        createElement('span', 'forge-compare-cell forge-compare-next', 'Suivant')
+    );
+    table.appendChild(header);
+
     TIERS.forEach((tier, i) => {
-        if (chances[i] <= 0) return;
-        const row = createElement('div', 'forge-chance-row');
-        const name = createElement('span', 'forge-chance-name', tier.name);
+        if (currentChances[i] <= 0 && (!nextChances || nextChances[i] <= 0)) return;
+        const row = createElement('div', 'forge-compare-row');
+
+        const name = createElement('span', 'forge-compare-cell forge-compare-name', tier.name);
         name.style.color = tier.color;
-        const pct = createElement('span', 'forge-chance-pct', `${chances[i]}%`);
-        if (highlight && highlight[i] !== undefined && chances[i] > highlight[i]) {
-            pct.classList.add('stat-better');
-        } else if (highlight && highlight[i] !== undefined && chances[i] < highlight[i]) {
-            pct.classList.add('stat-worse');
+
+        const curPct = createElement('span', 'forge-compare-cell forge-compare-cur', `${currentChances[i]}%`);
+
+        const arrowCell = createElement('span', 'forge-compare-cell forge-compare-arrow');
+        const nextPct = createElement('span', 'forge-compare-cell forge-compare-next');
+
+        if (nextChances) {
+            nextPct.textContent = `${nextChances[i]}%`;
+            if (nextChances[i] > currentChances[i]) {
+                nextPct.classList.add('stat-better');
+                arrowCell.textContent = '▲';
+                arrowCell.classList.add('stat-better');
+            } else if (nextChances[i] < currentChances[i]) {
+                nextPct.classList.add('stat-worse');
+                arrowCell.textContent = '▼';
+                arrowCell.classList.add('stat-worse');
+            } else {
+                arrowCell.textContent = '=';
+            }
         }
-        row.append(name, pct);
+
+        row.append(name, curPct, arrowCell, nextPct);
         table.appendChild(row);
     });
+
     return table;
+}
+
+function startForgeTimer() {
+    stopForgeTimer();
+    forgeTimerInterval = setInterval(() => {
+        const upgradeState = getForgeUpgradeState();
+        if (!upgradeState) {
+            stopForgeTimer();
+            return;
+        }
+        if (checkForgeUpgradeComplete()) {
+            stopForgeTimer();
+            renderForgeUpgradeContent();
+            updateForgeInfo();
+            return;
+        }
+        // Update timer display only
+        updateForgeTimerDisplay();
+    }, 1000);
+}
+
+function stopForgeTimer() {
+    if (forgeTimerInterval) {
+        clearInterval(forgeTimerInterval);
+        forgeTimerInterval = null;
+    }
+}
+
+function updateForgeTimerDisplay() {
+    const status = getForgeUpgradeStatus();
+    if (!status) return;
+
+    const timerText = document.getElementById('forge-timer-text');
+    if (timerText) timerText.textContent = formatTime(status.remaining);
+
+    const progressBar = document.getElementById('forge-progress-fill');
+    if (progressBar) progressBar.style.width = `${(status.progress * 100).toFixed(1)}%`;
+
+    const speedUpBtn = document.getElementById('forge-speed-up-btn');
+    if (speedUpBtn) {
+        speedUpBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)}g`;
+        const canAfford = getGold() >= status.speedUpCost;
+        speedUpBtn.disabled = !canAfford;
+        speedUpBtn.classList.toggle('btn-disabled', !canAfford);
+    }
 }
 
 function renderForgeUpgradeContent() {
@@ -160,38 +260,65 @@ function renderForgeUpgradeContent() {
 
     const forgeLevel = getForgeLevel();
     const currentChances = FORGE_LEVELS[forgeLevel - 1].chances;
+    const upgradeState = getForgeUpgradeState();
+    const isUpgrading = !!upgradeState;
+    const isMaxLevel = forgeLevel >= MAX_FORGE_LEVEL;
 
-    // Current level section
-    const currentSection = createElement('div', 'forge-section');
-    const currentTitle = createElement('div', 'forge-section-title', `Niveau ${forgeLevel}`);
-    currentSection.appendChild(currentTitle);
-    currentSection.appendChild(buildChancesTable(currentChances));
-    info.appendChild(currentSection);
+    // Level display
+    const levelDisplay = createElement('div', 'forge-level-display', `Niveau ${forgeLevel}`);
+    info.appendChild(levelDisplay);
 
-    // Next level section (if not max)
-    if (forgeLevel < MAX_FORGE_LEVEL) {
-        const nextChances = FORGE_LEVELS[forgeLevel].chances;
+    // Side-by-side chances table
+    const nextChances = !isMaxLevel ? FORGE_LEVELS[forgeLevel].chances : null;
+    info.appendChild(buildSideBySideChances(currentChances, nextChances));
+
+    if (isMaxLevel) {
+        const maxDiv = createElement('div', 'forge-section-max', 'Niveau maximum atteint !');
+        info.appendChild(maxDiv);
+        return;
+    }
+
+    // Upgrade section
+    if (isUpgrading) {
+        // Timer display
+        const timerSection = createElement('div', 'forge-timer-section');
+
+        const progressContainer = createElement('div', 'forge-progress-bar');
+        const progressFill = createElement('div', 'forge-progress-fill');
+        progressFill.id = 'forge-progress-fill';
+        progressContainer.appendChild(progressFill);
+        timerSection.appendChild(progressContainer);
+
+        const timerText = createElement('div', 'forge-timer-text');
+        timerText.id = 'forge-timer-text';
+        timerSection.appendChild(timerText);
+
+        const speedUpBtn = createElement('button', 'btn btn-speed-up');
+        speedUpBtn.id = 'forge-speed-up-btn';
+        speedUpBtn.addEventListener('click', () => {
+            speedUpForgeUpgrade();
+        });
+        timerSection.appendChild(speedUpBtn);
+
+        info.appendChild(timerSection);
+
+        // Start timer updates
+        updateForgeTimerDisplay();
+        startForgeTimer();
+    } else {
+        // Upgrade button
         const cost = getForgeUpgradeCost();
-
-        const nextSection = createElement('div', 'forge-section forge-section-next');
-        const nextTitle = createElement('div', 'forge-section-title', `Niveau ${forgeLevel + 1}`);
-        nextSection.appendChild(nextTitle);
-        nextSection.appendChild(buildChancesTable(nextChances, currentChances));
-
-        const upgradeBtn = createElement('button', 'btn btn-upgrade-forge', `Upgrade (${formatNumber(cost)}g)`);
+        const time = FORGE_LEVELS[forgeLevel].time;
+        const upgradeBtn = createElement('button', 'btn btn-upgrade-forge',
+            `⬆️ Upgrade (${formatNumber(cost)}g · ${formatTime(time)})`);
         upgradeBtn.id = 'upgrade-forge-btn';
         const canAfford = getGold() >= cost;
         upgradeBtn.disabled = !canAfford;
         upgradeBtn.classList.toggle('btn-disabled', !canAfford);
         upgradeBtn.addEventListener('click', () => {
-            upgradeForge();
+            startForgeUpgrade();
         });
-
-        nextSection.appendChild(upgradeBtn);
-        info.appendChild(nextSection);
-    } else {
-        const maxDiv = createElement('div', 'forge-section-max', 'Niveau maximum atteint !');
-        info.appendChild(maxDiv);
+        info.appendChild(upgradeBtn);
     }
 }
 
@@ -201,6 +328,7 @@ export function showForgeUpgradeModal() {
 }
 
 export function hideForgeUpgradeModal() {
+    stopForgeTimer();
     document.getElementById('forge-upgrade-modal').classList.remove('active');
 }
 

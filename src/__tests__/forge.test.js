@@ -117,7 +117,15 @@ describe('rollTier', () => {
     it('returns valid tier values at forge level 10', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(10);
-            expect(tier).toBeGreaterThanOrEqual(2); // forge 10 has 0% T1
+            expect(tier).toBeGreaterThanOrEqual(1);
+            expect(tier).toBeLessThanOrEqual(5);
+        }
+    });
+
+    it('returns valid tier values at max forge level (30)', () => {
+        for (let i = 0; i < 100; i++) {
+            const tier = rollTier(30);
+            expect(tier).toBeGreaterThanOrEqual(4); // forge 30 has 0% T1-T3
             expect(tier).toBeLessThanOrEqual(5);
         }
     });

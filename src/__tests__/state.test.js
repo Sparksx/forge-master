@@ -15,7 +15,9 @@ Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
 // Import after mocking
 const {
     getEquipment, getGold, equipItem, sellForgedItem, setForgedItem, getForgedItem,
-    saveGame, loadGame, resetGame, getForgeLevel, getSellValue, getForgeUpgradeCost, upgradeForge
+    saveGame, loadGame, resetGame, getForgeLevel, getSellValue, getForgeUpgradeCost,
+    upgradeForge, startForgeUpgrade, getForgeUpgradeStatus, getForgeUpgradeState,
+    speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold
 } = await import('../state.js');
 const { createItem, calculateItemStats } = await import('../forge.js');
 
@@ -124,36 +126,73 @@ describe('state', () => {
         });
 
         it('returns upgrade cost for next level', () => {
-            expect(getForgeUpgradeCost()).toBe(200);
+            expect(getForgeUpgradeCost()).toBe(100);
         });
 
-        it('upgrades forge when enough gold', () => {
-            // Give gold by selling items
-            const item = createItem('hat', 100, 3);
-            setForgedItem(item);
-            sellForgedItem(); // 100 * 3 = 300 gold
+        it('starts timed upgrade when enough gold', () => {
+            addGold(200);
+            const result = startForgeUpgrade();
+            expect(result).toBe(true);
+            // Level 2 has time=10, so it starts an upgrade timer
+            expect(getForgeUpgradeState()).not.toBeNull();
+            expect(getForgeUpgradeState().targetLevel).toBe(2);
+            expect(getGold()).toBe(100); // 200 - 100
+        });
 
-            const result = upgradeForge();
+        it('fails to start upgrade when not enough gold', () => {
+            const result = startForgeUpgrade();
+            expect(result).toBe(false);
+            expect(getForgeLevel()).toBe(1);
+            expect(getForgeUpgradeState()).toBeNull();
+        });
+
+        it('fails to start upgrade when already upgrading', () => {
+            addGold(500);
+            startForgeUpgrade();
+            const result = startForgeUpgrade();
+            expect(result).toBe(false);
+        });
+
+        it('completes upgrade when time has passed', () => {
+            addGold(200);
+            startForgeUpgrade();
+            // Simulate time passing by modifying startedAt
+            const upgrade = getForgeUpgradeState();
+            upgrade.startedAt = Date.now() - (upgrade.duration * 1000 + 1000);
+            const completed = checkForgeUpgradeComplete();
+            expect(completed).toBe(true);
+            expect(getForgeLevel()).toBe(2);
+            expect(getForgeUpgradeState()).toBeNull();
+        });
+
+        it('speed up completes upgrade instantly', () => {
+            addGold(500);
+            startForgeUpgrade(); // costs 100, leaves 400
+            const status = getForgeUpgradeStatus();
+            expect(status).not.toBeNull();
+            // Speed up costs remaining time * 1 gold/sec
+            const result = speedUpForgeUpgrade();
             expect(result).toBe(true);
             expect(getForgeLevel()).toBe(2);
-            expect(getGold()).toBe(100); // 300 - 200
+            expect(getForgeUpgradeState()).toBeNull();
         });
 
-        it('fails to upgrade when not enough gold', () => {
-            const result = upgradeForge();
+        it('speed up fails when not enough gold', () => {
+            addGold(100); // just enough for upgrade cost
+            startForgeUpgrade();
+            const result = speedUpForgeUpgrade();
             expect(result).toBe(false);
             expect(getForgeLevel()).toBe(1);
         });
 
-        it('resets forge level on resetGame', () => {
-            const item = createItem('hat', 100, 3);
-            setForgedItem(item);
-            sellForgedItem();
-            upgradeForge();
-            expect(getForgeLevel()).toBe(2);
+        it('resets forge level and upgrade on resetGame', () => {
+            addGold(200);
+            startForgeUpgrade();
+            expect(getForgeUpgradeState()).not.toBeNull();
 
             resetGame();
             expect(getForgeLevel()).toBe(1);
+            expect(getForgeUpgradeState()).toBeNull();
         });
     });
 
