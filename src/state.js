@@ -55,6 +55,12 @@ export function getGold() {
     return gameState.gold;
 }
 
+export function addGold(amount) {
+    gameState.gold += amount;
+    saveGame();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
 export function equipItem(item) {
     const oldItem = gameState.equipment[item.type];
     if (oldItem) {

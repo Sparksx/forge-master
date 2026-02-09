@@ -31,9 +31,10 @@
         <div class="container">
             <div class="header-row">
                 <button class="header-btn" id="profile-btn">👤</button>
-                <div class="gold-display">
+                <div class="gold-display" id="gold-display">
                     <span class="gold-icon">💰</span>
                     <span class="gold-value" id="gold-amount">0</span>
+                    <button class="gold-add-btn" id="gold-add-btn">+</button>
                 </div>
             </div>
 
@@ -150,8 +151,32 @@
     <div class="tab-view" id="view-shop">
         <div class="container">
             <h1>🛒 Shop</h1>
-            <div class="placeholder-content">
-                <p>Coming soon...</p>
+            <p class="shop-subtitle">Buy gold to progress faster!</p>
+            <div class="shop-offers" id="shop-offers">
+                <div class="shop-card" data-offer="pouch">
+                    <div class="shop-card-icon">👛</div>
+                    <div class="shop-card-name">Pouch of Gold</div>
+                    <div class="shop-card-gold">💰 100</div>
+                    <button class="shop-card-btn">0.99$</button>
+                </div>
+                <div class="shop-card" data-offer="chest">
+                    <div class="shop-card-icon">📦</div>
+                    <div class="shop-card-name">Chest of Gold</div>
+                    <div class="shop-card-gold">💰 500</div>
+                    <button class="shop-card-btn">4.99$</button>
+                </div>
+                <div class="shop-card" data-offer="treasury">
+                    <div class="shop-card-icon">🏦</div>
+                    <div class="shop-card-name">Treasury</div>
+                    <div class="shop-card-gold">💰 2,000</div>
+                    <button class="shop-card-btn">14.99$</button>
+                </div>
+                <div class="shop-card" data-offer="hoard">
+                    <div class="shop-card-icon">🐉</div>
+                    <div class="shop-card-name">Dragon Hoard</div>
+                    <div class="shop-card-gold">💰 10,000</div>
+                    <button class="shop-card-btn">49.99$</button>
+                </div>
             </div>
         </div>
     </div>

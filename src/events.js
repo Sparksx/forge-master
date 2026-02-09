@@ -29,5 +29,6 @@ export const EVENTS = {
     ITEM_FORGED: 'item:forged',
     ITEM_EQUIPPED: 'item:equipped',
     ITEM_SOLD: 'item:sold',
+    GOLD_PURCHASED: 'gold:purchased',
     GAME_LOADED: 'game:loaded',
 };
