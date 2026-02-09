@@ -20,23 +20,22 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 
-// Serve static frontend in production
-if (NODE_ENV === 'production') {
-    const distPath = path.join(__dirname, '..', 'dist');
-    app.use(express.static(distPath));
-    app.get('{*path}', (req, res) => {
-        if (!req.path.startsWith('/api') && !req.path.startsWith('/socket.io')) {
-            res.sendFile(path.join(distPath, 'index.html'));
-        }
-    });
-}
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', env: NODE_ENV });
+});
 
 // Setup Socket.io
 const io = setupSocket(server);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', env: NODE_ENV });
+// Serve static frontend in production
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+app.get('{*path}', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+        return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
 });
 
 server.listen(PORT, () => {
