@@ -29,7 +29,13 @@
 
     <div class="tab-view active" id="view-home">
         <div class="container">
-            <h1>⚒️ Forge Master</h1>
+            <div class="header-row">
+                <h1>⚒️ Forge Master</h1>
+                <div class="gold-display">
+                    <span class="gold-icon">💰</span>
+                    <span class="gold-value" id="gold-amount">0</span>
+                </div>
+            </div>
 
             <!-- Global Stats Panel -->
             <div class="stats-panel">
@@ -45,10 +51,6 @@
                     <div class="stat">
                         <span class="stat-label">⚔️ Damage</span>
                         <span class="stat-value" id="total-damage">10</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-label">💰 Gold</span>
-                        <span class="stat-value" id="gold-amount">0</span>
                     </div>
                 </div>
                 <div class="stats-row stats-row-bonus" id="bonus-stats-row">
@@ -179,10 +181,6 @@
         <div class="modal-content">
             <h2>New Equipment Forged!</h2>
             <div id="forged-item-info"></div>
-            <div class="modal-buttons">
-                <button class="btn btn-sell" id="sell-btn">💰 Sell</button>
-                <button class="btn btn-equip" id="equip-btn">✅ Equip</button>
-            </div>
         </div>
     </div>
 

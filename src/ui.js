@@ -1,5 +1,5 @@
 import { EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE, BONUS_STATS, BONUS_STAT_KEYS } from './config.js';
-import { getEquipment, getEquipmentByType, getGold } from './state.js';
+import { getEquipment, getEquipmentByType, getGold, getForgedItem, equipItem, sellForgedItem } from './state.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 
 function capitalizeFirst(str) {
@@ -121,43 +121,63 @@ export function hideItemDetailModal() {
 export function showDecisionModal(item) {
     const modal = document.getElementById('decision-modal');
     const itemInfo = document.getElementById('forged-item-info');
-    const equipBtn = document.getElementById('equip-btn');
-    const sellBtn = document.getElementById('sell-btn');
 
     const currentItem = getEquipmentByType(item.type);
     itemInfo.textContent = '';
 
     if (currentItem) {
+        const instruction = createElement('div', 'choice-instruction', 'Choose the equipment to keep');
+        itemInfo.appendChild(instruction);
+
         const container = createElement('div', 'comparison-container');
 
-        const currentCard = createElement('div', 'item-comparison current-item');
+        // Current item card - click to keep current (sell new)
+        const currentCard = createElement('div', 'item-comparison current-item clickable');
         const currentLabel = createElement('div', 'comparison-label', 'Current');
         currentCard.appendChild(currentLabel);
         currentCard.appendChild(buildItemCard(currentItem, item));
+        const currentKeep = createElement('div', 'keep-label', `Keep (+${item.level}g)`);
+        currentCard.appendChild(currentKeep);
+        currentCard.addEventListener('click', () => {
+            sellForgedItem();
+            hideDecisionModal();
+        });
 
-        const arrow = createElement('div', 'comparison-arrow', '→');
-
-        const newCard = createElement('div', 'item-comparison new-item');
+        // New item card - click to equip new (sell old)
+        const newCard = createElement('div', 'item-comparison new-item clickable');
         const newLabel = createElement('div', 'comparison-label', 'New');
         newCard.appendChild(newLabel);
         newCard.appendChild(buildItemCard(item, currentItem));
+        const newKeep = createElement('div', 'keep-label', `Keep (+${currentItem.level}g)`);
+        newCard.appendChild(newKeep);
+        newCard.addEventListener('click', () => {
+            const forgedItem = getForgedItem();
+            if (forgedItem) equipItem(forgedItem);
+            hideDecisionModal();
+        });
 
-        container.append(currentCard, arrow, newCard);
+        container.append(currentCard, newCard);
         itemInfo.appendChild(container);
-
-        const sellValue = createElement('div', 'sell-value', `💰 Sell new: ${item.level}g | Equip & sell old: ${currentItem.level}g`);
-        itemInfo.appendChild(sellValue);
-
-        equipBtn.textContent = `✅ Equip (+${currentItem.level}g)`;
-        sellBtn.textContent = `💰 Sell (+${item.level}g)`;
     } else {
         itemInfo.appendChild(buildItemCard(item));
 
         const sellValue = createElement('div', 'sell-value', `💰 Sell value: ${item.level} gold`);
         itemInfo.appendChild(sellValue);
 
-        equipBtn.textContent = '✅ Equip';
-        sellBtn.textContent = `💰 Sell (+${item.level}g)`;
+        const buttons = createElement('div', 'modal-buttons');
+        const sellBtn = createElement('button', 'btn btn-sell', `💰 Sell (+${item.level}g)`);
+        sellBtn.addEventListener('click', () => {
+            sellForgedItem();
+            hideDecisionModal();
+        });
+        const equipBtn = createElement('button', 'btn btn-equip', '✅ Equip');
+        equipBtn.addEventListener('click', () => {
+            const forgedItem = getForgedItem();
+            if (forgedItem) equipItem(forgedItem);
+            hideDecisionModal();
+        });
+        buttons.append(sellBtn, equipBtn);
+        itemInfo.appendChild(buttons);
     }
 
     modal.classList.add('active');
