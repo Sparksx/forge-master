@@ -23,8 +23,7 @@
     "test:watch": "vitest",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "postinstall": "prisma generate"
+    "db:push": "prisma db push"
   },
   "devDependencies": {
     "prisma": "^5.22.0",
