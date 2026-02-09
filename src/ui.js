@@ -1,5 +1,12 @@
-import { EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE, BONUS_STATS, BONUS_STAT_KEYS } from './config.js';
-import { getEquipment, getEquipmentByType, getGold, getForgedItem, equipItem, sellForgedItem } from './state.js';
+import {
+    EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE,
+    BONUS_STATS, BONUS_STAT_KEYS, TIERS, MAX_FORGE_LEVEL
+} from './config.js';
+import {
+    getEquipment, getEquipmentByType, getGold, getForgedItem,
+    equipItem, sellForgedItem, getSellValue, getForgeLevel,
+    getForgeUpgradeCost, upgradeForge
+} from './state.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 
 function capitalizeFirst(str) {
@@ -13,43 +20,53 @@ function createElement(tag, className, textContent) {
     return el;
 }
 
-function buildBonusLine(item, compareWith) {
-    if (!item.bonusType || !item.bonusValue) return null;
-    const cfg = BONUS_STATS[item.bonusType];
-    if (!cfg) return null;
+function formatNumber(n) {
+    return n.toLocaleString('fr-FR');
+}
 
-    const text = `${cfg.icon} ${cfg.label}: +${item.bonusValue}${cfg.unit}`;
-    const div = createElement('div', 'forged-bonus', text);
+function buildBonusLines(item, compareWith) {
+    if (!item.bonuses || item.bonuses.length === 0) return [];
 
-    if (compareWith) {
-        const sameType = compareWith.bonusType === item.bonusType;
-        if (sameType) {
-            if (item.bonusValue > compareWith.bonusValue) div.classList.add('stat-better');
-            else if (item.bonusValue < compareWith.bonusValue) div.classList.add('stat-worse');
+    return item.bonuses.map(bonus => {
+        const cfg = BONUS_STATS[bonus.type];
+        if (!cfg) return null;
+
+        const text = `${cfg.icon} ${cfg.label}: +${bonus.value}${cfg.unit}`;
+        const div = createElement('div', 'forged-bonus', text);
+
+        if (compareWith && compareWith.bonuses) {
+            const otherBonus = compareWith.bonuses.find(b => b.type === bonus.type);
+            if (otherBonus) {
+                if (bonus.value > otherBonus.value) div.classList.add('stat-better');
+                else if (bonus.value < otherBonus.value) div.classList.add('stat-worse');
+            }
         }
-        // Different bonus types = black text (no color)
-    }
 
-    return div;
+        return div;
+    }).filter(Boolean);
 }
 
 function buildItemCard(item, compareWith) {
     const fragment = document.createDocumentFragment();
+    const tierDef = TIERS[(item.tier || 1) - 1];
+
+    const tierDiv = createElement('div', 'forged-tier', tierDef.name);
+    tierDiv.style.color = tierDef.color;
 
     const typeDiv = createElement('div', 'forged-type', `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`);
     const levelDiv = createElement('div', 'forged-level', `Level ${item.level}`);
     const statLabel = item.statType === 'health' ? '❤️ Health' : '⚔️ Damage';
-    const statDiv = createElement('div', 'forged-stat', `${statLabel}: +${item.stats}`);
+    const statDiv = createElement('div', 'forged-stat', `${statLabel}: +${formatNumber(item.stats)}`);
 
     if (compareWith) {
         if (item.stats > compareWith.stats) statDiv.classList.add('stat-better');
         else if (item.stats < compareWith.stats) statDiv.classList.add('stat-worse');
     }
 
-    fragment.append(typeDiv, levelDiv, statDiv);
+    fragment.append(tierDiv, typeDiv, levelDiv, statDiv);
 
-    const bonusDiv = buildBonusLine(item, compareWith);
-    if (bonusDiv) fragment.appendChild(bonusDiv);
+    const bonusDivs = buildBonusLines(item, compareWith);
+    bonusDivs.forEach(div => fragment.appendChild(div));
 
     return fragment;
 }
@@ -60,10 +77,10 @@ export function updateStats() {
 
     const health = BASE_HEALTH + totalHealth;
     const damage = BASE_DAMAGE + totalDamage;
-    document.getElementById('total-health').textContent = health;
-    document.getElementById('total-damage').textContent = damage;
-    document.getElementById('gold-amount').textContent = getGold();
-    document.getElementById('power-score').textContent = calculatePowerScore(health, damage, bonuses);
+    document.getElementById('total-health').textContent = formatNumber(health);
+    document.getElementById('total-damage').textContent = formatNumber(damage);
+    document.getElementById('gold-amount').textContent = formatNumber(getGold());
+    document.getElementById('power-score').textContent = formatNumber(calculatePowerScore(health, damage, bonuses));
 
     const bonusRow = document.getElementById('bonus-stats-row');
     bonusRow.textContent = '';
@@ -86,19 +103,50 @@ export function updateEquipmentSlots() {
         const item = getEquipmentByType(type);
         slotElement.textContent = '';
 
+        const slotParent = slotElement.closest('.equipment-slot');
+
         if (item) {
+            const tierDef = TIERS[(item.tier || 1) - 1];
+            slotParent.style.borderColor = tierDef.color;
+            slotParent.style.borderWidth = '2px';
+
             const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
+            levelDiv.style.color = tierDef.color;
             slotElement.appendChild(levelDiv);
         } else {
+            slotParent.style.borderColor = '#e0e0e0';
+            slotParent.style.borderWidth = '1px';
             const emptySpan = createElement('span', 'empty-slot', 'Empty');
             slotElement.appendChild(emptySpan);
         }
     });
 }
 
+export function updateForgeInfo() {
+    const forgeLevel = getForgeLevel();
+    const forgeLevelEl = document.getElementById('forge-level');
+    if (forgeLevelEl) forgeLevelEl.textContent = forgeLevel;
+
+    const upgradeBtn = document.getElementById('upgrade-forge-btn');
+    if (!upgradeBtn) return;
+
+    const cost = getForgeUpgradeCost();
+    if (cost === null) {
+        upgradeBtn.textContent = 'MAX';
+        upgradeBtn.disabled = true;
+        upgradeBtn.classList.add('btn-disabled');
+    } else {
+        upgradeBtn.textContent = `${formatNumber(cost)}g`;
+        const canAfford = getGold() >= cost;
+        upgradeBtn.disabled = !canAfford;
+        upgradeBtn.classList.toggle('btn-disabled', !canAfford);
+    }
+}
+
 export function updateUI() {
     updateStats();
     updateEquipmentSlots();
+    updateForgeInfo();
 }
 
 export function showItemDetailModal(type) {
@@ -136,7 +184,8 @@ export function showDecisionModal(item) {
         const currentLabel = createElement('div', 'comparison-label', 'Current');
         currentCard.appendChild(currentLabel);
         currentCard.appendChild(buildItemCard(currentItem, item));
-        const currentKeep = createElement('div', 'keep-label', `Keep (+${item.level}g)`);
+        const sellNewValue = getSellValue(item);
+        const currentKeep = createElement('div', 'keep-label', `Keep (+${formatNumber(sellNewValue)}g)`);
         currentCard.appendChild(currentKeep);
         currentCard.addEventListener('click', () => {
             sellForgedItem();
@@ -148,7 +197,8 @@ export function showDecisionModal(item) {
         const newLabel = createElement('div', 'comparison-label', 'New');
         newCard.appendChild(newLabel);
         newCard.appendChild(buildItemCard(item, currentItem));
-        const newKeep = createElement('div', 'keep-label', `Keep (+${currentItem.level}g)`);
+        const sellOldValue = getSellValue(currentItem);
+        const newKeep = createElement('div', 'keep-label', `Keep (+${formatNumber(sellOldValue)}g)`);
         newCard.appendChild(newKeep);
         newCard.addEventListener('click', () => {
             const forgedItem = getForgedItem();
@@ -161,16 +211,17 @@ export function showDecisionModal(item) {
     } else {
         itemInfo.appendChild(buildItemCard(item));
 
-        const sellValue = createElement('div', 'sell-value', `💰 Sell value: ${item.level} gold`);
-        itemInfo.appendChild(sellValue);
+        const sellValue = getSellValue(item);
+        const sellValueDiv = createElement('div', 'sell-value', `Sell value: ${formatNumber(sellValue)} gold`);
+        itemInfo.appendChild(sellValueDiv);
 
         const buttons = createElement('div', 'modal-buttons');
-        const sellBtn = createElement('button', 'btn btn-sell', `💰 Sell (+${item.level}g)`);
+        const sellBtn = createElement('button', 'btn btn-sell', `Sell (+${formatNumber(sellValue)}g)`);
         sellBtn.addEventListener('click', () => {
             sellForgedItem();
             hideDecisionModal();
         });
-        const equipBtn = createElement('button', 'btn btn-equip', '✅ Equip');
+        const equipBtn = createElement('button', 'btn btn-equip', 'Equip');
         equipBtn.addEventListener('click', () => {
             const forgedItem = getForgedItem();
             if (forgedItem) equipItem(forgedItem);

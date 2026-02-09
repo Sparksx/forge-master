@@ -375,7 +375,59 @@ h1 {
     font-size: clamp(0.75em, 1vw, 0.95em);
 }
 
-/* Action Row (Forge + Upgrade + Auto) */
+/* Forge Info Row */
+.forge-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 6px 12px;
+    background: #e8e8e8;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+    flex-shrink: 0;
+}
+
+.forge-level-label {
+    font-size: clamp(0.85em, 1.3vw, 1em);
+    font-weight: 700;
+    color: #333;
+}
+
+.btn-upgrade-forge {
+    padding: 4px 12px;
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    font-weight: 700;
+    background: #4a4a4a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.btn-upgrade-forge:hover:not(:disabled) {
+    background: #333;
+    transform: translateY(-1px);
+}
+
+.btn-upgrade-forge:disabled,
+.btn-upgrade-forge.btn-disabled {
+    background: #b0b0b0;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Tier name in item cards */
+.forged-tier {
+    font-size: clamp(0.8em, 1.1vw, 0.95em);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+/* Action Row (Forge + Auto) */
 .action-row {
     display: flex;
     gap: 8px;

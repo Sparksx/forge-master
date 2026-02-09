@@ -31,4 +31,5 @@ export const EVENTS = {
     ITEM_SOLD: 'item:sold',
     GOLD_PURCHASED: 'gold:purchased',
     GAME_LOADED: 'game:loaded',
+    FORGE_UPGRADED: 'forge:upgraded',
 };
