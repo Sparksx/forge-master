@@ -17,7 +17,13 @@ export class EventEmitter {
 
     emit(event, data) {
         if (!this.listeners[event]) return;
-        this.listeners[event].forEach(callback => callback(data));
+        this.listeners[event].forEach(callback => {
+            try {
+                callback(data);
+            } catch (err) {
+                console.error(`EventEmitter: listener for "${event}" threw:`, err);
+            }
+        });
     }
 }
 
@@ -42,4 +48,5 @@ export const EVENTS = {
     COMBAT_PLAYER_DEFEATED: 'combat:player_defeated',
     COMBAT_WAVE_CHANGED: 'combat:wave_changed',
     COMBAT_FOCUS_CHANGED: 'combat:focus_changed',
+    PLAYER_LEVEL_UP: 'player:level_up',
 };

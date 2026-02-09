@@ -67,6 +67,15 @@ function recalculateStats(item) {
     return item;
 }
 
+// --- Player level / XP system ---
+const MAX_PLAYER_LEVEL = 100;
+const BASE_XP_PER_LEVEL = 100;
+const XP_GROWTH = 1.15;
+
+export function xpRequiredForLevel(level) {
+    return Math.floor(BASE_XP_PER_LEVEL * Math.pow(level, XP_GROWTH));
+}
+
 const gameState = {
     equipment: createEmptyEquipment(),
     forgedItem: null,
@@ -79,6 +88,10 @@ const gameState = {
         highestWave: 1,
         highestSubWave: 1,
     },
+    player: {
+        level: 1,
+        xp: 0,
+    },
 };
 
 export function resetGame() {
@@ -88,6 +101,44 @@ export function resetGame() {
     gameState.forgeLevel = 1;
     gameState.forgeUpgrade = null;
     gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
+    gameState.player = { level: 1, xp: 0 };
+}
+
+// --- Player level getters / setters ---
+
+export function getPlayerLevel() {
+    return gameState.player.level;
+}
+
+export function getPlayerXP() {
+    return gameState.player.xp;
+}
+
+export function getXPToNextLevel() {
+    if (gameState.player.level >= MAX_PLAYER_LEVEL) return 0;
+    return xpRequiredForLevel(gameState.player.level);
+}
+
+export function addXP(amount) {
+    if (gameState.player.level >= MAX_PLAYER_LEVEL) return;
+    gameState.player.xp += amount;
+
+    let leveled = false;
+    while (gameState.player.level < MAX_PLAYER_LEVEL) {
+        const needed = xpRequiredForLevel(gameState.player.level);
+        if (gameState.player.xp < needed) break;
+        gameState.player.xp -= needed;
+        gameState.player.level += 1;
+        leveled = true;
+        gameEvents.emit(EVENTS.PLAYER_LEVEL_UP, { level: gameState.player.level });
+    }
+
+    if (gameState.player.level >= MAX_PLAYER_LEVEL) {
+        gameState.player.xp = 0;
+    }
+
+    saveGame();
+    if (leveled) gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
 export function getEquipment() {
@@ -281,6 +332,7 @@ export function saveGame() {
             gold: gameState.gold,
             forgeLevel: gameState.forgeLevel,
             combat: gameState.combat,
+            player: gameState.player,
         };
         if (gameState.forgeUpgrade) {
             data.forgeUpgrade = gameState.forgeUpgrade;
@@ -305,6 +357,7 @@ async function saveToServer() {
             forgeLevel: gameState.forgeLevel,
             forgeUpgrade: gameState.forgeUpgrade || null,
             combat: gameState.combat,
+            player: gameState.player,
         };
         await apiFetch('/api/game/state', {
             method: 'PUT',
@@ -351,6 +404,16 @@ function applyLoadedData(loaded) {
         }
         if (typeof highestSubWave === 'number' && highestSubWave >= 1) {
             gameState.combat.highestSubWave = Math.floor(highestSubWave);
+        }
+    }
+
+    // Restore player level/XP
+    if (loaded.player && typeof loaded.player === 'object') {
+        if (typeof loaded.player.level === 'number' && loaded.player.level >= 1 && loaded.player.level <= MAX_PLAYER_LEVEL) {
+            gameState.player.level = Math.floor(loaded.player.level);
+        }
+        if (typeof loaded.player.xp === 'number' && loaded.player.xp >= 0) {
+            gameState.player.xp = Math.floor(loaded.player.xp);
         }
     }
 

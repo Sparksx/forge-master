@@ -1,0 +1,43 @@
+import prettier from 'eslint-config-prettier';
+
+export default [
+    {
+        files: ['src/**/*.js', 'server/**/*.js', 'shared/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: {
+                console: 'readonly',
+                document: 'readonly',
+                window: 'readonly',
+                localStorage: 'readonly',
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly',
+                setInterval: 'readonly',
+                clearInterval: 'readonly',
+                fetch: 'readonly',
+                HTMLElement: 'readonly',
+                URL: 'readonly',
+                Date: 'readonly',
+                Map: 'readonly',
+                Set: 'readonly',
+                Promise: 'readonly',
+                process: 'readonly',
+            },
+        },
+        rules: {
+            'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            'no-undef': 'error',
+            'no-constant-condition': 'warn',
+            'no-debugger': 'warn',
+            'no-duplicate-case': 'error',
+            'no-empty': 'warn',
+            'no-extra-semi': 'error',
+            'no-unreachable': 'error',
+            'eqeqeq': ['warn', 'always'],
+            'no-var': 'error',
+            'prefer-const': 'warn',
+        },
+    },
+    prettier,
+];

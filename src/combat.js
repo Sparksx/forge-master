@@ -12,7 +12,7 @@ let combatInterval = null;
 let playerState = null;
 let monsterState = null; // the focused monster (alias into monstersInWave)
 let lastPlayerAttack = 0;
-let lastMonsterAttack = 0;
+let lastMonsterAttacks = []; // per-monster attack timers
 let combatPaused = false;
 
 // Multi-monster state
@@ -80,6 +80,9 @@ function spawnWaveMonsters() {
         });
     }
 
+    // Initialize per-monster attack timers
+    lastMonsterAttacks = monstersInWave.map(() => 0);
+
     monsterState = monstersInWave[0];
     return monsterState;
 }
@@ -141,7 +144,7 @@ export function startCombat() {
     initPlayerState();
     spawnWaveMonsters();
     lastPlayerAttack = 0;
-    lastMonsterAttack = 0;
+    lastMonsterAttacks = monstersInWave.map(() => 0);
     combatPaused = false;
 
     emitCombatStart();
@@ -172,7 +175,6 @@ function combatTick() {
     if (!playerState || monstersInWave.length === 0) return;
 
     lastPlayerAttack += TICK_RATE;
-    lastMonsterAttack += TICK_RATE;
 
     // Health regen (% of max HP per second)
     if (playerState.healthRegen > 0) {
@@ -186,11 +188,17 @@ function combatTick() {
         playerAttack();
     }
 
-    // ALL alive monsters attack the player simultaneously
-    const attackSpeed = monstersInWave[0]?.attackSpeed || 2000;
-    if (lastMonsterAttack >= attackSpeed) {
-        lastMonsterAttack = 0;
-        allMonstersAttack();
+    // Each alive monster attacks independently based on its own speed
+    for (let i = 0; i < monstersInWave.length; i++) {
+        const m = monstersInWave[i];
+        if (m.currentHP <= 0) continue;
+
+        lastMonsterAttacks[i] += TICK_RATE;
+        if (lastMonsterAttacks[i] >= m.attackSpeed) {
+            lastMonsterAttacks[i] = 0;
+            singleMonsterAttack(i);
+            if (playerState.currentHP <= 0) break;
+        }
     }
 
     gameEvents.emit(EVENTS.COMBAT_TICK, {
@@ -236,22 +244,19 @@ function playerAttack() {
     }
 }
 
-function allMonstersAttack() {
-    for (let i = 0; i < monstersInWave.length; i++) {
-        const m = monstersInWave[i];
-        if (m.currentHP <= 0) continue;
+function singleMonsterAttack(i) {
+    const m = monstersInWave[i];
+    if (!m || m.currentHP <= 0) return;
 
-        const variance = 0.9 + Math.random() * 0.2;
-        const dmg = Math.max(1, Math.floor(m.damage * variance));
+    const variance = 0.9 + Math.random() * 0.2;
+    const dmg = Math.max(1, Math.floor(m.damage * variance));
 
-        playerState.currentHP -= dmg;
-        gameEvents.emit(EVENTS.COMBAT_MONSTER_HIT, { damage: dmg, monsterIndex: i });
+    playerState.currentHP -= dmg;
+    gameEvents.emit(EVENTS.COMBAT_MONSTER_HIT, { damage: dmg, monsterIndex: i });
 
-        if (playerState.currentHP <= 0) {
-            playerState.currentHP = 0;
-            onPlayerDefeated();
-            return;
-        }
+    if (playerState.currentHP <= 0) {
+        playerState.currentHP = 0;
+        onPlayerDefeated();
     }
 }
 
@@ -306,7 +311,7 @@ function onMonsterDefeated() {
     resetPlayerToFull();
     spawnWaveMonsters();
     lastPlayerAttack = 0;
-    lastMonsterAttack = 0;
+    lastMonsterAttacks = monstersInWave.map(() => 0);
 
     emitCombatStart();
 }
@@ -328,7 +333,7 @@ function onPlayerDefeated() {
     resetPlayerToFull();
     spawnWaveMonsters();
     lastPlayerAttack = 0;
-    lastMonsterAttack = 0;
+    lastMonsterAttacks = monstersInWave.map(() => 0);
 
     combatPaused = true;
     setTimeout(() => {
