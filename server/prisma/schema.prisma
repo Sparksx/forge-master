@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  gold         Int      @default(0)
+  forgeLevel   Int      @default(1) @map("forge_level")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  equipment    Equipment[]
+  forgeUpgrade ForgeUpgrade?
+  messages     ChatMessage[]
+  pvpAsPlayer1 PvpMatch[]     @relation("PvpPlayer1")
+  pvpAsPlayer2 PvpMatch[]     @relation("PvpPlayer2")
+  pvpWins      PvpMatch[]     @relation("PvpWinner")
+
+  @@map("players")
+}
+
+model Equipment {
+  id       String @id @default(uuid())
+  playerId String @map("player_id")
+  slot     String // hat, armor, belt, boots, gloves, necklace, ring, weapon
+  level    Int
+  tier     Int    @default(1)
+  stats    Int
+  statType String @map("stat_type") // health or damage
+  bonuses  Json   @default("[]") // [{type, value}]
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, slot])
+  @@map("equipment")
+}
+
+model ForgeUpgrade {
+  id          String @id @default(uuid())
+  playerId    String @unique @map("player_id")
+  targetLevel Int    @map("target_level")
+  startedAt   BigInt @map("started_at") // timestamp ms
+  duration    Int    // seconds
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("forge_upgrades")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  playerId  String   @map("player_id")
+  channel   String   @default("general")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([channel, createdAt])
+  @@map("chat_messages")
+}
+
+model PvpMatch {
+  id        String   @id @default(uuid())
+  player1Id String   @map("player1_id")
+  player2Id String   @map("player2_id")
+  winnerId  String?  @map("winner_id")
+  status    String   @default("pending") // pending, in_progress, completed
+  logs      Json     @default("[]") // combat round logs
+  createdAt DateTime @default(now()) @map("created_at")
+
+  player1 Player  @relation("PvpPlayer1", fields: [player1Id], references: [id])
+  player2 Player  @relation("PvpPlayer2", fields: [player2Id], references: [id])
+  winner  Player? @relation("PvpWinner", fields: [winnerId], references: [id])
+
+  @@map("pvp_matches")
+}
