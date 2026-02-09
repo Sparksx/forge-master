@@ -5,7 +5,7 @@ import { forgeEquipment } from './forge.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
-    showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
+    isAutoForging, showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
     triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus
 } from './ui.js';
@@ -83,8 +83,9 @@ async function startGame() {
     updateUI();
     initNavigation();
 
-    // Forge button: show pending item or forge new
+    // Forge button: show pending item or forge new (disabled during auto-forge)
     document.getElementById('forge-btn').addEventListener('click', () => {
+        if (isAutoForging()) return;
         const pending = getForgedItem();
         if (pending) {
             showDecisionModal(pending);
