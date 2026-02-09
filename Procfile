@@ -1,1 +1,1 @@
-web: node server/index.js
+web: npx prisma db push && node server/index.js
