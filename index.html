@@ -122,17 +122,13 @@
                 </div>
             </div>
 
-            <!-- Forge Info Row -->
-            <div class="forge-info-row" id="forge-info-row">
-                <span class="forge-level-label">⚒️ Forge Nv.<span id="forge-level">1</span></span>
-                <span class="forge-upgrade-status" id="forge-upgrade-status" style="display:none"></span>
-            </div>
-
             <!-- Action Row -->
             <div class="action-row">
                 <button class="forge-btn" id="forge-btn">⚒️ Forge</button>
-                <button class="action-icon-btn" id="forge-upgrade-btn" title="Forge Upgrade">⬆️</button>
-                <button class="action-icon-btn" id="auto-action-btn" title="Auto">🤖</button>
+                <button class="action-icon-btn forge-level-btn" id="forge-upgrade-btn" title="Forge Upgrade">
+                    <span class="forge-btn-level" id="forge-level">1</span>
+                </button>
+                <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge">🤖</button>
             </div>
         </div>
     </div>
@@ -238,6 +234,14 @@
         <div class="modal-content">
             <h2>⚒️ Forge</h2>
             <div id="forge-upgrade-info"></div>
+        </div>
+    </div>
+
+    <!-- Auto Forge Modal -->
+    <div class="modal" id="auto-forge-modal">
+        <div class="modal-content">
+            <h2>🤖 Auto Forge</h2>
+            <div id="auto-forge-info"></div>
         </div>
     </div>
 

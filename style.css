@@ -388,29 +388,40 @@ h1 {
     font-size: clamp(0.75em, 1vw, 0.95em);
 }
 
-/* Forge Info Row */
-.forge-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-    padding: 6px 12px;
-    background: #e8e8e8;
-    border-radius: 6px;
-    border: 1px solid #d0d0d0;
-    flex-shrink: 0;
+/* Forge Level Button (merged level + upgrade) */
+.forge-level-btn {
+    position: relative;
+    flex-direction: column;
+    gap: 0;
+    font-size: 1em;
 }
 
-.forge-level-label {
-    font-size: clamp(0.85em, 1.3vw, 1em);
-    font-weight: 700;
+.forge-btn-level {
+    font-weight: 800;
+    font-size: 1.2em;
     color: #333;
+    line-height: 1;
 }
 
-.forge-upgrade-status {
-    font-size: clamp(0.8em, 1.1vw, 0.9em);
-    font-weight: 600;
-    color: #555;
+.forge-level-btn.upgrading {
+    animation: upgradePulse 2s ease-in-out infinite;
+}
+
+@keyframes upgradePulse {
+    0%, 100% { background: #e8e8e8; }
+    50% { background: #d4e8ff; }
+}
+
+/* Auto-forge active state */
+.action-icon-btn.auto-active {
+    background: #c8e6c9;
+    border-color: #4caf50;
+    animation: autoForgePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes autoForgePulse {
+    0%, 100% { background: #c8e6c9; }
+    50% { background: #a5d6a7; }
 }
 
 /* Forge Upgrade Modal */
@@ -928,6 +939,73 @@ h1 {
 
 .shop-card-btn:hover {
     background: #333;
+}
+
+/* Auto Forge Modal */
+.auto-forge-desc {
+    text-align: center;
+    color: #666;
+    font-size: clamp(0.85em, 1.2vw, 0.95em);
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+.auto-forge-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.auto-forge-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.auto-forge-tier-row:hover {
+    background: #ebebeb;
+}
+
+.auto-forge-tier-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.auto-forge-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #4a4a4a;
+    cursor: pointer;
+}
+
+.auto-forge-tier-name {
+    font-weight: 700;
+    font-size: clamp(0.9em, 1.3vw, 1.05em);
+}
+
+.btn-start-auto {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    font-size: clamp(1em, 1.5vw, 1.2em);
+    font-weight: 700;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.btn-start-auto:hover {
+    background: #388e3c;
+    transform: translateY(-1px);
 }
 
 /* ==================== Responsive ==================== */

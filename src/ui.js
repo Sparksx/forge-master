@@ -1,6 +1,7 @@
 import {
     EQUIPMENT_TYPES, EQUIPMENT_ICONS, BASE_HEALTH, BASE_DAMAGE,
-    BONUS_STATS, BONUS_STAT_KEYS, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL
+    BONUS_STATS, BONUS_STAT_KEYS, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL,
+    AUTO_FORGE_INTERVAL
 } from './config.js';
 import {
     getEquipment, getEquipmentByType, getGold, getForgedItem,
@@ -8,9 +9,18 @@ import {
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete
 } from './state.js';
-import { calculateStats, calculatePowerScore } from './forge.js';
+import { calculateStats, calculatePowerScore, forgeEquipment } from './forge.js';
 
 let forgeTimerInterval = null;
+let decisionModalCallback = null;
+
+// --- Auto-forge state ---
+const autoForge = {
+    active: false,
+    selectedTiers: new Set(),
+    timer: null,
+    stopping: false,
+};
 
 function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -24,7 +34,19 @@ function createElement(tag, className, textContent) {
 }
 
 function formatNumber(n) {
-    return n.toLocaleString('fr-FR');
+    return n.toLocaleString('en-US');
+}
+
+function formatTime(seconds) {
+    if (seconds <= 0) return '0s';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
+    if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    return `${s}s`;
 }
 
 function buildBonusLines(item, compareWith) {
@@ -73,6 +95,8 @@ function buildItemCard(item, compareWith) {
 
     return fragment;
 }
+
+// ===== Stats & Equipment =====
 
 export function updateStats() {
     const equipment = getEquipment();
@@ -125,57 +149,43 @@ export function updateEquipmentSlots() {
     });
 }
 
+// ===== Forge Level Button =====
+
 export function updateForgeInfo() {
     const forgeLevel = getForgeLevel();
     const forgeLevelEl = document.getElementById('forge-level');
     if (forgeLevelEl) forgeLevelEl.textContent = forgeLevel;
 
-    // Show upgrade status on info row
-    const upgradeState = getForgeUpgradeState();
-    const statusEl = document.getElementById('forge-upgrade-status');
-    if (statusEl) {
-        if (upgradeState) {
-            const status = getForgeUpgradeStatus();
-            statusEl.textContent = `⏳ ${formatTime(status.remaining)}`;
-            statusEl.style.display = '';
-        } else {
-            statusEl.textContent = '';
-            statusEl.style.display = 'none';
-        }
+    // Update upgrading visual state on the button
+    const btn = document.getElementById('forge-upgrade-btn');
+    if (btn) {
+        const upgradeState = getForgeUpgradeState();
+        btn.classList.toggle('upgrading', !!upgradeState);
     }
 
-    // Also refresh the modal content if it's currently open
+    // Refresh the modal content if it's currently open
     const modal = document.getElementById('forge-upgrade-modal');
     if (modal && modal.classList.contains('active')) {
         renderForgeUpgradeContent();
     }
 }
 
-function formatTime(seconds) {
-    if (seconds <= 0) return '0s';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
-    if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
-    return `${s}s`;
-}
+// ===== Forge Upgrade Modal =====
 
 function buildSideBySideChances(currentChances, nextChances) {
     const table = createElement('div', 'forge-chances-compare');
 
-    // Header row
     const header = createElement('div', 'forge-compare-row forge-compare-header');
     header.append(
         createElement('span', 'forge-compare-cell forge-compare-name', 'Tier'),
-        createElement('span', 'forge-compare-cell forge-compare-cur', 'Actuel'),
+        createElement('span', 'forge-compare-cell forge-compare-cur', 'Current'),
         createElement('span', 'forge-compare-cell forge-compare-arrow', ''),
-        createElement('span', 'forge-compare-cell forge-compare-next', 'Suivant')
+        createElement('span', 'forge-compare-cell forge-compare-next', 'Next')
     );
     table.appendChild(header);
 
     TIERS.forEach((tier, i) => {
-        if (currentChances[i] <= 0 && (!nextChances || nextChances[i] <= 0)) return;
+        if (currentChances[i] <= 0 && (!nextChances || !nextChances[i] || nextChances[i] <= 0)) return;
         const row = createElement('div', 'forge-compare-row');
 
         const name = createElement('span', 'forge-compare-cell forge-compare-name', tier.name);
@@ -222,7 +232,6 @@ function startForgeTimer() {
             updateForgeInfo();
             return;
         }
-        // Update timer display only
         updateForgeTimerDisplay();
     }, 1000);
 }
@@ -264,23 +273,19 @@ function renderForgeUpgradeContent() {
     const isUpgrading = !!upgradeState;
     const isMaxLevel = forgeLevel >= MAX_FORGE_LEVEL;
 
-    // Level display
-    const levelDisplay = createElement('div', 'forge-level-display', `Niveau ${forgeLevel}`);
+    const levelDisplay = createElement('div', 'forge-level-display', `Level ${forgeLevel}`);
     info.appendChild(levelDisplay);
 
-    // Side-by-side chances table
     const nextChances = !isMaxLevel ? FORGE_LEVELS[forgeLevel].chances : null;
     info.appendChild(buildSideBySideChances(currentChances, nextChances));
 
     if (isMaxLevel) {
-        const maxDiv = createElement('div', 'forge-section-max', 'Niveau maximum atteint !');
+        const maxDiv = createElement('div', 'forge-section-max', 'Max level reached!');
         info.appendChild(maxDiv);
         return;
     }
 
-    // Upgrade section
     if (isUpgrading) {
-        // Timer display
         const timerSection = createElement('div', 'forge-timer-section');
 
         const progressContainer = createElement('div', 'forge-progress-bar');
@@ -302,11 +307,9 @@ function renderForgeUpgradeContent() {
 
         info.appendChild(timerSection);
 
-        // Start timer updates
         updateForgeTimerDisplay();
         startForgeTimer();
     } else {
-        // Upgrade button
         const cost = getForgeUpgradeCost();
         const time = FORGE_LEVELS[forgeLevel].time;
         const upgradeBtn = createElement('button', 'btn btn-upgrade-forge',
@@ -332,30 +335,10 @@ export function hideForgeUpgradeModal() {
     document.getElementById('forge-upgrade-modal').classList.remove('active');
 }
 
-export function updateUI() {
-    updateStats();
-    updateEquipmentSlots();
-    updateForgeInfo();
-}
+// ===== Decision Modal =====
 
-export function showItemDetailModal(type) {
-    const item = getEquipmentByType(type);
-    if (!item) return;
-
-    const modal = document.getElementById('item-detail-modal');
-    const info = document.getElementById('item-detail-info');
-    info.textContent = '';
-
-    info.appendChild(buildItemCard(item));
-
-    modal.classList.add('active');
-}
-
-export function hideItemDetailModal() {
-    document.getElementById('item-detail-modal').classList.remove('active');
-}
-
-export function showDecisionModal(item) {
+export function showDecisionModal(item, onClose) {
+    decisionModalCallback = onClose || null;
     const modal = document.getElementById('decision-modal');
     const itemInfo = document.getElementById('forged-item-info');
 
@@ -368,7 +351,6 @@ export function showDecisionModal(item) {
 
         const container = createElement('div', 'comparison-container');
 
-        // Current item card - click to keep current (sell new)
         const currentCard = createElement('div', 'item-comparison current-item clickable');
         const currentLabel = createElement('div', 'comparison-label', 'Current');
         currentCard.appendChild(currentLabel);
@@ -381,7 +363,6 @@ export function showDecisionModal(item) {
             hideDecisionModal();
         });
 
-        // New item card - click to equip new (sell old)
         const newCard = createElement('div', 'item-comparison new-item clickable');
         const newLabel = createElement('div', 'comparison-label', 'New');
         newCard.appendChild(newLabel);
@@ -425,6 +406,176 @@ export function showDecisionModal(item) {
 
 export function hideDecisionModal() {
     document.getElementById('decision-modal').classList.remove('active');
+    if (decisionModalCallback) {
+        const cb = decisionModalCallback;
+        decisionModalCallback = null;
+        cb();
+    }
+}
+
+// ===== Auto Forge =====
+
+export function isAutoForging() {
+    return autoForge.active;
+}
+
+function scheduleNextAutoForge() {
+    if (autoForge.stopping || !autoForge.active) {
+        cleanupAutoForge();
+        return;
+    }
+    autoForge.timer = setTimeout(() => {
+        doOneAutoForge();
+    }, AUTO_FORGE_INTERVAL);
+}
+
+function doOneAutoForge() {
+    if (autoForge.stopping || !autoForge.active) {
+        cleanupAutoForge();
+        return;
+    }
+    // Forge a new item (this sets forgedItem in state)
+    const item = forgeEquipment();
+
+    if (autoForge.selectedTiers.has(item.tier)) {
+        // Tier is selected: show decision modal, pause auto-forge
+        showDecisionModal(item, () => {
+            // After decision, continue auto-forge
+            scheduleNextAutoForge();
+        });
+    } else {
+        // Tier not selected: auto-sell and continue
+        sellForgedItem();
+        scheduleNextAutoForge();
+    }
+}
+
+function cleanupAutoForge() {
+    autoForge.active = false;
+    autoForge.stopping = false;
+    if (autoForge.timer) {
+        clearTimeout(autoForge.timer);
+        autoForge.timer = null;
+    }
+    updateAutoForgeButton();
+}
+
+function updateAutoForgeButton() {
+    const btn = document.getElementById('auto-action-btn');
+    if (btn) {
+        btn.classList.toggle('auto-active', autoForge.active);
+    }
+}
+
+export function handleAutoForgeClick() {
+    if (autoForge.active) {
+        // Stop auto-forge at end of current cycle
+        autoForge.stopping = true;
+        return;
+    }
+    // Show auto-forge config modal
+    showAutoForgeModal();
+}
+
+function showAutoForgeModal() {
+    const info = document.getElementById('auto-forge-info');
+    if (!info) return;
+    info.textContent = '';
+
+    const desc = createElement('div', 'auto-forge-desc',
+        'Select tiers to keep. Other items will be auto-sold.');
+    info.appendChild(desc);
+
+    const tierList = createElement('div', 'auto-forge-tiers');
+
+    // Get current forge level chances to know which tiers are available
+    const forgeLevel = getForgeLevel();
+    const chances = FORGE_LEVELS[forgeLevel - 1].chances;
+
+    TIERS.forEach((tier, i) => {
+        const row = createElement('label', 'auto-forge-tier-row');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'auto-forge-checkbox';
+        checkbox.dataset.tier = tier.id;
+        // Pre-check tiers that have >0 chance and are uncommon+
+        if (chances[i] > 0 && tier.id >= 2) {
+            checkbox.checked = true;
+        }
+        // Disable tiers with 0% chance
+        if (chances[i] <= 0) {
+            checkbox.disabled = true;
+            row.classList.add('auto-forge-tier-disabled');
+        }
+
+        const label = createElement('span', 'auto-forge-tier-name', `${tier.name} (${chances[i]}%)`);
+        label.style.color = tier.color;
+
+        row.append(checkbox, label);
+        tierList.appendChild(row);
+    });
+
+    info.appendChild(tierList);
+
+    const startBtn = createElement('button', 'btn btn-start-auto', '▶ Start Auto Forge');
+    startBtn.addEventListener('click', () => {
+        // Collect selected tiers
+        const selected = new Set();
+        tierList.querySelectorAll('.auto-forge-checkbox:checked').forEach(cb => {
+            selected.add(Number(cb.dataset.tier));
+        });
+        if (selected.size === 0) return;
+
+        autoForge.selectedTiers = selected;
+        autoForge.active = true;
+        autoForge.stopping = false;
+
+        hideAutoForgeModal();
+        updateAutoForgeButton();
+        scheduleNextAutoForge();
+    });
+    info.appendChild(startBtn);
+
+    document.getElementById('auto-forge-modal').classList.add('active');
+}
+
+function hideAutoForgeModal() {
+    document.getElementById('auto-forge-modal').classList.remove('active');
+}
+
+// ===== Handling ITEM_FORGED event =====
+
+export function handleItemForged(item) {
+    // During auto-forge, the auto-forge system handles items directly
+    // via doOneAutoForge(). The event should not trigger the modal again.
+    if (autoForge.active) return;
+    showDecisionModal(item);
+}
+
+// ===== Misc =====
+
+export function updateUI() {
+    updateStats();
+    updateEquipmentSlots();
+    updateForgeInfo();
+}
+
+export function showItemDetailModal(type) {
+    const item = getEquipmentByType(type);
+    if (!item) return;
+
+    const modal = document.getElementById('item-detail-modal');
+    const info = document.getElementById('item-detail-info');
+    info.textContent = '';
+
+    info.appendChild(buildItemCard(item));
+
+    modal.classList.add('active');
+}
+
+export function hideItemDetailModal() {
+    document.getElementById('item-detail-modal').classList.remove('active');
 }
 
 export function showWipModal(title) {

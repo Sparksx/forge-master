@@ -80,6 +80,14 @@ describe('createItem', () => {
         expect(item.bonuses[0].type).not.toBe(item.bonuses[1].type);
     });
 
+    it('creates a tier 6 (Mythic) item with 3 distinct bonuses', () => {
+        const item = createItem('weapon', 50, 6);
+        expect(item.tier).toBe(6);
+        expect(item.bonuses).toHaveLength(3);
+        const types = item.bonuses.map(b => b.type);
+        expect(new Set(types).size).toBe(3);
+    });
+
     it('defaults to tier 1 when tier is omitted', () => {
         const item = createItem('hat', 10);
         expect(item.tier).toBe(1);
@@ -118,7 +126,7 @@ describe('rollTier', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(10);
             expect(tier).toBeGreaterThanOrEqual(1);
-            expect(tier).toBeLessThanOrEqual(5);
+            expect(tier).toBeLessThanOrEqual(6);
         }
     });
 
@@ -126,7 +134,7 @@ describe('rollTier', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(30);
             expect(tier).toBeGreaterThanOrEqual(4); // forge 30 has 0% T1-T3
-            expect(tier).toBeLessThanOrEqual(5);
+            expect(tier).toBeLessThanOrEqual(6);
         }
     });
 
@@ -137,6 +145,19 @@ describe('rollTier', () => {
                 expect(tier).toBeGreaterThanOrEqual(1);
                 expect(tier).toBeLessThanOrEqual(TIERS.length);
             }
+        }
+    });
+
+    it('all forge level chances sum to 100', () => {
+        for (const fl of FORGE_LEVELS) {
+            const sum = fl.chances.reduce((a, b) => a + b, 0);
+            expect(sum).toBe(100);
+        }
+    });
+
+    it('all forge levels have chances array of length equal to TIERS count', () => {
+        for (const fl of FORGE_LEVELS) {
+            expect(fl.chances).toHaveLength(TIERS.length);
         }
     });
 });
