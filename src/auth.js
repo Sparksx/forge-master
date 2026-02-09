@@ -15,13 +15,20 @@ export function getCurrentUser() {
     return currentUser;
 }
 
+export async function performLogout() {
+    try {
+        await apiFetch('/api/auth/logout', { method: 'POST', body: {} });
+    } catch { /* ignore */ }
+    currentUser = null;
+    clearTokens();
+    showAuthScreen();
+}
+
 export function initAuth() {
-    const authScreen = document.getElementById('auth-screen');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
     const showRegisterBtn = document.getElementById('show-register');
     const showLoginBtn = document.getElementById('show-login');
-    const logoutBtn = document.getElementById('logout-btn');
 
     // Toggle between login/register
     showRegisterBtn?.addEventListener('click', (e) => {
@@ -95,16 +102,6 @@ export function initAuth() {
         } catch (err) {
             errorEl.textContent = 'Network error';
         }
-    });
-
-    // Logout
-    logoutBtn?.addEventListener('click', async () => {
-        try {
-            await apiFetch('/api/auth/logout', { method: 'POST', body: {} });
-        } catch { /* ignore */ }
-        currentUser = null;
-        clearTokens();
-        showAuthScreen();
     });
 
     // When auth is lost (token refresh failed)

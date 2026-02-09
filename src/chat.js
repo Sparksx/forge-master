@@ -1,33 +1,36 @@
 /**
- * Chat UI — real-time chat panel using Socket.io.
+ * Chat UI — real-time chat with preview and full-page overlay.
  */
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 
 let chatOpen = false;
+let recentMessages = []; // Keep last messages for preview
 
 export function initChat() {
-    const chatToggle = document.getElementById('chat-toggle');
+    const chatPreview = document.getElementById('chat-preview');
     const chatPanel = document.getElementById('chat-panel');
     const chatClose = document.getElementById('chat-close');
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
 
-    chatToggle?.addEventListener('click', () => {
-        chatOpen = !chatOpen;
-        chatPanel?.classList.toggle('open', chatOpen);
-        if (chatOpen) {
-            chatInput?.focus();
-            scrollToBottom();
-        }
+    // Click preview to open full-page chat
+    chatPreview?.addEventListener('click', () => {
+        chatOpen = true;
+        chatPanel?.classList.add('open');
+        chatPreview?.classList.remove('has-unread');
+        chatInput?.focus();
+        scrollToBottom();
     });
 
+    // Close full-page chat
     chatClose?.addEventListener('click', () => {
         chatOpen = false;
         chatPanel?.classList.remove('open');
     });
 
+    // Send message
     chatSend?.addEventListener('click', sendMessage);
 
     chatInput?.addEventListener('keydown', (e) => {
@@ -48,18 +51,32 @@ function setupSocketListeners() {
         const container = document.getElementById('chat-messages');
         if (!container) return;
         container.innerHTML = '';
-        messages.forEach(msg => appendMessage(msg));
+        recentMessages = [];
+        messages.forEach(msg => {
+            appendMessage(msg);
+            recentMessages.push(msg);
+        });
+        // Keep only last messages
+        if (recentMessages.length > 50) {
+            recentMessages = recentMessages.slice(-50);
+        }
+        updatePreview();
         scrollToBottom();
     });
 
     socket.on('chat:message', (msg) => {
         appendMessage(msg);
+        recentMessages.push(msg);
+        if (recentMessages.length > 50) {
+            recentMessages = recentMessages.slice(-50);
+        }
+        updatePreview();
         scrollToBottom();
 
         // Show unread indicator if chat is closed
         if (!chatOpen) {
-            const chatToggle = document.getElementById('chat-toggle');
-            chatToggle?.classList.add('has-unread');
+            const chatPreview = document.getElementById('chat-preview');
+            chatPreview?.classList.add('has-unread');
         }
     });
 }
@@ -74,6 +91,7 @@ function sendMessage() {
 
     socket.emit('chat:message', { content, channel: 'general' });
     input.value = '';
+    input.focus();
 }
 
 function appendMessage(msg) {
@@ -93,6 +111,30 @@ function appendMessage(msg) {
         `<div class="chat-text">${escapeHtml(msg.content)}</div>`;
 
     container.appendChild(el);
+}
+
+function updatePreview() {
+    const previewContainer = document.getElementById('chat-preview-messages');
+    if (!previewContainer) return;
+
+    previewContainer.textContent = '';
+
+    if (recentMessages.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'chat-preview-empty';
+        empty.textContent = 'No messages yet';
+        previewContainer.appendChild(empty);
+        return;
+    }
+
+    // Show last 2 messages
+    const last2 = recentMessages.slice(-2);
+    last2.forEach(msg => {
+        const line = document.createElement('div');
+        line.className = 'chat-preview-line';
+        line.innerHTML = `<span class="chat-preview-sender">${escapeHtml(msg.sender)}:</span> ${escapeHtml(msg.content)}`;
+        previewContainer.appendChild(line);
+    });
 }
 
 function scrollToBottom() {
