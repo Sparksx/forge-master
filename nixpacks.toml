@@ -5,4 +5,4 @@ cmds = ['npm install --ignore-scripts']
 cmds = ['DATABASE_URL=postgresql://placeholder:5432/db npx prisma generate', 'npm run build']
 
 [start]
-cmd = 'npx prisma migrate deploy && node server/index.js'
+cmd = 'npx prisma db push && node server/index.js'
