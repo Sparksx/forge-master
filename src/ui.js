@@ -7,9 +7,12 @@ import {
     getEquipment, getEquipmentByType, getGold, getForgedItem,
     equipItem, sellForgedItem, getSellValue, getForgeLevel,
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
-    getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete
+    getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
+    getCombatProgress
 } from './state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from './forge.js';
+import { getPlayerCombatState, getMonsterCombatState } from './combat.js';
+import { getWaveLabel, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
 
 let forgeTimerInterval = null;
 let decisionModalCallback = null;
@@ -601,6 +604,112 @@ export function showItemDetailModal(type) {
 
 export function hideItemDetailModal() {
     document.getElementById('item-detail-modal').classList.remove('active');
+}
+
+// ===== Combat UI =====
+
+export function updateCombatUI() {
+    const player = getPlayerCombatState();
+    const monster = getMonsterCombatState();
+    if (!player || !monster) return;
+
+    // Player HP bar
+    const playerHPBar = document.getElementById('player-hp-bar');
+    const playerHPText = document.getElementById('player-hp-text');
+    if (playerHPBar && playerHPText) {
+        const playerHPPct = Math.max(0, (player.currentHP / player.maxHP) * 100);
+        playerHPBar.style.width = `${playerHPPct}%`;
+        playerHPBar.className = `hp-bar hp-bar-player ${getHPColorClass(playerHPPct)}`;
+        playerHPText.textContent = `${formatNumber(Math.ceil(player.currentHP))} / ${formatNumber(player.maxHP)}`;
+    }
+
+    // Monster HP bar
+    const monsterHPBar = document.getElementById('monster-hp-bar');
+    const monsterHPText = document.getElementById('monster-hp-text');
+    if (monsterHPBar && monsterHPText) {
+        const monsterHPPct = Math.max(0, (monster.currentHP / monster.maxHP) * 100);
+        monsterHPBar.style.width = `${monsterHPPct}%`;
+        monsterHPBar.className = `hp-bar hp-bar-monster ${getHPColorClass(monsterHPPct)}`;
+        monsterHPText.textContent = `${formatNumber(Math.ceil(monster.currentHP))} / ${formatNumber(monster.maxHP)}`;
+    }
+}
+
+function getHPColorClass(pct) {
+    if (pct > 60) return 'hp-high';
+    if (pct > 30) return 'hp-mid';
+    return 'hp-low';
+}
+
+export function updateCombatInfo(data) {
+    if (!data) return;
+    const { player, monster } = data;
+
+    // Update monster info
+    const monsterEmoji = document.getElementById('monster-emoji');
+    const monsterName = document.getElementById('monster-name');
+    if (monsterEmoji) monsterEmoji.textContent = monster.emoji;
+    if (monsterName) {
+        monsterName.textContent = monster.name;
+        monsterName.style.color = monster.color;
+    }
+
+    // Update wave label
+    updateWaveDisplay();
+}
+
+export function updateWaveDisplay() {
+    const { currentWave, currentSubWave } = getCombatProgress();
+    const waveLabel = document.getElementById('wave-label');
+    if (waveLabel) waveLabel.textContent = `Wave ${getWaveLabel(currentWave, currentSubWave)}`;
+
+    const progressFill = document.getElementById('wave-progress-fill');
+    if (progressFill) {
+        const total = WAVE_COUNT * SUB_WAVE_COUNT;
+        const current = (currentWave - 1) * SUB_WAVE_COUNT + currentSubWave;
+        progressFill.style.width = `${(current / total) * 100}%`;
+    }
+}
+
+export function showDamageNumber(damage, type, isCrit) {
+    const container = document.getElementById('damage-numbers');
+    if (!container) return;
+
+    const dmgEl = createElement('div', `damage-number damage-${type}${isCrit ? ' damage-crit' : ''}`,
+        `${type === 'heal' ? '+' : '-'}${formatNumber(damage)}`);
+
+    // Random horizontal offset
+    const offset = (Math.random() - 0.5) * 40;
+    dmgEl.style.setProperty('--offset-x', `${offset}px`);
+
+    container.appendChild(dmgEl);
+
+    dmgEl.addEventListener('animationend', () => dmgEl.remove());
+}
+
+export function showCombatResult(text, type) {
+    const el = document.getElementById('combat-result');
+    if (!el) return;
+
+    el.textContent = text;
+    el.className = `combat-result combat-result-${type} combat-result-show`;
+
+    setTimeout(() => {
+        el.classList.remove('combat-result-show');
+    }, 1200);
+}
+
+export function triggerAttackAnimation(side) {
+    const el = document.getElementById(`combatant-${side}`);
+    if (!el) return;
+    el.classList.add('attacking');
+    setTimeout(() => el.classList.remove('attacking'), 300);
+}
+
+export function triggerHitAnimation(side) {
+    const el = document.getElementById(`combatant-${side}`);
+    if (!el) return;
+    el.classList.add('hit');
+    setTimeout(() => el.classList.remove('hit'), 300);
 }
 
 export function showWipModal(title) {

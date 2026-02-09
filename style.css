@@ -1073,6 +1073,290 @@ h1 {
     }
 }
 
+/* ==================== Combat Zone ==================== */
+
+/* Home page split layout */
+#view-home.active {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+}
+
+#view-home .combat-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    padding: clamp(6px, 1.2vw, 12px);
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+#view-home .forge-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    padding: clamp(8px, 1.5vw, 16px);
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 2px solid #d0d0d0;
+}
+
+/* Wave indicator */
+.wave-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: clamp(4px, 0.8vw, 8px);
+    flex-shrink: 0;
+}
+
+.wave-label {
+    font-size: clamp(0.75em, 1.2vw, 0.95em);
+    font-weight: 800;
+    color: #e0e0e0;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.wave-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.wave-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4fc3f7, #ab47bc);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+    width: 1%;
+}
+
+/* Combat arena */
+.combat-arena {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 24px);
+    min-height: 0;
+}
+
+/* Combatants */
+.combatant {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2px, 0.5vw, 6px);
+    max-width: 160px;
+}
+
+.combatant-emoji {
+    font-size: clamp(2em, 5vw, 3.5em);
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    transition: transform 0.15s ease;
+}
+
+.combatant-name {
+    font-size: clamp(0.65em, 1vw, 0.85em);
+    font-weight: 700;
+    color: #b0bec5;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* HP Bars */
+.hp-bar-container {
+    width: 100%;
+    position: relative;
+    height: clamp(14px, 2.5vw, 20px);
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.hp-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.15s ease;
+    width: 100%;
+}
+
+.hp-bar-player {
+    background: linear-gradient(90deg, #43a047, #66bb6a);
+}
+
+.hp-bar-monster {
+    background: linear-gradient(90deg, #e53935, #ef5350);
+}
+
+.hp-bar.hp-mid {
+    background: linear-gradient(90deg, #f9a825, #fbc02d) !important;
+}
+.hp-bar.hp-low {
+    background: linear-gradient(90deg, #c62828, #e53935) !important;
+}
+
+.hp-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(0.55em, 0.9vw, 0.7em);
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    white-space: nowrap;
+}
+
+/* VS / center column */
+.combat-vs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.vs-text {
+    font-size: clamp(1.2em, 2.5vw, 1.8em);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* Damage numbers */
+.damage-numbers {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 60px;
+    pointer-events: none;
+}
+
+.damage-number {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    font-weight: 900;
+    font-size: clamp(0.8em, 1.3vw, 1em);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: damageFloat 0.8s ease-out forwards;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.damage-player {
+    color: #ef5350;
+}
+
+.damage-monster {
+    color: #66bb6a;
+}
+
+.damage-heal {
+    color: #4fc3f7;
+}
+
+.damage-crit {
+    font-size: clamp(1em, 1.6vw, 1.3em) !important;
+    color: #ffd740 !important;
+}
+
+@keyframes damageFloat {
+    0% {
+        opacity: 1;
+        transform: translate(calc(-50% + var(--offset-x, 0px)), 0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--offset-x, 0px)), -50px) scale(0.7);
+    }
+}
+
+/* Attack animation */
+.combatant-player.attacking .combatant-emoji {
+    animation: attackRight 0.3s ease-out;
+}
+
+.combatant-monster.attacking .combatant-emoji {
+    animation: attackLeft 0.3s ease-out;
+}
+
+@keyframes attackRight {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(20px) scale(1.1); }
+    100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attackLeft {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(-20px) scale(1.1); }
+    100% { transform: translateX(0) scale(1); }
+}
+
+/* Hit/shake animation */
+.combatant.hit .combatant-emoji {
+    animation: hitShake 0.3s ease-out;
+}
+
+@keyframes hitShake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+}
+
+/* Combat result overlay */
+.combat-result {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(1.4em, 3vw, 2.2em);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 10;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+.combat-result-show {
+    animation: resultPop 1.2s ease-out forwards;
+}
+
+.combat-result-victory {
+    color: #ffd740;
+}
+
+.combat-result-defeat {
+    color: #ef5350;
+}
+
+@keyframes resultPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    40% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
 /* ==================== Responsive ==================== */
 
 /* Tall narrow screens (mobile portrait) */
@@ -1117,6 +1401,15 @@ h1 {
     .modal-buttons {
         flex-direction: column;
         gap: 8px;
+    }
+
+    /* Combat responsive */
+    .combatant-emoji {
+        font-size: 2em;
+    }
+
+    .hp-text {
+        font-size: 0.55em;
     }
 }
 
@@ -1197,5 +1490,22 @@ h1 {
     .action-icon-btn {
         width: 40px;
         font-size: 1.1em;
+    }
+
+    /* Combat responsive - short screens */
+    .combat-zone {
+        padding: 4px !important;
+    }
+
+    .wave-indicator {
+        margin-bottom: 2px;
+    }
+
+    .combatant-emoji {
+        font-size: 1.8em;
+    }
+
+    .hp-bar-container {
+        height: 12px;
     }
 }

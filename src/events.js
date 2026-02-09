@@ -32,4 +32,13 @@ export const EVENTS = {
     GOLD_PURCHASED: 'gold:purchased',
     GAME_LOADED: 'game:loaded',
     FORGE_UPGRADED: 'forge:upgraded',
+    COMBAT_START: 'combat:start',
+    COMBAT_TICK: 'combat:tick',
+    COMBAT_PLAYER_HIT: 'combat:player_hit',
+    COMBAT_MONSTER_HIT: 'combat:monster_hit',
+    COMBAT_PLAYER_CRIT: 'combat:player_crit',
+    COMBAT_PLAYER_LIFESTEAL: 'combat:player_lifesteal',
+    COMBAT_MONSTER_DEFEATED: 'combat:monster_defeated',
+    COMBAT_PLAYER_DEFEATED: 'combat:player_defeated',
+    COMBAT_WAVE_CHANGED: 'combat:wave_changed',
 };
