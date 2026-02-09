@@ -1,9 +1,12 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
+  "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "RAILPACK",
+    "buildCommand": "DATABASE_URL=postgresql://placeholder:5432/db npx prisma generate && npm run build"
   },
   "deploy": {
+    "startCommand": "node server/index.js",
+    "preDeployCommand": ["npx prisma db push"],
     "restartPolicyType": "ON_FAILURE"
   }
 }
