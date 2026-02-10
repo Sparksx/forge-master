@@ -127,17 +127,17 @@ describe('state', () => {
         });
 
         it('returns upgrade cost for next level', () => {
-            expect(getForgeUpgradeCost()).toBe(100);
+            expect(getForgeUpgradeCost()).toBe(200);
         });
 
         it('starts timed upgrade when enough gold', () => {
-            addGold(200);
+            addGold(400);
             const result = startForgeUpgrade();
             expect(result).toBe(true);
-            // Level 2 has time=10, so it starts an upgrade timer
+            // Level 2 has time=60, so it starts an upgrade timer
             expect(getForgeUpgradeState()).not.toBeNull();
             expect(getForgeUpgradeState().targetLevel).toBe(2);
-            expect(getGold()).toBe(100); // 200 - 100
+            expect(getGold()).toBe(200); // 400 - 200
         });
 
         it('fails to start upgrade when not enough gold', () => {
@@ -148,14 +148,14 @@ describe('state', () => {
         });
 
         it('fails to start upgrade when already upgrading', () => {
-            addGold(500);
+            addGold(1000);
             startForgeUpgrade();
             const result = startForgeUpgrade();
             expect(result).toBe(false);
         });
 
         it('completes upgrade when time has passed', () => {
-            addGold(200);
+            addGold(400);
             startForgeUpgrade();
             // Simulate time passing by modifying startedAt
             const upgrade = getForgeUpgradeState();
@@ -167,11 +167,11 @@ describe('state', () => {
         });
 
         it('speed up completes upgrade instantly', () => {
-            addGold(500);
-            startForgeUpgrade(); // costs 100, leaves 400
+            addGold(1000);
+            startForgeUpgrade(); // costs 200, leaves 800
             const status = getForgeUpgradeStatus();
             expect(status).not.toBeNull();
-            // Speed up costs remaining time * 1 gold/sec
+            // Speed up costs remaining time * 2 gold/sec
             const result = speedUpForgeUpgrade();
             expect(result).toBe(true);
             expect(getForgeLevel()).toBe(2);
@@ -179,7 +179,7 @@ describe('state', () => {
         });
 
         it('speed up fails when not enough gold', () => {
-            addGold(100); // just enough for upgrade cost
+            addGold(200); // just enough for upgrade cost
             startForgeUpgrade();
             const result = speedUpForgeUpgrade();
             expect(result).toBe(false);
@@ -187,7 +187,7 @@ describe('state', () => {
         });
 
         it('resets forge level and upgrade on resetGame', () => {
-            addGold(200);
+            addGold(400);
             startForgeUpgrade();
             expect(getForgeUpgradeState()).not.toBeNull();
 

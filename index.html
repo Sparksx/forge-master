@@ -371,6 +371,21 @@
         </div>
     </div>
 
+    <!-- Admin Panel (visible only for admin user) -->
+    <button class="admin-fab hidden" id="admin-fab" aria-label="Open admin panel">ADM</button>
+    <div class="modal admin-modal" id="admin-modal" role="dialog" aria-label="Admin panel" aria-modal="true">
+        <div class="modal-content admin-modal-content">
+            <h2>Admin Panel</h2>
+            <div class="admin-actions">
+                <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-10k">+10K Gold</button>
+                <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-100k">+100K Gold</button>
+                <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-1m">+1M Gold</button>
+                <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-10m">+10M Gold</button>
+                <button class="btn admin-btn admin-btn-reset" id="admin-reset">Reset Progression</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 

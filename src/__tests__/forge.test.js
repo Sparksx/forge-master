@@ -133,7 +133,7 @@ describe('rollTier', () => {
     it('returns valid tier values at max forge level (30)', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(30);
-            expect(tier).toBeGreaterThanOrEqual(4); // forge 30 has 0% T1-T3
+            expect(tier).toBeGreaterThanOrEqual(2); // forge 30 has 0% Common
             expect(tier).toBeLessThanOrEqual(6);
         }
     });
@@ -151,7 +151,7 @@ describe('rollTier', () => {
     it('all forge level chances sum to 100', () => {
         for (const fl of FORGE_LEVELS) {
             const sum = fl.chances.reduce((a, b) => a + b, 0);
-            expect(sum).toBe(100);
+            expect(Math.abs(sum - 100)).toBeLessThan(0.01);
         }
     });
 

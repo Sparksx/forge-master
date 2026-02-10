@@ -29,8 +29,8 @@ const SUB_NAMES = ['Scout', 'Grunt', 'Fighter', 'Warrior', 'Veteran', 'Elite', '
 const BASE_MONSTER_ATTACK_SPEED = 2000;
 
 // Difficulty multipliers applied on top of the stat curve
-const HP_MULTIPLIER = 2.0;
-const DMG_MULTIPLIER = 1.5;
+const HP_MULTIPLIER = 2.5;
+const DMG_MULTIPLIER = 1.8;
 
 /**
  * How many monsters in a sub-wave:
@@ -60,7 +60,7 @@ export function getMonsterForWave(wave, subWave) {
     const stage = (wave - 1) * SUB_WAVE_COUNT + subWave; // 1-100
 
     // Effective level grows as a power curve of stage
-    const effLevel = 3 + 1.2 * Math.pow(stage, 1.48);
+    const effLevel = 3 + 1.5 * Math.pow(stage, 1.55);
 
     // Use same stat formula as items: perLevel × effLevel^GROWTH_EXPONENT × multiplier
     const hp = Math.max(30, Math.floor(HEALTH_PER_LEVEL * Math.pow(effLevel, GROWTH_EXPONENT) * HP_MULTIPLIER));
