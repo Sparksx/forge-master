@@ -17,7 +17,8 @@ const {
     getEquipment, getGold, equipItem, sellForgedItem, setForgedItem, getForgedItem,
     saveGame, loadGame, resetGame, getForgeLevel, getSellValue, getForgeUpgradeCost,
     upgradeForge, startForgeUpgrade, getForgeUpgradeStatus, getForgeUpgradeState,
-    speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold, getHighestLevelForTier
+    speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold, getHighestLevelForTier,
+    getHighestLevelForSlot, trackForgedLevel
 } = await import('../state.js');
 const { createItem, calculateItemStats, forgeEquipment } = await import('../forge.js');
 const { INITIAL_LEVEL_MAX, LEVEL_RANGE, MAX_LEVEL } = await import('../config.js');
@@ -223,6 +224,41 @@ describe('state', () => {
         });
     });
 
+    describe('getHighestLevelForSlot (per-slot forge tracker)', () => {
+        it('returns null when no item of that slot+tier has been forged', () => {
+            expect(getHighestLevelForSlot('hat', 1)).toBeNull();
+        });
+
+        it('tracks the highest level forged per slot and tier', () => {
+            trackForgedLevel('hat', 1, 20);
+            trackForgedLevel('hat', 1, 35);
+            trackForgedLevel('hat', 1, 10); // lower, should not replace
+            expect(getHighestLevelForSlot('hat', 1)).toBe(35);
+        });
+
+        it('tracks independently per slot', () => {
+            trackForgedLevel('hat', 1, 50);
+            trackForgedLevel('weapon', 1, 20);
+            expect(getHighestLevelForSlot('hat', 1)).toBe(50);
+            expect(getHighestLevelForSlot('weapon', 1)).toBe(20);
+        });
+
+        it('tracks independently per tier', () => {
+            trackForgedLevel('hat', 1, 80);
+            trackForgedLevel('hat', 2, 10);
+            expect(getHighestLevelForSlot('hat', 1)).toBe(80);
+            expect(getHighestLevelForSlot('hat', 2)).toBe(10);
+            expect(getHighestLevelForSlot('hat', 3)).toBeNull();
+        });
+
+        it('resets on resetGame', () => {
+            trackForgedLevel('hat', 1, 50);
+            expect(getHighestLevelForSlot('hat', 1)).toBe(50);
+            resetGame();
+            expect(getHighestLevelForSlot('hat', 1)).toBeNull();
+        });
+    });
+
     describe('loadGame', () => {
         it('loads valid save data with tier and bonuses', () => {
             const saveData = JSON.stringify({
@@ -356,38 +392,44 @@ describe('state', () => {
     });
 
     describe('forgeEquipment level calculation', () => {
-        it('uses initial level range when no item of the rolled tier is equipped', () => {
-            // Equip a high-level tier 1 item
-            equipItem(createItem('hat', 90, 1));
+        it('uses initial level range when no item of that slot+tier has been forged', () => {
+            // Track a high-level tier 1 hat
+            trackForgedLevel('hat', 1, 90);
 
-            // Forge many items — any item with a tier != 1 should use initial range
+            // Forge many items — items of a different type or tier should use initial range
             for (let i = 0; i < 50; i++) {
                 const item = forgeEquipment();
-                if (item.tier !== 1) {
-                    expect(item.level).toBeGreaterThanOrEqual(1);
-                    expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                if (item.tier !== 1 || item.type !== 'hat') {
+                    // If this specific (type,tier) hasn't been forged before, it should
+                    // use initial range OR use its own tracker (from previous iterations)
+                    const tracked = getHighestLevelForSlot(item.type, item.tier);
+                    if (tracked === null) {
+                        expect(item.level).toBeGreaterThanOrEqual(1);
+                        expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                    }
                 }
             }
         });
 
-        it('uses highest level of same tier for level range', () => {
-            // Equip items of specific tiers at known levels
-            equipItem(createItem('hat', 50, 1));
-            equipItem(createItem('armor', 80, 1));
-            equipItem(createItem('weapon', 30, 2));
+        it('uses per-slot tracker for level range', () => {
+            // Set up tracked levels for specific slots
+            trackForgedLevel('hat', 1, 80);
+            trackForgedLevel('weapon', 1, 30);
 
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 200; i++) {
                 const item = forgeEquipment();
-                if (item.tier === 1) {
-                    // Should be based on highest tier 1 level (80), so range [70, 90]
-                    const minExpected = Math.max(1, 80 - LEVEL_RANGE);
-                    const maxExpected = Math.min(MAX_LEVEL, 80 + LEVEL_RANGE);
+                if (item.tier === 1 && item.type === 'hat') {
+                    // Should be based on hat tier 1 tracker (80), so range [70, 90]
+                    const tracked = getHighestLevelForSlot('hat', 1);
+                    const minExpected = Math.max(1, tracked - LEVEL_RANGE);
+                    const maxExpected = Math.min(MAX_LEVEL, tracked + LEVEL_RANGE);
                     expect(item.level).toBeGreaterThanOrEqual(minExpected);
                     expect(item.level).toBeLessThanOrEqual(maxExpected);
-                } else if (item.tier === 2) {
-                    // Should be based on highest tier 2 level (30), so range [20, 40]
-                    const minExpected = Math.max(1, 30 - LEVEL_RANGE);
-                    const maxExpected = Math.min(MAX_LEVEL, 30 + LEVEL_RANGE);
+                } else if (item.tier === 1 && item.type === 'weapon') {
+                    // Should be based on weapon tier 1 tracker (30), so range [20, 40]
+                    const tracked = getHighestLevelForSlot('weapon', 1);
+                    const minExpected = Math.max(1, tracked - LEVEL_RANGE);
+                    const maxExpected = Math.min(MAX_LEVEL, tracked + LEVEL_RANGE);
                     expect(item.level).toBeGreaterThanOrEqual(minExpected);
                     expect(item.level).toBeLessThanOrEqual(maxExpected);
                 }
@@ -395,14 +437,35 @@ describe('state', () => {
         });
 
         it('does not inherit level from different tier', () => {
-            // Equip only a high-level tier 1 item
-            equipItem(createItem('hat', 95, 1));
+            // Track only a high-level tier 1 hat
+            trackForgedLevel('hat', 1, 95);
 
             // All items of other tiers should start at initial range, not near 95
             for (let i = 0; i < 50; i++) {
                 const item = forgeEquipment();
                 if (item.tier > 1) {
-                    expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                    const tracked = getHighestLevelForSlot(item.type, item.tier);
+                    if (tracked === null) {
+                        expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                    }
+                }
+            }
+        });
+
+        it('each slot progresses independently through levels per tier', () => {
+            // Track hat at level 90 tier 1, weapon should still start low
+            trackForgedLevel('hat', 1, 90);
+            // weapon tier 1 has no tracking
+
+            for (let i = 0; i < 50; i++) {
+                const item = forgeEquipment();
+                if (item.tier === 1 && item.type === 'weapon') {
+                    const tracked = getHighestLevelForSlot('weapon', 1);
+                    if (tracked === null) {
+                        // First weapon forge should be in initial range
+                        expect(item.level).toBeLessThanOrEqual(INITIAL_LEVEL_MAX);
+                        break; // only need to verify once
+                    }
                 }
             }
         });

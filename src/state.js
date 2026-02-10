@@ -76,12 +76,19 @@ export function xpRequiredForLevel(level) {
     return Math.floor(BASE_XP_PER_LEVEL * Math.pow(level, XP_GROWTH));
 }
 
+function createEmptyForgeTracker() {
+    const tracker = {};
+    EQUIPMENT_TYPES.forEach(type => { tracker[type] = {}; });
+    return tracker;
+}
+
 const gameState = {
     equipment: createEmptyEquipment(),
     forgedItem: null,
     gold: 0,
     forgeLevel: 1,
     forgeUpgrade: null, // { targetLevel, startedAt, duration } or null
+    forgeHighestLevel: createEmptyForgeTracker(), // { [type]: { [tier]: maxLevel } }
     combat: {
         currentWave: 1,
         currentSubWave: 1,
@@ -100,6 +107,7 @@ export function resetGame() {
     gameState.gold = 0;
     gameState.forgeLevel = 1;
     gameState.forgeUpgrade = null;
+    gameState.forgeHighestLevel = createEmptyForgeTracker();
     gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
     gameState.player = { level: 1, xp: 0 };
 }
@@ -159,6 +167,22 @@ export function getHighestLevelForTier(tier) {
         }
     });
     return highest;
+}
+
+export function getHighestLevelForSlot(type, tier) {
+    const tierStr = String(tier);
+    return gameState.forgeHighestLevel[type]?.[tierStr] ?? null;
+}
+
+export function trackForgedLevel(type, tier, level) {
+    const tierStr = String(tier);
+    if (!gameState.forgeHighestLevel[type]) {
+        gameState.forgeHighestLevel[type] = {};
+    }
+    const current = gameState.forgeHighestLevel[type][tierStr] ?? 0;
+    if (level > current) {
+        gameState.forgeHighestLevel[type][tierStr] = level;
+    }
 }
 
 export function getForgedItem() {
@@ -331,6 +355,7 @@ export function saveGame() {
             equipment: gameState.equipment,
             gold: gameState.gold,
             forgeLevel: gameState.forgeLevel,
+            forgeHighestLevel: gameState.forgeHighestLevel,
             combat: gameState.combat,
             player: gameState.player,
         };
@@ -355,6 +380,7 @@ async function saveToServer() {
             equipment: gameState.equipment,
             gold: gameState.gold,
             forgeLevel: gameState.forgeLevel,
+            forgeHighestLevel: gameState.forgeHighestLevel,
             forgeUpgrade: gameState.forgeUpgrade || null,
             combat: gameState.combat,
             player: gameState.player,
@@ -388,6 +414,20 @@ function applyLoadedData(loaded) {
 
     if (typeof loaded.forgeLevel === 'number' && loaded.forgeLevel >= 1 && loaded.forgeLevel <= MAX_FORGE_LEVEL) {
         gameState.forgeLevel = Math.floor(loaded.forgeLevel);
+    }
+
+    // Restore per-slot forge level tracker
+    if (loaded.forgeHighestLevel && typeof loaded.forgeHighestLevel === 'object') {
+        EQUIPMENT_TYPES.forEach(type => {
+            if (loaded.forgeHighestLevel[type] && typeof loaded.forgeHighestLevel[type] === 'object') {
+                gameState.forgeHighestLevel[type] = {};
+                for (const [tier, level] of Object.entries(loaded.forgeHighestLevel[type])) {
+                    if (typeof level === 'number' && level >= 1 && level <= MAX_LEVEL) {
+                        gameState.forgeHighestLevel[type][tier] = Math.floor(level);
+                    }
+                }
+            }
+        });
     }
 
     // Restore combat progress
