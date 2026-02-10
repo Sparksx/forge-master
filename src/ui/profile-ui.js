@@ -1,5 +1,10 @@
-import { BONUS_STATS, BONUS_STAT_KEYS } from '../config.js';
-import { getForgeLevel } from '../state.js';
+import { BONUS_STATS, BONUS_STAT_KEYS, PROFILE_PICTURES, USERNAME_CHANGE_COST } from '../config.js';
+import {
+    getForgeLevel, getPlayerLevel, getPlayerXP, getXPToNextLevel,
+    getProfilePicture, setProfilePicture, getProfileEmoji,
+    getGold, addGold, getLevelReward,
+} from '../state.js';
+import { apiFetch } from '../api.js';
 import { createElement, formatNumber } from './helpers.js';
 
 // Lazy import to break circular dependency with forge-ui
@@ -30,16 +35,69 @@ export function renderProfileContent(user, onLogout) {
     });
     info.appendChild(closeBtn);
 
-    // Player info section
+    // --- Avatar & Level header ---
+    const profileHeader = createElement('div', 'profile-header-section');
+    const avatarEmoji = getProfileEmoji();
+    const avatarDisplay = createElement('div', 'profile-avatar-display', avatarEmoji);
+    profileHeader.appendChild(avatarDisplay);
+
+    const levelBadge = createElement('div', 'profile-level-badge', `Lv. ${getPlayerLevel()}`);
+    profileHeader.appendChild(levelBadge);
+
+    info.appendChild(profileHeader);
+
+    // --- XP Progress Bar ---
+    const xpSection = createElement('div', 'profile-xp-section');
+
+    const playerLevel = getPlayerLevel();
+    const xpCurrent = getPlayerXP();
+    const xpNeeded = getXPToNextLevel();
+    const pct = xpNeeded > 0 ? Math.min(100, (xpCurrent / xpNeeded) * 100) : 100;
+
+    const xpBarContainer = createElement('div', 'profile-xp-bar');
+    const xpBarFill = createElement('div', 'profile-xp-fill');
+    xpBarFill.style.width = `${pct}%`;
+    xpBarContainer.appendChild(xpBarFill);
+    xpSection.appendChild(xpBarContainer);
+
+    const xpLabel = createElement('div', 'profile-xp-label');
+    if (xpNeeded > 0) {
+        xpLabel.textContent = `${formatNumber(xpCurrent)} / ${formatNumber(xpNeeded)} XP`;
+    } else {
+        xpLabel.textContent = 'Max Level!';
+    }
+    xpSection.appendChild(xpLabel);
+
+    // Next reward preview
+    if (playerLevel < 100) {
+        const nextReward = getLevelReward(playerLevel + 1);
+        const rewardLabel = createElement('div', 'profile-next-reward');
+        const prefix = nextReward.isMilestone ? '\uD83C\uDF1F' : '\u2B50';
+        rewardLabel.textContent = `${prefix} Next: Lv.${playerLevel + 1} \u2192 +${formatNumber(nextReward.gold)}g`;
+        if (nextReward.isMilestone) rewardLabel.classList.add('profile-milestone-reward');
+        xpSection.appendChild(rewardLabel);
+    }
+
+    info.appendChild(xpSection);
+
+    // --- Account section with username change ---
     if (currentUser) {
         const infoSection = createElement('div', 'profile-section');
         infoSection.appendChild(createElement('div', 'profile-section-title', 'Account'));
 
+        // Username row with change button
         const nameRow = createElement('div', 'profile-info-row');
-        nameRow.append(
-            createElement('span', 'profile-info-label', 'Username'),
-            createElement('span', 'profile-info-value', currentUser.username || 'Unknown')
-        );
+        nameRow.appendChild(createElement('span', 'profile-info-label', 'Username'));
+        const nameRight = createElement('div', 'profile-name-right');
+        nameRight.appendChild(createElement('span', 'profile-info-value', currentUser.username || 'Unknown'));
+
+        const changeNameBtn = createElement('button', 'profile-change-name-btn', `\u270F\uFE0F ${formatNumber(USERNAME_CHANGE_COST)}g`);
+        changeNameBtn.title = `Change username (${formatNumber(USERNAME_CHANGE_COST)} gold)`;
+        changeNameBtn.addEventListener('click', () => {
+            showUsernameChangeUI(info, currentUser);
+        });
+        nameRight.appendChild(changeNameBtn);
+        nameRow.appendChild(nameRight);
         infoSection.appendChild(nameRow);
 
         if (currentUser.email) {
@@ -54,7 +112,36 @@ export function renderProfileContent(user, onLogout) {
         info.appendChild(infoSection);
     }
 
-    // Stats section
+    // --- Avatar Picker ---
+    const avatarSection = createElement('div', 'profile-section');
+    avatarSection.appendChild(createElement('div', 'profile-section-title', 'Profile Picture'));
+
+    const avatarGrid = createElement('div', 'profile-avatar-grid');
+    const currentPicId = getProfilePicture();
+
+    PROFILE_PICTURES.forEach(pic => {
+        const avatarOption = createElement('button', 'profile-avatar-option', pic.emoji);
+        avatarOption.title = pic.label;
+        avatarOption.dataset.id = pic.id;
+        if (pic.id === currentPicId) {
+            avatarOption.classList.add('profile-avatar-selected');
+        }
+        avatarOption.addEventListener('click', () => {
+            setProfilePicture(pic.id);
+            // Update selection visually
+            avatarGrid.querySelectorAll('.profile-avatar-option').forEach(el => {
+                el.classList.remove('profile-avatar-selected');
+            });
+            avatarOption.classList.add('profile-avatar-selected');
+            avatarDisplay.textContent = pic.emoji;
+        });
+        avatarGrid.appendChild(avatarOption);
+    });
+
+    avatarSection.appendChild(avatarGrid);
+    info.appendChild(avatarSection);
+
+    // --- Stats section ---
     const statsSection = createElement('div', 'profile-section');
     statsSection.appendChild(createElement('div', 'profile-section-title', 'Stats'));
 
@@ -92,7 +179,7 @@ export function renderProfileContent(user, onLogout) {
     statsSection.appendChild(statsGrid);
     info.appendChild(statsSection);
 
-    // Bonus stats section
+    // --- Bonus stats section ---
     const bonuses = cachedStats.bonuses || {};
     const hasAnyBonus = BONUS_STAT_KEYS.some(key => bonuses[key] > 0);
     if (hasAnyBonus) {
@@ -109,7 +196,7 @@ export function renderProfileContent(user, onLogout) {
         info.appendChild(bonusSection);
     }
 
-    // Logout button
+    // --- Logout button ---
     if (currentLogout) {
         const logoutBtn = createElement('button', 'profile-logout-btn', 'Logout');
         logoutBtn.addEventListener('click', () => {
@@ -118,4 +205,97 @@ export function renderProfileContent(user, onLogout) {
         });
         info.appendChild(logoutBtn);
     }
+}
+
+function showUsernameChangeUI(container, currentUser) {
+    // Check gold
+    if (getGold() < USERNAME_CHANGE_COST) {
+        const existingError = container.querySelector('.profile-rename-error-msg');
+        if (existingError) existingError.remove();
+        const error = createElement('div', 'profile-rename-error-msg', `Not enough gold! Need ${formatNumber(USERNAME_CHANGE_COST)}g`);
+        container.insertBefore(error, container.querySelector('.profile-header-section'));
+        setTimeout(() => error.remove(), 3000);
+        return;
+    }
+
+    // Check if already showing
+    if (container.querySelector('.profile-rename-overlay')) return;
+
+    const overlay = createElement('div', 'profile-rename-overlay');
+
+    overlay.appendChild(createElement('div', 'profile-rename-title', 'Change Username'));
+    overlay.appendChild(createElement('div', 'profile-rename-cost', `Cost: ${formatNumber(USERNAME_CHANGE_COST)}g`));
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'profile-rename-input';
+    input.placeholder = 'New username (3-30 chars)';
+    input.maxLength = 30;
+    input.minLength = 3;
+    input.value = currentUser.username;
+    overlay.appendChild(input);
+
+    const errorEl = createElement('div', 'profile-rename-error', '');
+    overlay.appendChild(errorEl);
+
+    const btnRow = createElement('div', 'profile-rename-buttons');
+
+    const cancelBtn = createElement('button', 'btn profile-rename-cancel', 'Cancel');
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    const confirmBtn = createElement('button', 'btn profile-rename-confirm', 'Confirm');
+    confirmBtn.addEventListener('click', async () => {
+        const newName = input.value.trim();
+        if (newName.length < 3 || newName.length > 30) {
+            errorEl.textContent = 'Username must be 3-30 characters';
+            return;
+        }
+        if (newName === currentUser.username) {
+            errorEl.textContent = 'Same as current username';
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '...';
+
+        try {
+            const res = await apiFetch('/api/auth/change-username', {
+                method: 'POST',
+                body: { username: newName },
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                errorEl.textContent = data.error || 'Failed to change username';
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm';
+                return;
+            }
+
+            // Success: deduct gold and update UI
+            addGold(-USERNAME_CHANGE_COST);
+            currentUser.username = newName;
+            showProfileModal._user = currentUser;
+            overlay.remove();
+            renderProfileContent();
+        } catch (err) {
+            errorEl.textContent = 'Network error';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm';
+        }
+    });
+
+    btnRow.append(cancelBtn, confirmBtn);
+    overlay.appendChild(btnRow);
+
+    // Insert after close button
+    const firstSection = container.querySelector('.profile-header-section');
+    if (firstSection) {
+        container.insertBefore(overlay, firstSection);
+    } else {
+        container.appendChild(overlay);
+    }
+
+    input.focus();
+    input.select();
 }

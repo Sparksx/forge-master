@@ -8,7 +8,7 @@ import {
     equipItem, sellForgedItem, getSellValue, getForgeLevel,
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
-    getPlayerLevel,
+    getPlayerLevel, getPlayerXP, getXPToNextLevel,
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
 import { createElement, formatNumber, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
@@ -56,6 +56,15 @@ export function updateStats() {
 
     const headerLevel = document.getElementById('header-level-value');
     if (headerLevel) headerLevel.textContent = getPlayerLevel();
+
+    // Update header XP bar
+    const xpFill = document.getElementById('header-xp-fill');
+    if (xpFill) {
+        const xpNeeded = getXPToNextLevel();
+        const xpCurrent = getPlayerXP();
+        const pct = xpNeeded > 0 ? Math.min(100, (xpCurrent / xpNeeded) * 100) : 100;
+        xpFill.style.width = `${pct}%`;
+    }
 
     document.getElementById('gold-amount').textContent = formatNumber(getGold());
 

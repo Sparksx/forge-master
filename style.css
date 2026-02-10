@@ -1876,6 +1876,9 @@ h1 {
 }
 
 .chat-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     padding: 8px 12px;
@@ -2292,4 +2295,312 @@ h1 {
 
 .admin-btn-reset:hover {
     background: #b71c1c;
+}
+
+/* =============================================
+   HEADER XP PROGRESS BAR
+   ============================================= */
+
+.header-level {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    flex-wrap: wrap;
+    min-width: 48px;
+}
+
+.header-level-label {
+    font-size: clamp(0.75em, 1.1vw, 0.9em);
+    font-weight: 600;
+    color: #888;
+}
+
+.header-level-value {
+    font-size: clamp(1.1em, 1.8vw, 1.4em);
+    font-weight: 900;
+    color: #333;
+}
+
+.header-xp-bar {
+    width: 100%;
+    height: 3px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: -2px;
+}
+
+.header-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f0c040, #ff8c00);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+/* =============================================
+   PROFILE HEADER (Avatar + Level)
+   ============================================= */
+
+.profile-header-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.profile-avatar-display {
+    font-size: 3em;
+    line-height: 1;
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 50%;
+    border: 3px solid #f0c040;
+}
+
+.profile-level-badge {
+    font-size: 1.1em;
+    font-weight: 900;
+    color: #f0c040;
+    background: #333;
+    padding: 2px 12px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================
+   PROFILE XP BAR
+   ============================================= */
+
+.profile-xp-section {
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.profile-xp-bar {
+    width: 100%;
+    height: 10px;
+    background: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.profile-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f0c040, #ff8c00);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+}
+
+.profile-xp-label {
+    font-size: 0.8em;
+    color: #888;
+    font-weight: 600;
+}
+
+.profile-next-reward {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.profile-milestone-reward {
+    color: #f0c040;
+    font-weight: 700;
+}
+
+/* =============================================
+   PROFILE AVATAR PICKER
+   ============================================= */
+
+.profile-avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.profile-avatar-option {
+    font-size: 1.8em;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border: 2px solid #e0e0e0;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    margin: 0 auto;
+}
+
+.profile-avatar-option:hover {
+    transform: scale(1.1);
+    border-color: #aaa;
+}
+
+.profile-avatar-option.profile-avatar-selected {
+    border-color: #f0c040;
+    background: #fff8e1;
+    box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.3);
+}
+
+/* =============================================
+   PROFILE USERNAME CHANGE
+   ============================================= */
+
+.profile-name-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-change-name-btn {
+    padding: 3px 8px;
+    font-size: 0.75em;
+    font-weight: 600;
+    background: #f5f5f5;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #666;
+    transition: background 0.2s;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.profile-change-name-btn:hover {
+    background: #e0e0e0;
+}
+
+.profile-rename-overlay {
+    background: #fff;
+    border: 2px solid #f0c040;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    animation: slideIn 0.2s ease-out;
+}
+
+.profile-rename-title {
+    font-weight: 700;
+    font-size: 1em;
+    color: #333;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.profile-rename-cost {
+    font-size: 0.85em;
+    color: #d4a017;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.profile-rename-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 1em;
+    margin-bottom: 4px;
+    outline: none;
+}
+
+.profile-rename-input:focus {
+    border-color: #f0c040;
+}
+
+.profile-rename-error {
+    color: #ff4444;
+    font-size: 0.8em;
+    min-height: 1.2em;
+    margin-bottom: 4px;
+}
+
+.profile-rename-error-msg {
+    color: #ff4444;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: center;
+    padding: 8px;
+    background: #fff0f0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    animation: slideIn 0.2s ease-out;
+}
+
+.profile-rename-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.profile-rename-cancel {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.profile-rename-cancel:hover {
+    background: #d0d0d0;
+}
+
+.profile-rename-confirm {
+    background: #f0c040;
+    color: #1a1a2e;
+}
+
+.profile-rename-confirm:hover {
+    background: #ffd700;
+}
+
+/* =============================================
+   CHAT AVATAR
+   ============================================= */
+
+.chat-avatar {
+    font-size: 1.4em;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+
+.chat-msg-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-msg-own .chat-avatar {
+    order: 1;
+}
+
+.chat-msg-own .chat-msg-body {
+    text-align: right;
+}
+
+/* =============================================
+   LEVEL-UP TOAST
+   ============================================= */
+
+.toast-level {
+    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    color: #1a1a2e;
+    font-weight: 700;
+}
+
+.toast-level-milestone {
+    background: linear-gradient(135deg, #ffd700, #ff6b00);
+    color: #1a1a2e;
+    font-weight: 800;
+    font-size: clamp(0.9em, 1.3vw, 1.1em) !important;
 }

@@ -4,6 +4,8 @@
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
+import { getProfileEmoji } from './state.js';
+import { PROFILE_PICTURES } from './config.js';
 
 let chatOpen = false;
 let recentMessages = []; // Keep last messages for preview
@@ -94,6 +96,19 @@ function sendMessage() {
     input.focus();
 }
 
+function getAvatarEmoji(msg) {
+    const user = getCurrentUser();
+    if (user && msg.senderId === user.id) {
+        return getProfileEmoji();
+    }
+    // Use avatar from server message data, fallback to wizard
+    if (msg.senderAvatar) {
+        const pic = PROFILE_PICTURES.find(p => p.id === msg.senderAvatar);
+        if (pic) return pic.emoji;
+    }
+    return '\uD83E\uDDD9';
+}
+
 function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
@@ -104,11 +119,15 @@ function appendMessage(msg) {
     const el = document.createElement('div');
     el.className = `chat-msg ${isOwn ? 'chat-msg-own' : ''}`;
 
+    const avatar = getAvatarEmoji(msg);
     const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    el.innerHTML = `<span class="chat-sender">${escapeHtml(msg.sender)}</span>` +
+    el.innerHTML = `<span class="chat-avatar">${avatar}</span>` +
+        `<div class="chat-msg-body">` +
+        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>` +
         `<span class="chat-time">${time}</span>` +
-        `<div class="chat-text">${escapeHtml(msg.content)}</div>`;
+        `<div class="chat-text">${escapeHtml(msg.content)}</div>` +
+        `</div>`;
 
     container.appendChild(el);
 }
