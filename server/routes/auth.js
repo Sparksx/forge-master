@@ -263,4 +263,24 @@ router.post('/change-username', requireAuth, [
     }
 });
 
+// PUT /api/auth/profile-picture — update avatar
+router.put('/profile-picture', requireAuth, async (req, res) => {
+    const { profilePicture } = req.body;
+
+    if (typeof profilePicture !== 'string' || profilePicture.length < 1 || profilePicture.length > 30) {
+        return res.status(400).json({ error: 'Invalid profile picture' });
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { profilePicture },
+        });
+        res.json({ message: 'Profile picture updated', profilePicture });
+    } catch (err) {
+        console.error('Profile picture error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;

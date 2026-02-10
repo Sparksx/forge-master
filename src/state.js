@@ -190,6 +190,13 @@ export function setProfilePicture(pictureId) {
     gameState.player.profilePicture = pictureId;
     saveGame();
     gameEvents.emit(EVENTS.STATE_CHANGED);
+    // Persist to server
+    if (getAccessToken()) {
+        apiFetch('/api/auth/profile-picture', {
+            method: 'PUT',
+            body: { profilePicture: pictureId },
+        }).catch(() => {});
+    }
     return true;
 }
 

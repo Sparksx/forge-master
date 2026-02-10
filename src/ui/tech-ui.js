@@ -11,7 +11,7 @@ import {
 } from '../research.js';
 import { getResearchTime } from '../tech-config.js';
 import { getResearchState } from '../state.js';
-import { createElement, formatNumber, formatTime } from './helpers.js';
+import { createElement, formatNumber, formatCompact, formatTime } from './helpers.js';
 
 let selectedBranch = 'forge';
 let techTimerInterval = null;
@@ -161,16 +161,25 @@ function buildTechCard(tech) {
     nameCol.appendChild(createElement('div', 'tech-card-desc', tech.description));
     headerRow.appendChild(nameCol);
 
-    // Level dots
-    const levelDots = createElement('div', 'tech-card-dots');
-    for (let i = 1; i <= tech.maxLevel; i++) {
-        const dot = createElement('span', 'tech-dot');
-        if (i <= currentLevel) dot.classList.add('tech-dot-filled');
-        levelDots.appendChild(dot);
+    // Level indicator
+    const levelCol = createElement('div', 'tech-card-level-col');
+    if (tech.maxLevel <= 10) {
+        const levelDots = createElement('div', 'tech-card-dots');
+        for (let i = 1; i <= tech.maxLevel; i++) {
+            const dot = createElement('span', 'tech-dot');
+            if (i <= currentLevel) dot.classList.add('tech-dot-filled');
+            levelDots.appendChild(dot);
+        }
+        levelCol.appendChild(levelDots);
+    } else {
+        const progressBar = createElement('div', 'tech-level-bar');
+        const progressFill = createElement('div', 'tech-level-fill');
+        const pct = tech.maxLevel > 0 ? (currentLevel / tech.maxLevel) * 100 : 0;
+        progressFill.style.width = `${pct}%`;
+        progressBar.appendChild(progressFill);
+        levelCol.appendChild(progressBar);
     }
     const levelLabel = createElement('span', 'tech-card-level', `${currentLevel}/${tech.maxLevel}`);
-    const levelCol = createElement('div', 'tech-card-level-col');
-    levelCol.appendChild(levelDots);
     levelCol.appendChild(levelLabel);
     headerRow.appendChild(levelCol);
 
@@ -250,9 +259,7 @@ function buildRequiresText(tech) {
     };
 
     if (tech.altRequires) {
-        const main = addReqParts(tech.requires);
-        const alt = addReqParts(tech.altRequires);
-        parts.push(`${main.join(' + ')} ou ${alt.join(' + ')}`);
+        parts.push('1 maîtrise Niv.5');
     } else {
         parts.push(...addReqParts(tech.requires));
     }
@@ -305,5 +312,5 @@ function updateResearchTimerDisplay() {
 
 export function updateEssenceDisplay() {
     const el = document.getElementById('essence-amount');
-    if (el) el.textContent = formatNumber(getEssence());
+    if (el) el.textContent = formatCompact(getEssence());
 }

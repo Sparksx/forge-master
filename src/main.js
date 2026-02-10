@@ -1,6 +1,6 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
 import { forgeEquipment } from './forge.js';
 import { initResearch } from './research.js';
 import { initTechUI, renderTechTree, updateEssenceDisplay } from './ui/tech-ui.js';
@@ -116,6 +116,11 @@ async function startGame() {
     // Load game state from server if authenticated, otherwise localStorage
     if (getAccessToken()) {
         await loadGameFromServer();
+        // Sync avatar from user profile (stored on User model, not GameState)
+        const user = getCurrentUser();
+        if (user && user.profilePicture) {
+            setProfilePicture(user.profilePicture);
+        }
     } else {
         loadGame();
     }

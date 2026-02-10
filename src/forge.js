@@ -76,10 +76,22 @@ export function rollTier(forgeLevel) {
     return 1;
 }
 
+// Map each equipment slot to its mastery tech effect type
+const SLOT_MASTERY_MAP = {
+    hat: 'hatMastery',
+    armor: 'armorMastery',
+    belt: 'beltMastery',
+    boots: 'bootsMastery',
+    gloves: 'glovesMastery',
+    necklace: 'necklaceMastery',
+    ring: 'ringMastery',
+    weapon: 'weaponMastery',
+};
+
 /** Get effective max level for a given equipment type, considering tech bonuses */
 export function getEffectiveMaxLevel(type) {
-    const isHealth = HEALTH_ITEMS.includes(type);
-    const bonus = isHealth ? getTechEffect('armorMastery') : getTechEffect('weaponMastery');
+    const masteryEffect = SLOT_MASTERY_MAP[type];
+    const bonus = masteryEffect ? getTechEffect(masteryEffect) : 0;
     return MAX_LEVEL + bonus;
 }
 

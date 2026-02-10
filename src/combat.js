@@ -53,12 +53,14 @@ function getPlayerStats() {
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
 
     // Tech bonuses
-    const vitalityPct = getTechEffect('vitality');       // +10% base health per level
-    const strengthPct = getTechEffect('strength');         // +10% base damage per level
-    const swiftPct = getTechEffect('swiftStrikes');        // +5% attack speed per level
+    const vitalityPct = getTechEffect('vitality');       // +2% total health per level
+    const strengthPct = getTechEffect('strength');         // +2% total damage per level
+    const swiftPct = getTechEffect('swiftStrikes');        // +3% attack speed per level
 
-    const maxHP = Math.floor((BASE_HEALTH * (1 + vitalityPct / 100)) + totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
-    const baseDmg = Math.floor((BASE_DAMAGE * (1 + strengthPct / 100)) + totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
+    const rawHP = BASE_HEALTH + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
+    const maxHP = Math.floor(rawHP * (1 + vitalityPct / 100));
+    const rawDmg = BASE_DAMAGE + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
+    const baseDmg = Math.floor(rawDmg * (1 + strengthPct / 100));
     const totalAttackSpeed = (bonuses.attackSpeed || 0) + swiftPct;
     const attackSpeed = Math.max(400, 1500 - totalAttackSpeed * 15);
 

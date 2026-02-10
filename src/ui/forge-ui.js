@@ -10,10 +10,10 @@ import {
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
     getPlayerLevel, getPlayerXP, getXPToNextLevel,
     getStudyValue, addEssence, setForgedItem, getTechLevel, getTechEffect,
-    addGold, saveGame,
+    addGold, saveGame, getProfileEmoji,
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
-import { createElement, formatNumber, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
+import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
 
 let forgeTimerInterval = null;
@@ -50,7 +50,7 @@ export function studyForgedItem() {
     if (!item) return 0;
 
     let essenceEarned = getStudyValue(item);
-    const studyBonus = getTechEffect('essenceStudy'); // +25% per level
+    const studyBonus = getTechEffect('essenceStudy'); // +2% per level
     essenceEarned = Math.floor(essenceEarned * (1 + studyBonus / 100));
 
     // Double Harvest: chance to also get gold
@@ -83,9 +83,6 @@ export function updateStats() {
 
     cachedStats = { health, damage, bonuses, power };
 
-    const headerPower = document.getElementById('header-power-value');
-    if (headerPower) headerPower.textContent = formatNumber(power);
-
     const headerLevel = document.getElementById('header-level-value');
     if (headerLevel) headerLevel.textContent = getPlayerLevel();
 
@@ -98,7 +95,11 @@ export function updateStats() {
         xpFill.style.width = `${pct}%`;
     }
 
-    document.getElementById('gold-amount').textContent = formatNumber(getGold());
+    document.getElementById('gold-amount').textContent = formatCompact(getGold());
+
+    // Update avatar in header
+    const profileBtn = document.getElementById('profile-btn');
+    if (profileBtn) profileBtn.textContent = getProfileEmoji();
 
     const profileModal = document.getElementById('profile-modal');
     if (profileModal && profileModal.classList.contains('active')) {
@@ -325,26 +326,24 @@ export function showDecisionModal(item, onClose) {
 
         const container = createElement('div', 'comparison-container');
 
-        const currentCard = createElement('div', 'item-comparison current-item clickable');
+        const currentCard = createElement('div', 'item-comparison current-item');
         currentCard.appendChild(createElement('div', 'comparison-label', 'Current'));
         currentCard.appendChild(buildItemCard(currentItem, item));
         const sellNewValue = getSellValue(item);
         const studyNewValue = getStudyValue(item);
-        currentCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellNewValue)}💰 / +${formatNumber(studyNewValue)}🔮)`));
-        currentCard.addEventListener('click', () => {
-            if (autoForge.active && autoForge.autoStudy) {
-                studyForgedItem();
-            } else {
-                sellForgedItem();
-            }
-            hideDecisionModal();
-        });
+        const keepBtns = createElement('div', 'keep-buttons');
+        const keepSellBtn = createElement('button', 'btn btn-sell btn-keep-choice', `💰 +${formatNumber(sellNewValue)}`);
+        keepSellBtn.addEventListener('click', () => { sellForgedItem(); hideDecisionModal(); });
+        const keepStudyBtn = createElement('button', 'btn btn-study btn-keep-choice', `🔮 +${formatNumber(studyNewValue)}`);
+        keepStudyBtn.addEventListener('click', () => { studyForgedItem(); hideDecisionModal(); });
+        keepBtns.append(keepSellBtn, keepStudyBtn);
+        currentCard.appendChild(keepBtns);
 
         const newCard = createElement('div', 'item-comparison new-item clickable');
         newCard.appendChild(createElement('div', 'comparison-label', 'New'));
         newCard.appendChild(buildItemCard(item, currentItem));
         const sellOldValue = getSellValue(currentItem);
-        newCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellOldValue)}💰)`));
+        newCard.appendChild(createElement('div', 'keep-label', `Equip (+${formatNumber(sellOldValue)}💰)`));
         newCard.addEventListener('click', () => {
             const forgedItem = getForgedItem();
             if (forgedItem) equipItem(forgedItem);
