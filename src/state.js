@@ -69,8 +69,8 @@ function recalculateStats(item) {
 
 // --- Player level / XP system ---
 const MAX_PLAYER_LEVEL = 100;
-const BASE_XP_PER_LEVEL = 100;
-const XP_GROWTH = 1.15;
+const BASE_XP_PER_LEVEL = 150;
+const XP_GROWTH = 1.3;
 
 export function xpRequiredForLevel(level) {
     return Math.floor(BASE_XP_PER_LEVEL * Math.pow(level, XP_GROWTH));
