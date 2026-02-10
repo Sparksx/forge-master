@@ -196,7 +196,53 @@ function initAdminPanel() {
 
     fab.classList.remove('hidden');
 
-    fab.addEventListener('click', () => {
+    // Drag & drop support for admin FAB
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let fabStartX = 0, fabStartY = 0;
+    let hasMoved = false;
+
+    function onPointerDown(e) {
+        isDragging = true;
+        hasMoved = false;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        const rect = fab.getBoundingClientRect();
+        fabStartX = rect.left;
+        fabStartY = rect.top;
+        fab.setPointerCapture(e.pointerId);
+        fab.style.transition = 'none';
+    }
+
+    function onPointerMove(e) {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+        if (!hasMoved) return;
+        const newX = Math.max(0, Math.min(window.innerWidth - 40, fabStartX + dx));
+        const newY = Math.max(0, Math.min(window.innerHeight - 40, fabStartY + dy));
+        fab.style.left = newX + 'px';
+        fab.style.top = newY + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    }
+
+    function onPointerUp(e) {
+        isDragging = false;
+        fab.style.transition = '';
+        if (hasMoved) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    fab.addEventListener('pointerdown', onPointerDown);
+    fab.addEventListener('pointermove', onPointerMove);
+    fab.addEventListener('pointerup', onPointerUp);
+
+    fab.addEventListener('click', (e) => {
+        if (hasMoved) { hasMoved = false; return; }
         document.getElementById('admin-modal').classList.add('active');
     });
 
