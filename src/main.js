@@ -1,6 +1,6 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem, addXP } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame } from './state.js';
 import { forgeEquipment } from './forge.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
@@ -11,7 +11,7 @@ import {
 } from './ui.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
-import { startCombat, refreshPlayerStats } from './combat.js';
+import { startCombat, stopCombat, refreshPlayerStats } from './combat.js';
 import { initAuth, setAuthSuccessCallback, getCurrentUser, performLogout } from './auth.js';
 import { connectSocket } from './socket-client.js';
 import { initChat, refreshChatSocket } from './chat.js';
@@ -168,6 +168,55 @@ async function startGame() {
     connectSocket();
     initChat();
     initPvp();
+
+    // Admin panel (only for username "Sparks")
+    initAdminPanel();
+}
+
+const ADMIN_USERNAME = 'Sparks';
+
+function initAdminPanel() {
+    const user = getCurrentUser();
+    const fab = document.getElementById('admin-fab');
+    if (!fab) return;
+
+    if (!user || user.username !== ADMIN_USERNAME) {
+        fab.classList.add('hidden');
+        return;
+    }
+
+    fab.classList.remove('hidden');
+
+    fab.addEventListener('click', () => {
+        document.getElementById('admin-modal').classList.add('active');
+    });
+
+    document.getElementById('admin-add-gold-10k').addEventListener('click', () => {
+        addGold(10_000);
+    });
+
+    document.getElementById('admin-add-gold-100k').addEventListener('click', () => {
+        addGold(100_000);
+    });
+
+    document.getElementById('admin-add-gold-1m').addEventListener('click', () => {
+        addGold(1_000_000);
+    });
+
+    document.getElementById('admin-add-gold-10m').addEventListener('click', () => {
+        addGold(10_000_000);
+    });
+
+    document.getElementById('admin-reset').addEventListener('click', () => {
+        if (!confirm('Reset all progression? This cannot be undone.')) return;
+        stopCombat();
+        resetGame();
+        saveGame();
+        updateUI();
+        updateWaveDisplay();
+        startCombat();
+        document.getElementById('admin-modal').classList.remove('active');
+    });
 }
 
 // Wire DOM interactions
