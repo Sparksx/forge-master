@@ -15,6 +15,20 @@ export function formatNumber(n) {
     return n.toLocaleString('en-US');
 }
 
+export function formatCompact(n) {
+    if (n < 1000) return String(n);
+    if (n < 1_000_000) {
+        const k = n / 1000;
+        return k >= 100 ? `${Math.floor(k)}k` : `${+k.toFixed(1)}k`;
+    }
+    if (n < 1_000_000_000) {
+        const m = n / 1_000_000;
+        return m >= 100 ? `${Math.floor(m)}M` : `${+m.toFixed(1)}M`;
+    }
+    const b = n / 1_000_000_000;
+    return b >= 100 ? `${Math.floor(b)}B` : `${+b.toFixed(1)}B`;
+}
+
 export function formatTime(seconds) {
     if (seconds <= 0) return '0s';
     const d = Math.floor(seconds / 86400);

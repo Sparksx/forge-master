@@ -109,14 +109,14 @@ describe('state — essence & research', () => {
 
         it('returns perLevel * level for researched tech', () => {
             completeResearch('vitality', 3);
-            // vitality: perLevel = 10, so 3 * 10 = 30
-            expect(getTechEffect('vitality')).toBe(30);
+            // vitality: perLevel = 2, so 3 * 2 = 6
+            expect(getTechEffect('vitality')).toBe(6);
         });
 
         it('returns cumulative effect for multi-level tech', () => {
             completeResearch('goldRush', 5);
-            // goldRush: perLevel = 20, so 5 * 20 = 100
-            expect(getTechEffect('goldRush')).toBe(100);
+            // goldRush: perLevel = 2, so 5 * 2 = 10
+            expect(getTechEffect('goldRush')).toBe(10);
         });
 
         it('returns 0 for non-existent effect type', () => {
@@ -127,7 +127,7 @@ describe('state — essence & research', () => {
             // Each tech has a unique effect type in this design,
             // so this test verifies single-tech aggregation
             completeResearch('strength', 2);
-            expect(getTechEffect('strength')).toBe(20); // 2 * 10
+            expect(getTechEffect('strength')).toBe(4); // 2 * 2
         });
     });
 
@@ -183,19 +183,19 @@ describe('state — essence & research', () => {
 
         it('applies goldRush bonus to sell value', () => {
             completeResearch('goldRush', 3);
-            // goldRush: +20% per level -> 60% bonus
+            // goldRush: +2% per level -> 6% bonus
             const item = { level: 10, tier: 2 };
             const base = 20; // 10 * 2
-            const expected = Math.floor(base * (1 + 60 / 100));
+            const expected = Math.floor(base * (1 + 6 / 100));
             expect(getSellValue(item)).toBe(expected);
         });
 
-        it('max goldRush doubles sell value', () => {
-            completeResearch('goldRush', 5);
-            // goldRush: +20% * 5 = +100%
+        it('max goldRush (level 25) gives +50% sell value', () => {
+            completeResearch('goldRush', 25);
+            // goldRush: +2% * 25 = +50%
             const item = { level: 10, tier: 1 };
             const base = 10;
-            expect(getSellValue(item)).toBe(base * 2);
+            expect(getSellValue(item)).toBe(Math.floor(base * 1.5));
         });
     });
 

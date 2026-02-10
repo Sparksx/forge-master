@@ -31,9 +31,9 @@ export function isTechUnlocked(techId) {
         req => getTechLevel(req.tech) >= req.level
     );
 
-    // If tech has altRequires (OR condition), either main or alt must be met
+    // If tech has altRequires (OR condition), main OR any single altRequire must be met
     if (tech.altRequires) {
-        const altMet = tech.altRequires.every(
+        const altMet = tech.altRequires.some(
             req => getTechLevel(req.tech) >= req.level
         );
         return mainMet || altMet;
