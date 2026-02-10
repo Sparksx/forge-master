@@ -49,16 +49,16 @@ describe('research engine', () => {
         });
 
         it('returns false for techs with unmet prerequisites', () => {
-            // swiftStrikes requires strength level 2
+            // swiftStrikes requires strength level 3
             expect(isTechUnlocked('swiftStrikes')).toBe(false);
         });
 
         it('returns true when prerequisites are met', () => {
-            // Manually set strength to level 2
+            // swiftStrikes requires strength L3
             completeResearch('strength', 1);
-            // Clear active so completeResearch doesn't interfere
             completeResearch('strength', 2);
-            expect(getTechLevel('strength')).toBe(2);
+            completeResearch('strength', 3);
+            expect(getTechLevel('strength')).toBe(3);
             expect(isTechUnlocked('swiftStrikes')).toBe(true);
         });
 
@@ -73,31 +73,33 @@ describe('research engine', () => {
         });
 
         it('handles altRequires (OR prerequisite) for bonusEnhance', () => {
-            // bonusEnhance requires armorMastery L1 OR weaponMastery L1
+            // bonusEnhance requires hatMastery L5 OR any other mastery L5
             expect(isTechUnlocked('bonusEnhance')).toBe(false);
 
-            // Satisfy only weaponMastery (altRequires path)
-            completeResearch('weaponMastery', 1);
+            // Satisfy only weaponMastery L5 (altRequires path)
+            completeResearch('weaponMastery', 5);
             expect(isTechUnlocked('bonusEnhance')).toBe(true);
         });
 
         it('handles altRequires — main requires path also works', () => {
             resetGame();
-            // Satisfy only armorMastery (main requires path)
-            completeResearch('armorMastery', 1);
+            // Satisfy only hatMastery L5 (main requires path)
+            completeResearch('hatMastery', 5);
             expect(isTechUnlocked('bonusEnhance')).toBe(true);
         });
 
         it('handles multi-prerequisite techs (AND logic)', () => {
-            // waveBreaker requires vitality L2 AND strength L2
+            // waveBreaker requires vitality L3 AND strength L3
             expect(isTechUnlocked('waveBreaker')).toBe(false);
 
             completeResearch('vitality', 1);
             completeResearch('vitality', 2);
+            completeResearch('vitality', 3);
             expect(isTechUnlocked('waveBreaker')).toBe(false); // still need strength
 
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             expect(isTechUnlocked('waveBreaker')).toBe(true);
         });
     });
@@ -119,7 +121,7 @@ describe('research engine', () => {
 
         it('returns false when partially leveled', () => {
             completeResearch('vitality', 3);
-            expect(isTechMaxed('vitality')).toBe(false); // maxLevel is 5
+            expect(isTechMaxed('vitality')).toBe(false); // maxLevel is 10
         });
     });
 
@@ -130,23 +132,21 @@ describe('research engine', () => {
         });
 
         it('applies essenceResonance discount', () => {
-            // essenceResonance: -15% per level
-            // Need to complete prereqs: goldRush L2 -> essenceStudy L2 -> essenceResonance L1
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('essenceStudy', 1);
-            completeResearch('essenceStudy', 2);
+            // essenceResonance: -10% per level
+            // Need to complete prereqs: goldRush L5 -> essenceStudy L5 -> essenceResonance L1
+            completeResearch('goldRush', 5);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 1);
-            expect(getTechEffect('essenceResonance')).toBe(15);
+            expect(getTechEffect('essenceResonance')).toBe(10);
 
             const baseCost = getResearchCost('vitality', 1);
-            const expected = Math.max(1, Math.floor(baseCost * (1 - 15 / 100)));
+            const expected = Math.max(1, Math.floor(baseCost * (1 - 10 / 100)));
             expect(getEffectiveResearchCost('vitality', 1)).toBe(expected);
         });
 
         it('never returns less than 1', () => {
             // Even with absurdly high discount, minimum cost is 1
-            // (In practice essenceResonance caps at 3*15=45%)
+            // (In practice essenceResonance caps at 3*10=30%)
             expect(getEffectiveResearchCost('goldRush', 1)).toBeGreaterThanOrEqual(1);
         });
     });
@@ -183,7 +183,7 @@ describe('research engine', () => {
             expect(state.active).not.toBeNull();
             expect(state.active.techId).toBe('vitality');
             expect(state.active.level).toBe(1);
-            expect(state.active.duration).toBe(150); // baseTime for vitality
+            expect(state.active.duration).toBe(60); // baseTime for vitality
         });
 
         it('spends essence on start', () => {
@@ -270,8 +270,8 @@ describe('research engine', () => {
             expect(status).not.toBeNull();
             expect(status.techId).toBe('vitality');
             expect(status.level).toBe(1);
-            expect(status.duration).toBe(150);
-            expect(status.remaining).toBeLessThanOrEqual(150);
+            expect(status.duration).toBe(60);
+            expect(status.remaining).toBeLessThanOrEqual(60);
             expect(status.progress).toBeGreaterThanOrEqual(0);
             expect(status.speedUpCost).toBeGreaterThanOrEqual(0);
         });

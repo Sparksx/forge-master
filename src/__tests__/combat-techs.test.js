@@ -33,7 +33,7 @@ describe('combat tech effects', () => {
             expect(getTechEffect('vitality')).toBe(0);
         });
 
-        it('increases base health by 10% per level', () => {
+        it('increases total health by 2% per level', () => {
             startCombat();
             const baseHP = getPlayerCombatState().maxHP;
 
@@ -42,34 +42,35 @@ describe('combat tech effects', () => {
             startCombat();
             const boostedHP = getPlayerCombatState().maxHP;
 
-            // With no equipment, maxHP = BASE_HEALTH * (1 + 10/100) + 0
-            // Compared to BASE_HEALTH * 1 + 0
+            // With no equipment, maxHP = BASE_HEALTH * (1 + 2/100)
             expect(boostedHP).toBeGreaterThan(baseHP);
-            expect(boostedHP).toBe(Math.floor(BASE_HEALTH * (1 + 10 / 100)));
+            expect(boostedHP).toBe(Math.floor(BASE_HEALTH * (1 + 2 / 100)));
         });
 
         it('stacks with multiple levels', () => {
             completeResearch('vitality', 1);
             completeResearch('vitality', 2);
             completeResearch('vitality', 3);
-            expect(getTechEffect('vitality')).toBe(30);
+            expect(getTechEffect('vitality')).toBe(6);
 
             startCombat();
             const hp = getPlayerCombatState().maxHP;
-            expect(hp).toBe(Math.floor(BASE_HEALTH * (1 + 30 / 100)));
+            expect(hp).toBe(Math.floor(BASE_HEALTH * (1 + 6 / 100)));
         });
     });
 
     describe('strength', () => {
-        it('increases base damage by 10% per level', () => {
+        it('increases total damage by 2% per level', () => {
             startCombat();
             const baseDmg = getPlayerCombatState().damage;
 
             stopCombat();
-            completeResearch('strength', 1);
+            // Use 5 levels so the effect is visible after Math.floor (BASE_DAMAGE=10)
+            completeResearch('strength', 5);
             startCombat();
             const boostedDmg = getPlayerCombatState().damage;
 
+            // 5 levels * 2% = 10% bonus → Math.floor(10 * 1.10) = 11
             expect(boostedDmg).toBeGreaterThan(baseDmg);
             expect(boostedDmg).toBe(Math.floor(BASE_DAMAGE * (1 + 10 / 100)));
         });
@@ -80,11 +81,11 @@ describe('combat tech effects', () => {
             completeResearch('strength', 3);
             completeResearch('strength', 4);
             completeResearch('strength', 5);
-            expect(getTechEffect('strength')).toBe(50);
+            expect(getTechEffect('strength')).toBe(10);
 
             startCombat();
             const dmg = getPlayerCombatState().damage;
-            expect(dmg).toBe(Math.floor(BASE_DAMAGE * (1 + 50 / 100)));
+            expect(dmg).toBe(Math.floor(BASE_DAMAGE * (1 + 10 / 100)));
         });
     });
 
@@ -96,6 +97,7 @@ describe('combat tech effects', () => {
             stopCombat();
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             completeResearch('swiftStrikes', 1);
             startCombat();
             const boostedSpeed = getPlayerCombatState().attackSpeed;
@@ -107,6 +109,7 @@ describe('combat tech effects', () => {
         it('attack speed has a minimum of 400ms', () => {
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             completeResearch('swiftStrikes', 1);
             completeResearch('swiftStrikes', 2);
             completeResearch('swiftStrikes', 3);
@@ -126,8 +129,10 @@ describe('combat tech effects', () => {
         it('increases max wave count by 2 per level', () => {
             completeResearch('vitality', 1);
             completeResearch('vitality', 2);
+            completeResearch('vitality', 3);
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             completeResearch('waveBreaker', 1);
 
             expect(getMaxWaveCount()).toBe(12);
@@ -136,8 +141,10 @@ describe('combat tech effects', () => {
         it('max waveBreaker (level 5) adds 10 waves', () => {
             completeResearch('vitality', 1);
             completeResearch('vitality', 2);
+            completeResearch('vitality', 3);
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             completeResearch('waveBreaker', 1);
             completeResearch('waveBreaker', 2);
             completeResearch('waveBreaker', 3);
@@ -184,14 +191,16 @@ describe('combat tech effects', () => {
             expect(getTechEffect('battleXP')).toBe(0);
         });
 
-        it('returns +25% per level', () => {
+        it('returns +10% per level', () => {
             completeResearch('vitality', 1);
             completeResearch('vitality', 2);
+            completeResearch('vitality', 3);
             completeResearch('strength', 1);
             completeResearch('strength', 2);
+            completeResearch('strength', 3);
             completeResearch('waveBreaker', 1);
             completeResearch('battleXP', 1);
-            expect(getTechEffect('battleXP')).toBe(25);
+            expect(getTechEffect('battleXP')).toBe(10);
         });
     });
 

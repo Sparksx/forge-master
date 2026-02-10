@@ -30,25 +30,25 @@ describe('forge tech effects', () => {
             expect(getTechEffect('tierAffinity')).toBe(0);
         });
 
-        it('adds 3% per level', () => {
+        it('adds 2% per level', () => {
             completeResearch('forgeMultiple', 1);
             completeResearch('forgeMultiple', 2);
             completeResearch('tierAffinity', 1);
-            expect(getTechEffect('tierAffinity')).toBe(3);
+            expect(getTechEffect('tierAffinity')).toBe(2);
             completeResearch('tierAffinity', 2);
-            expect(getTechEffect('tierAffinity')).toBe(6);
+            expect(getTechEffect('tierAffinity')).toBe(4);
         });
 
         it('shifts tier chances upward when rolling', () => {
             // At forge level 1, chances are [100, 0, 0, 0, 0, 0]
-            // With tierAffinity at 3, 3% should shift from tier 1 to tier 2
+            // With tierAffinity at 2, 2% should shift from tier 1 to tier 2
             completeResearch('forgeMultiple', 1);
             completeResearch('forgeMultiple', 2);
             completeResearch('tierAffinity', 1);
 
             // Roll many times and verify we can get tier > 1
             // (At forge level 1 without tech, it's always 100% common)
-            // With 3% shifted, ~3% chance of uncommon
+            // With 2% shifted, ~2% chance of uncommon
             let gotHigherTier = false;
             for (let i = 0; i < 500; i++) {
                 const tier = rollTier(1);
@@ -67,8 +67,8 @@ describe('forge tech effects', () => {
         });
 
         it('adds +1 bonus slot per level', () => {
-            // Need prereqs: armorMastery L1 -> bonusEnhance L3 -> extraBonus
-            completeResearch('armorMastery', 1);
+            // Need prereqs: any mastery L5 -> bonusEnhance L3 -> extraBonus
+            completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
             completeResearch('bonusEnhance', 2);
             completeResearch('bonusEnhance', 3);
@@ -78,7 +78,7 @@ describe('forge tech effects', () => {
 
         it('creates items with more bonuses when active', () => {
             // Setup: extraBonus level 1
-            completeResearch('armorMastery', 1);
+            completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
             completeResearch('bonusEnhance', 2);
             completeResearch('bonusEnhance', 3);
@@ -91,7 +91,7 @@ describe('forge tech effects', () => {
         });
 
         it('tier 1 items get bonus slots from tech', () => {
-            completeResearch('armorMastery', 1);
+            completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
             completeResearch('bonusEnhance', 2);
             completeResearch('bonusEnhance', 3);
@@ -104,7 +104,7 @@ describe('forge tech effects', () => {
 
         it('bonus count is capped at total available bonus stat keys', () => {
             // Extreme case: extraBonus 3 + tier 6 (bonusCount 3) = 6, but BONUS_STAT_KEYS has 7
-            completeResearch('armorMastery', 1);
+            completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
             completeResearch('bonusEnhance', 2);
             completeResearch('bonusEnhance', 3);
@@ -121,9 +121,9 @@ describe('forge tech effects', () => {
 
     describe('bonusEnhance', () => {
         it('increases bonus stat values', () => {
-            completeResearch('armorMastery', 1);
+            completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
-            expect(getTechEffect('bonusEnhance')).toBe(10); // +10% per level
+            expect(getTechEffect('bonusEnhance')).toBe(8); // +8% per level
 
             // Create many tier 2 items and check average bonus value is higher
             // than without tech (statistical check)
@@ -147,7 +147,7 @@ describe('forge tech effects', () => {
 
             const avgWith = valuesWithTech.reduce((a, b) => a + b, 0) / valuesWithTech.length;
             const avgWithout = valuesWithout.reduce((a, b) => a + b, 0) / valuesWithout.length;
-            // With 10% enhancement, average should be higher
+            // With 8% enhancement, average should be higher
             expect(avgWith).toBeGreaterThan(avgWithout * 0.95); // slight tolerance for randomness
         });
     });
@@ -158,42 +158,36 @@ describe('forge tech effects', () => {
             expect(getEffectiveMaxLevel('weapon')).toBe(MAX_LEVEL);
         });
 
-        it('armorMastery increases health item max level', () => {
+        it('each mastery increases only its own slot max level', () => {
             completeResearch('armorMastery', 1);
-            // armorMastery: +2 per level
-            expect(getEffectiveMaxLevel('hat')).toBe(MAX_LEVEL + 2);
+            // armorMastery: +2 per level, only affects 'armor'
             expect(getEffectiveMaxLevel('armor')).toBe(MAX_LEVEL + 2);
-            expect(getEffectiveMaxLevel('belt')).toBe(MAX_LEVEL + 2);
-            expect(getEffectiveMaxLevel('boots')).toBe(MAX_LEVEL + 2);
+            expect(getEffectiveMaxLevel('hat')).toBe(MAX_LEVEL); // unaffected
+            expect(getEffectiveMaxLevel('weapon')).toBe(MAX_LEVEL); // unaffected
         });
 
-        it('weaponMastery increases damage item max level', () => {
+        it('weaponMastery increases only weapon max level', () => {
             completeResearch('weaponMastery', 1);
-            // weaponMastery: +2 per level
+            // weaponMastery: +2 per level, only affects 'weapon'
             expect(getEffectiveMaxLevel('weapon')).toBe(MAX_LEVEL + 2);
-            expect(getEffectiveMaxLevel('gloves')).toBe(MAX_LEVEL + 2);
-            expect(getEffectiveMaxLevel('ring')).toBe(MAX_LEVEL + 2);
-            expect(getEffectiveMaxLevel('necklace')).toBe(MAX_LEVEL + 2);
+            expect(getEffectiveMaxLevel('gloves')).toBe(MAX_LEVEL); // unaffected
+            expect(getEffectiveMaxLevel('hat')).toBe(MAX_LEVEL); // unaffected
         });
 
-        it('armorMastery does not affect damage items', () => {
+        it('armorMastery does not affect weapon slot', () => {
             completeResearch('armorMastery', 3);
             expect(getEffectiveMaxLevel('weapon')).toBe(MAX_LEVEL);
         });
 
-        it('weaponMastery does not affect health items', () => {
+        it('weaponMastery does not affect armor slot', () => {
             completeResearch('weaponMastery', 3);
-            expect(getEffectiveMaxLevel('hat')).toBe(MAX_LEVEL);
+            expect(getEffectiveMaxLevel('armor')).toBe(MAX_LEVEL);
         });
 
         it('scales with multiple levels', () => {
-            completeResearch('armorMastery', 1);
-            completeResearch('armorMastery', 2);
-            completeResearch('armorMastery', 3);
-            completeResearch('armorMastery', 4);
             completeResearch('armorMastery', 5);
             // 5 * 2 = +10
-            expect(getEffectiveMaxLevel('hat')).toBe(MAX_LEVEL + 10);
+            expect(getEffectiveMaxLevel('armor')).toBe(MAX_LEVEL + 10);
         });
     });
 
@@ -203,12 +197,8 @@ describe('forge tech effects', () => {
         });
 
         it('has effect at level 1', () => {
-            completeResearch('armorMastery', 1);
-            completeResearch('armorMastery', 2);
-            completeResearch('armorMastery', 3);
-            completeResearch('weaponMastery', 1);
-            completeResearch('weaponMastery', 2);
-            completeResearch('weaponMastery', 3);
+            completeResearch('hatMastery', 10);
+            completeResearch('weaponMastery', 10);
             completeResearch('masterwork', 1);
             expect(getTechEffect('masterwork')).toBe(1);
         });

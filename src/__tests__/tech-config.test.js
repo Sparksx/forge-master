@@ -23,8 +23,8 @@ describe('tech-config', () => {
     });
 
     describe('TECHS definitions', () => {
-        it('has 24 technologies', () => {
-            expect(TECHS).toHaveLength(24);
+        it('has 30 technologies', () => {
+            expect(TECHS).toHaveLength(30);
         });
 
         it('all tech ids are unique', () => {
@@ -113,8 +113,8 @@ describe('tech-config', () => {
             expect(TECHS.filter(t => t.branch === 'forge')).toHaveLength(5);
         });
 
-        it('equipment branch has 5 techs', () => {
-            expect(TECHS.filter(t => t.branch === 'equipment')).toHaveLength(5);
+        it('equipment branch has 11 techs', () => {
+            expect(TECHS.filter(t => t.branch === 'equipment')).toHaveLength(11);
         });
 
         it('combat branch has 5 techs', () => {
@@ -153,17 +153,17 @@ describe('tech-config', () => {
         });
 
         it('scales exponentially with level', () => {
-            // forgeMultiple: baseCost=80, costScale=4
-            expect(getResearchCost('forgeMultiple', 1)).toBe(80);
-            expect(getResearchCost('forgeMultiple', 2)).toBe(Math.floor(80 * 4));
-            expect(getResearchCost('forgeMultiple', 3)).toBe(Math.floor(80 * 16));
-            expect(getResearchCost('forgeMultiple', 4)).toBe(Math.floor(80 * 64));
-            expect(getResearchCost('forgeMultiple', 5)).toBe(Math.floor(80 * 256));
+            // forgeMultiple: baseCost=500, costScale=3
+            expect(getResearchCost('forgeMultiple', 1)).toBe(500);
+            expect(getResearchCost('forgeMultiple', 2)).toBe(Math.floor(500 * 3));
+            expect(getResearchCost('forgeMultiple', 3)).toBe(Math.floor(500 * 9));
+            expect(getResearchCost('forgeMultiple', 4)).toBe(Math.floor(500 * 27));
+            expect(getResearchCost('forgeMultiple', 5)).toBe(Math.floor(500 * 81));
         });
 
         it('handles costScale of 1 (no scaling)', () => {
-            // masterSmith: baseCost=5000, costScale=1, maxLevel=1
-            expect(getResearchCost('masterSmith', 1)).toBe(5000);
+            // masterSmith: baseCost=8000, costScale=1, maxLevel=1
+            expect(getResearchCost('masterSmith', 1)).toBe(8000);
         });
 
         it('returns Infinity for unknown tech', () => {
@@ -178,10 +178,10 @@ describe('tech-config', () => {
         });
 
         it('scales exponentially with level', () => {
-            // vitality: baseTime=150, timeScale=4
-            expect(getResearchTime('vitality', 1)).toBe(150);
-            expect(getResearchTime('vitality', 2)).toBe(Math.floor(150 * 4));
-            expect(getResearchTime('vitality', 3)).toBe(Math.floor(150 * 16));
+            // vitality: baseTime=60, timeScale=1.3
+            expect(getResearchTime('vitality', 1)).toBe(60);
+            expect(getResearchTime('vitality', 2)).toBe(Math.floor(60 * 1.3));
+            expect(getResearchTime('vitality', 3)).toBe(Math.floor(60 * Math.pow(1.3, 2)));
         });
 
         it('handles timeScale of 1 (no scaling)', () => {
@@ -199,17 +199,16 @@ describe('tech-config', () => {
             const tech = getTechById('bonusEnhance');
             expect(tech.requiresAny).toBe(true);
             expect(tech.altRequires).toBeDefined();
-            expect(tech.altRequires).toHaveLength(1);
-            expect(tech.altRequires[0].tech).toBe('weaponMastery');
+            expect(tech.altRequires).toHaveLength(7);
         });
 
-        it('masterwork requires both armorMastery and weaponMastery at level 3', () => {
+        it('masterwork requires hatMastery and weaponMastery at level 10', () => {
             const tech = getTechById('masterwork');
             expect(tech.requires).toHaveLength(2);
             expect(tech.requires).toEqual(
                 expect.arrayContaining([
-                    { tech: 'armorMastery', level: 3 },
-                    { tech: 'weaponMastery', level: 3 },
+                    { tech: 'hatMastery', level: 10 },
+                    { tech: 'weaponMastery', level: 10 },
                 ])
             );
         });

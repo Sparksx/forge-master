@@ -33,27 +33,27 @@ describe('economy tech effects', () => {
             expect(getTechEffect('goldRush')).toBe(0);
         });
 
-        it('increases sell value by +20% per level', () => {
+        it('increases sell value by +2% per level', () => {
             const item = { level: 50, tier: 3 };
             const baseValue = 50 * 3; // 150
 
             expect(getSellValue(item)).toBe(baseValue);
 
             completeResearch('goldRush', 1);
-            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.2));
+            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.02));
 
             completeResearch('goldRush', 2);
-            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.4));
+            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.04));
 
             completeResearch('goldRush', 3);
-            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.6));
+            expect(getSellValue(item)).toBe(Math.floor(baseValue * 1.06));
         });
 
-        it('max goldRush (level 5) gives +100% sell value', () => {
-            completeResearch('goldRush', 5);
-            expect(getTechEffect('goldRush')).toBe(100);
+        it('max goldRush (level 25) gives +50% sell value', () => {
+            completeResearch('goldRush', 25);
+            expect(getTechEffect('goldRush')).toBe(50);
             const item = { level: 100, tier: 1 };
-            expect(getSellValue(item)).toBe(200); // 100 * 2
+            expect(getSellValue(item)).toBe(150); // 100 * 1.5
         });
     });
 
@@ -62,17 +62,16 @@ describe('economy tech effects', () => {
             expect(getTechEffect('essenceStudy')).toBe(0);
         });
 
-        it('increases by +25% per level', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
+        it('increases by +2% per level', () => {
+            completeResearch('goldRush', 5);
             completeResearch('essenceStudy', 1);
-            expect(getTechEffect('essenceStudy')).toBe(25);
+            expect(getTechEffect('essenceStudy')).toBe(2);
 
             completeResearch('essenceStudy', 2);
-            expect(getTechEffect('essenceStudy')).toBe(50);
+            expect(getTechEffect('essenceStudy')).toBe(4);
 
             completeResearch('essenceStudy', 3);
-            expect(getTechEffect('essenceStudy')).toBe(75);
+            expect(getTechEffect('essenceStudy')).toBe(6);
         });
 
         it('study value base calculation is level * tier²', () => {
@@ -88,22 +87,18 @@ describe('economy tech effects', () => {
             expect(getTechEffect('treasureHunter')).toBe(0);
         });
 
-        it('gives 10% chance per level', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('goldRush', 3);
+        it('gives 5% chance per level', () => {
+            completeResearch('goldRush', 10);
             completeResearch('treasureHunter', 1);
-            expect(getTechEffect('treasureHunter')).toBe(10);
+            expect(getTechEffect('treasureHunter')).toBe(5);
         });
 
-        it('stacks to 30% at max level', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('goldRush', 3);
+        it('stacks to 15% at max level', () => {
+            completeResearch('goldRush', 10);
             completeResearch('treasureHunter', 1);
             completeResearch('treasureHunter', 2);
             completeResearch('treasureHunter', 3);
-            expect(getTechEffect('treasureHunter')).toBe(30);
+            expect(getTechEffect('treasureHunter')).toBe(15);
         });
     });
 
@@ -112,49 +107,43 @@ describe('economy tech effects', () => {
             expect(getTechEffect('essenceResonance')).toBe(0);
         });
 
-        it('reduces research cost by -15% per level', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('essenceStudy', 1);
-            completeResearch('essenceStudy', 2);
+        it('reduces research cost by -10% per level', () => {
+            completeResearch('goldRush', 5);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 1);
-            expect(getTechEffect('essenceResonance')).toBe(15);
+            expect(getTechEffect('essenceResonance')).toBe(10);
 
             const baseCost = getResearchCost('vitality', 1);
             const effective = getEffectiveResearchCost('vitality', 1);
-            expect(effective).toBe(Math.max(1, Math.floor(baseCost * 0.85)));
+            expect(effective).toBe(Math.max(1, Math.floor(baseCost * 0.90)));
         });
 
-        it('stacks to -45% at max level', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('essenceStudy', 1);
-            completeResearch('essenceStudy', 2);
+        it('stacks to -30% at max level', () => {
+            completeResearch('goldRush', 5);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 1);
             completeResearch('essenceResonance', 2);
             completeResearch('essenceResonance', 3);
-            expect(getTechEffect('essenceResonance')).toBe(45);
+            expect(getTechEffect('essenceResonance')).toBe(30);
 
             const baseCost = getResearchCost('vitality', 1);
             const effective = getEffectiveResearchCost('vitality', 1);
-            expect(effective).toBe(Math.max(1, Math.floor(baseCost * 0.55)));
+            expect(effective).toBe(Math.max(1, Math.floor(baseCost * 0.70)));
         });
 
         it('discount applies to all research costs', () => {
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('essenceStudy', 1);
-            completeResearch('essenceStudy', 2);
+            completeResearch('goldRush', 5);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 1);
 
             // Check discount on different techs and levels
             const vitCost1 = getResearchCost('vitality', 1);
             const vitEffective1 = getEffectiveResearchCost('vitality', 1);
-            expect(vitEffective1).toBe(Math.max(1, Math.floor(vitCost1 * 0.85)));
+            expect(vitEffective1).toBe(Math.max(1, Math.floor(vitCost1 * 0.90)));
 
             const strCost3 = getResearchCost('strength', 3);
             const strEffective3 = getEffectiveResearchCost('strength', 3);
-            expect(strEffective3).toBe(Math.max(1, Math.floor(strCost3 * 0.85)));
+            expect(strEffective3).toBe(Math.max(1, Math.floor(strCost3 * 0.90)));
         });
     });
 
@@ -165,14 +154,9 @@ describe('economy tech effects', () => {
 
         it('gives 5% at level 1 (max level)', () => {
             // Double harvest requires essenceResonance L2 and treasureHunter L2
-            completeResearch('goldRush', 1);
-            completeResearch('goldRush', 2);
-            completeResearch('goldRush', 3);
-            completeResearch('essenceStudy', 1);
-            completeResearch('essenceStudy', 2);
-            completeResearch('essenceResonance', 1);
+            completeResearch('goldRush', 10);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 2);
-            completeResearch('treasureHunter', 1);
             completeResearch('treasureHunter', 2);
             completeResearch('doubleHarvest', 1);
             expect(getTechEffect('doubleHarvest')).toBe(5);
@@ -209,14 +193,14 @@ describe('economy tech effects', () => {
             expect(getTechEffect('researchQueue')).toBe(3);
         });
 
-        it('quickForge returns -15% per level', () => {
+        it('quickForge returns -10% per level', () => {
             completeResearch('forgeMultiple', 1);
             completeResearch('quickForge', 1);
-            expect(getTechEffect('quickForge')).toBe(15);
+            expect(getTechEffect('quickForge')).toBe(10);
             completeResearch('quickForge', 2);
-            expect(getTechEffect('quickForge')).toBe(30);
+            expect(getTechEffect('quickForge')).toBe(20);
             completeResearch('quickForge', 3);
-            expect(getTechEffect('quickForge')).toBe(45);
+            expect(getTechEffect('quickForge')).toBe(30);
         });
 
         it('forgeMultiple returns +1 per level', () => {
@@ -239,41 +223,39 @@ describe('economy tech effects', () => {
 
     describe('combined tech effects', () => {
         it('goldRush and essenceResonance stack independently', () => {
-            completeResearch('goldRush', 3);
-            completeResearch('goldRush', 2); // Overwritten by completeResearch logic? No, completeResearch sets level directly
-            // Actually completeResearch(id, level) sets completed[id] = level
-            // Let's reset and be explicit
             resetGame();
 
             completeResearch('goldRush', 3);
-            expect(getTechEffect('goldRush')).toBe(60);
+            expect(getTechEffect('goldRush')).toBe(6);
 
-            completeResearch('essenceStudy', 2);
+            completeResearch('goldRush', 5);
+            completeResearch('essenceStudy', 5);
             completeResearch('essenceResonance', 1);
-            expect(getTechEffect('essenceResonance')).toBe(15);
+            expect(getTechEffect('essenceResonance')).toBe(10);
 
             // Both effects work independently
             const item = { level: 50, tier: 2 };
             const sellValue = getSellValue(item);
             const baseSell = 50 * 2;
-            expect(sellValue).toBe(Math.floor(baseSell * 1.6));
+            // goldRush L5 = +10%
+            expect(sellValue).toBe(Math.floor(baseSell * 1.10));
 
             const researchCost = getEffectiveResearchCost('vitality', 1);
             const baseCost = getResearchCost('vitality', 1);
-            expect(researchCost).toBe(Math.max(1, Math.floor(baseCost * 0.85)));
+            expect(researchCost).toBe(Math.max(1, Math.floor(baseCost * 0.90)));
         });
 
         it('all economy techs can be active simultaneously', () => {
-            completeResearch('goldRush', 5);
-            completeResearch('essenceStudy', 3);
+            completeResearch('goldRush', 25);
+            completeResearch('essenceStudy', 25);
             completeResearch('treasureHunter', 3);
             completeResearch('essenceResonance', 3);
             completeResearch('doubleHarvest', 1);
 
-            expect(getTechEffect('goldRush')).toBe(100);
-            expect(getTechEffect('essenceStudy')).toBe(75);
-            expect(getTechEffect('treasureHunter')).toBe(30);
-            expect(getTechEffect('essenceResonance')).toBe(45);
+            expect(getTechEffect('goldRush')).toBe(50);
+            expect(getTechEffect('essenceStudy')).toBe(50);
+            expect(getTechEffect('treasureHunter')).toBe(15);
+            expect(getTechEffect('essenceResonance')).toBe(30);
             expect(getTechEffect('doubleHarvest')).toBe(5);
         });
     });
