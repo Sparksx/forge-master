@@ -1,7 +1,10 @@
 import {
     EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS, HEALTH_ITEMS,
     HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL,
-    GROWTH_EXPONENT, SPEED_UP_GOLD_PER_SECOND
+    GROWTH_EXPONENT, SPEED_UP_GOLD_PER_SECOND,
+    LEVEL_REWARD_BASE_GOLD, LEVEL_REWARD_GOLD_PER_LEVEL,
+    LEVEL_MILESTONE_INTERVAL, LEVEL_MILESTONE_MULTIPLIER,
+    PROFILE_PICTURES
 } from './config.js';
 import { gameEvents, EVENTS } from './events.js';
 import { apiFetch, getAccessToken } from './api.js';
@@ -76,6 +79,13 @@ export function xpRequiredForLevel(level) {
     return Math.floor(BASE_XP_PER_LEVEL * Math.pow(level, XP_GROWTH));
 }
 
+export function getLevelReward(level) {
+    const baseGold = LEVEL_REWARD_BASE_GOLD + level * LEVEL_REWARD_GOLD_PER_LEVEL;
+    const isMilestone = level % LEVEL_MILESTONE_INTERVAL === 0;
+    const gold = isMilestone ? baseGold * LEVEL_MILESTONE_MULTIPLIER : baseGold;
+    return { gold, isMilestone };
+}
+
 function createEmptyForgeTracker() {
     const tracker = {};
     EQUIPMENT_TYPES.forEach(type => { tracker[type] = {}; });
@@ -98,6 +108,7 @@ const gameState = {
     player: {
         level: 1,
         xp: 0,
+        profilePicture: 'wizard',
     },
 };
 
@@ -109,7 +120,7 @@ export function resetGame() {
     gameState.forgeUpgrade = null;
     gameState.forgeHighestLevel = createEmptyForgeTracker();
     gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
-    gameState.player = { level: 1, xp: 0 };
+    gameState.player = { level: 1, xp: 0, profilePicture: 'wizard' };
 }
 
 // --- Player level getters / setters ---
@@ -138,7 +149,15 @@ export function addXP(amount) {
         gameState.player.xp -= needed;
         gameState.player.level += 1;
         leveled = true;
-        gameEvents.emit(EVENTS.PLAYER_LEVEL_UP, { level: gameState.player.level });
+
+        // Grant level reward
+        const reward = getLevelReward(gameState.player.level);
+        gameState.gold += reward.gold;
+
+        gameEvents.emit(EVENTS.PLAYER_LEVEL_UP, {
+            level: gameState.player.level,
+            reward,
+        });
     }
 
     if (gameState.player.level >= MAX_PLAYER_LEVEL) {
@@ -147,6 +166,26 @@ export function addXP(amount) {
 
     saveGame();
     if (leveled) gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+// --- Profile picture ---
+
+export function getProfilePicture() {
+    return gameState.player.profilePicture || 'wizard';
+}
+
+export function setProfilePicture(pictureId) {
+    const valid = PROFILE_PICTURES.some(p => p.id === pictureId);
+    if (!valid) return false;
+    gameState.player.profilePicture = pictureId;
+    saveGame();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+export function getProfileEmoji() {
+    const pic = PROFILE_PICTURES.find(p => p.id === getProfilePicture());
+    return pic ? pic.emoji : '\uD83E\uDDD9';
 }
 
 export function getEquipment() {
@@ -447,13 +486,16 @@ function applyLoadedData(loaded) {
         }
     }
 
-    // Restore player level/XP
+    // Restore player level/XP/profilePicture
     if (loaded.player && typeof loaded.player === 'object') {
         if (typeof loaded.player.level === 'number' && loaded.player.level >= 1 && loaded.player.level <= MAX_PLAYER_LEVEL) {
             gameState.player.level = Math.floor(loaded.player.level);
         }
         if (typeof loaded.player.xp === 'number' && loaded.player.xp >= 0) {
             gameState.player.xp = Math.floor(loaded.player.xp);
+        }
+        if (typeof loaded.player.profilePicture === 'string' && PROFILE_PICTURES.some(p => p.id === loaded.player.profilePicture)) {
+            gameState.player.profilePicture = loaded.player.profilePicture;
         }
     }
 

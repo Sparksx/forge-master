@@ -9,6 +9,7 @@ import {
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
     triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus
 } from './ui.js';
+import { showToast } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 import { startCombat, stopCombat, refreshPlayerStats } from './combat.js';
@@ -23,6 +24,14 @@ gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
 gameEvents.on(EVENTS.ITEM_FORGED, handleItemForged);
 gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
 gameEvents.on(EVENTS.ITEM_SOLD, showSellToast);
+
+// Level-up reward toast
+gameEvents.on(EVENTS.PLAYER_LEVEL_UP, ({ level, reward }) => {
+    if (reward && reward.gold) {
+        const prefix = reward.isMilestone ? '\uD83C\uDF1F' : '\u2B50';
+        showToast(`${prefix} Level ${level}! +${reward.gold.toLocaleString('en-US')}g`, reward.isMilestone ? 'level-milestone' : 'level');
+    }
+});
 
 // Combat events
 gameEvents.on(EVENTS.COMBAT_START, (data) => {

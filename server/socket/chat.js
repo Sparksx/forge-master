@@ -27,7 +27,7 @@ export function registerChatHandlers(io, socket) {
                     content: true,
                     channel: true,
                     createdAt: true,
-                    sender: { select: { id: true, username: true } },
+                    sender: { select: { id: true, username: true, profilePicture: true } },
                 }
             });
 
@@ -35,6 +35,7 @@ export function registerChatHandlers(io, socket) {
                 id: message.id,
                 sender: message.sender.username,
                 senderId: message.sender.id,
+                senderAvatar: message.sender.profilePicture,
                 content: message.content,
                 channel: message.channel,
                 createdAt: message.createdAt,
@@ -65,7 +66,7 @@ async function sendHistory(socket, channel) {
                 content: true,
                 channel: true,
                 createdAt: true,
-                sender: { select: { id: true, username: true } },
+                sender: { select: { id: true, username: true, profilePicture: true } },
             }
         });
 
@@ -73,6 +74,7 @@ async function sendHistory(socket, channel) {
             id: m.id,
             sender: m.sender.username,
             senderId: m.sender.id,
+            senderAvatar: m.sender.profilePicture,
             content: m.content,
             channel: m.channel,
             createdAt: m.createdAt,

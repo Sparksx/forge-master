@@ -78,3 +78,36 @@ export const FORGE_LEVELS = [
 ];
 
 export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
+
+// --- Player level rewards ---
+
+// Small gold reward per level: base + level * scaling
+export const LEVEL_REWARD_BASE_GOLD = 50;
+export const LEVEL_REWARD_GOLD_PER_LEVEL = 25;
+
+// Big reward every 10 levels (milestone): multiplier applied to normal reward
+export const LEVEL_MILESTONE_INTERVAL = 10;
+export const LEVEL_MILESTONE_MULTIPLIER = 10;
+
+// --- Username change ---
+export const USERNAME_CHANGE_COST = 5000;
+
+// --- Profile pictures (emoji avatars) ---
+export const PROFILE_PICTURES = [
+    { id: 'wizard', emoji: '\uD83E\uDDD9', label: 'Wizard' },
+    { id: 'knight', emoji: '\u2694\uFE0F', label: 'Knight' },
+    { id: 'warrior', emoji: '\uD83E\uDDD1\u200D\uD83D\uDD27', label: 'Warrior' },
+    { id: 'elf', emoji: '\uD83E\uDDDD', label: 'Elf' },
+    { id: 'vampire', emoji: '\uD83E\uDDDB', label: 'Vampire' },
+    { id: 'dragon', emoji: '\uD83D\uDC09', label: 'Dragon' },
+    { id: 'skull', emoji: '\uD83D\uDC80', label: 'Skull' },
+    { id: 'fire', emoji: '\uD83D\uDD25', label: 'Fire' },
+    { id: 'crown', emoji: '\uD83D\uDC51', label: 'Crown' },
+    { id: 'gem', emoji: '\uD83D\uDC8E', label: 'Gem' },
+    { id: 'star', emoji: '\u2B50', label: 'Star' },
+    { id: 'shield', emoji: '\uD83D\uDEE1\uFE0F', label: 'Shield' },
+    { id: 'wolf', emoji: '\uD83D\uDC3A', label: 'Wolf' },
+    { id: 'eagle', emoji: '\uD83E\uDD85', label: 'Eagle' },
+    { id: 'lion', emoji: '\uD83E\uDD81', label: 'Lion' },
+    { id: 'robot', emoji: '\uD83E\uDD16', label: 'Robot' },
+];
