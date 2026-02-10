@@ -49,4 +49,8 @@ export const EVENTS = {
     COMBAT_WAVE_CHANGED: 'combat:wave_changed',
     COMBAT_FOCUS_CHANGED: 'combat:focus_changed',
     PLAYER_LEVEL_UP: 'player:level_up',
+    RESEARCH_STARTED: 'research:started',
+    RESEARCH_COMPLETED: 'research:completed',
+    RESEARCH_QUEUED: 'research:queued',
+    ESSENCE_CHANGED: 'essence:changed',
 };

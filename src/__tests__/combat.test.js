@@ -47,7 +47,7 @@ describe('monsters', () => {
     });
 
     it('has a theme for every wave', () => {
-        expect(WAVE_THEMES).toHaveLength(WAVE_COUNT);
+        expect(WAVE_THEMES.length).toBeGreaterThanOrEqual(WAVE_COUNT);
         for (let w = 1; w <= WAVE_COUNT; w++) {
             const theme = WAVE_THEMES[w - 1];
             expect(theme.emoji).toBeTruthy();

@@ -1,7 +1,9 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence } from './state.js';
 import { forgeEquipment } from './forge.js';
+import { initResearch } from './research.js';
+import { initTechUI, renderTechTree, updateEssenceDisplay } from './ui/tech-ui.js';
 import {
     updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
@@ -21,9 +23,32 @@ import { getAccessToken } from './api.js';
 
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
+gameEvents.on(EVENTS.STATE_CHANGED, updateEssenceDisplay);
 gameEvents.on(EVENTS.ITEM_FORGED, handleItemForged);
 gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
+
+// Treasure Hunter: chance to find bonus gold when forging
+gameEvents.on(EVENTS.ITEM_FORGED, (item) => {
+    const treasureChance = getTechEffect('treasureHunter'); // 10% per level
+    if (treasureChance > 0 && Math.random() * 100 < treasureChance) {
+        const bonusGold = Math.floor(10 + item.level * (item.tier || 1) * 2);
+        addGold(bonusGold);
+        showToast(`🗝️ Trésor! +${bonusGold}g`, 'sell');
+    }
+});
 gameEvents.on(EVENTS.ITEM_SOLD, showSellToast);
+
+// Research events
+gameEvents.on(EVENTS.RESEARCH_COMPLETED, ({ techId, level }) => {
+    showToast(`🔬 Recherche terminée!`, 'study');
+    renderTechTree();
+    // Refresh combat stats in case vitality/strength changed
+    refreshPlayerStats();
+});
+
+gameEvents.on(EVENTS.ESSENCE_CHANGED, () => {
+    updateEssenceDisplay();
+});
 
 // Level-up reward toast
 gameEvents.on(EVENTS.PLAYER_LEVEL_UP, ({ level, reward }) => {
@@ -61,9 +86,11 @@ gameEvents.on(EVENTS.COMBAT_PLAYER_LIFESTEAL, ({ amount }) => {
 
 gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, ({ monster }) => {
     showCombatResult('Victory!', 'victory');
-    // Award XP based on monster's wave/sub-wave
+    // Award XP based on monster's wave/sub-wave, boosted by battleXP tech
     const stage = ((monster?.wave || 1) - 1) * 10 + (monster?.subWave || 1);
-    const xp = 5 + Math.floor(stage * 2.5);
+    const baseXP = 5 + Math.floor(stage * 2.5);
+    const battleXPBonus = getTechEffect('battleXP'); // +25% per level
+    const xp = Math.floor(baseXP * (1 + battleXPBonus / 100));
     addXP(xp);
 });
 
@@ -169,6 +196,11 @@ async function startGame() {
         }
     });
 
+    // Init tech tree
+    initResearch();
+    initTechUI();
+    updateEssenceDisplay();
+
     // Start combat system
     updateWaveDisplay();
     startCombat();
@@ -260,6 +292,14 @@ function initAdminPanel() {
 
     document.getElementById('admin-add-gold-10m').addEventListener('click', () => {
         addGold(10_000_000);
+    });
+
+    document.getElementById('admin-add-essence-1k').addEventListener('click', () => {
+        addEssence(1_000);
+    });
+
+    document.getElementById('admin-add-essence-10k').addEventListener('click', () => {
+        addEssence(10_000);
     });
 
     document.getElementById('admin-reset').addEventListener('click', () => {
