@@ -1830,11 +1830,12 @@ h1 {
     top: 0;
     left: 0;
     right: 0;
-    height: 100dvh;
+    bottom: 0;
     background: #1a1a2e;
     display: none;
     flex-direction: column;
     z-index: 2000;
+    overflow: hidden;
 }
 
 .chat-fullpage.open {
@@ -1850,6 +1851,10 @@ h1 {
     color: #f0c040;
     font-weight: bold;
     font-size: 1.1em;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .chat-close-btn {
@@ -1873,6 +1878,7 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 0;
 }
 
 .chat-msg {
@@ -1883,10 +1889,10 @@ h1 {
     border-radius: 8px;
     padding: 8px 12px;
     max-width: 85%;
+    align-self: flex-start;
 }
 
 .chat-msg-own {
-    align-self: flex-end;
     background: rgba(240, 192, 64, 0.15);
 }
 
@@ -1915,6 +1921,7 @@ h1 {
     padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
     gap: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .chat-input {
@@ -2234,7 +2241,7 @@ h1 {
 
 .admin-fab {
     position: fixed;
-    top: 10px;
+    bottom: 70px;
     right: 10px;
     z-index: 10000;
     width: 40px;
@@ -2248,6 +2255,7 @@ h1 {
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     -webkit-tap-highlight-color: transparent;
+    touch-action: none;
 }
 
 .admin-fab:hover {
@@ -2568,11 +2576,18 @@ h1 {
    ============================================= */
 
 .chat-avatar {
-    font-size: 1.4em;
+    font-size: 1.3em;
     line-height: 1;
     flex-shrink: 0;
-    width: 28px;
+    width: 32px;
+    height: 32px;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(240, 192, 64, 0.4);
+    border-radius: 6px;
 }
 
 .chat-msg-body {
@@ -2580,12 +2595,8 @@ h1 {
     min-width: 0;
 }
 
-.chat-msg-own .chat-avatar {
-    order: 1;
-}
-
 .chat-msg-own .chat-msg-body {
-    text-align: right;
+    text-align: left;
 }
 
 /* =============================================
