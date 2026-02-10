@@ -1,11 +1,12 @@
 /**
  * Chat UI — real-time chat with preview and full-page overlay.
+ * Includes player profile viewing, PVP combat sharing, and combat replay.
  */
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { getProfileEmoji } from './state.js';
-import { PROFILE_PICTURES } from './config.js';
+import { PROFILE_PICTURES, EQUIPMENT_ICONS, TIERS } from './config.js';
 
 let chatOpen = false;
 let recentMessages = []; // Keep last messages for preview
@@ -39,6 +40,20 @@ export function initChat() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
+        }
+    });
+
+    // Close player profile modal
+    document.getElementById('chat-profile-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'chat-profile-modal') {
+            e.target.classList.remove('active');
+        }
+    });
+
+    // Close combat replay modal
+    document.getElementById('chat-replay-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'chat-replay-modal') {
+            e.target.classList.remove('active');
         }
     });
 
@@ -81,6 +96,29 @@ function setupSocketListeners() {
             chatPreview?.classList.add('has-unread');
         }
     });
+
+    // Combat shared in chat
+    socket.on('chat:combat', (data) => {
+        appendCombatMessage(data);
+        scrollToBottom();
+
+        if (!chatOpen) {
+            const chatPreview = document.getElementById('chat-preview');
+            chatPreview?.classList.add('has-unread');
+        }
+    });
+
+    // Player profile response
+    socket.on('chat:player-profile', (data) => {
+        if (data.error) return;
+        showPlayerProfileModal(data);
+    });
+
+    // Combat log response for replay
+    socket.on('chat:combat-log', (data) => {
+        if (data.error) return;
+        showCombatReplay(data.log);
+    });
 }
 
 function sendMessage() {
@@ -109,6 +147,14 @@ function getAvatarEmoji(msg) {
     return '\uD83E\uDDD9';
 }
 
+function getAvatarEmojiById(avatarId) {
+    if (avatarId) {
+        const pic = PROFILE_PICTURES.find(p => p.id === avatarId);
+        if (pic) return pic.emoji;
+    }
+    return '\uD83E\uDDD9';
+}
+
 function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
@@ -124,13 +170,206 @@ function appendMessage(msg) {
 
     el.innerHTML = `<span class="chat-avatar">${avatar}</span>` +
         `<div class="chat-msg-body">` +
-        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>` +
         `<span class="chat-time">${time}</span>` +
+        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>` +
         `<div class="chat-text">${escapeHtml(msg.content)}</div>` +
         `</div>`;
 
+    // Click on other player's message to view profile
+    if (!isOwn && msg.senderId) {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', () => {
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('chat:player-profile', { userId: msg.senderId });
+            }
+        });
+    }
+
     container.appendChild(el);
 }
+
+// --- Combat message in chat ---
+
+function appendCombatMessage(data) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const p1Emoji = getAvatarEmojiById(data.player1.avatar);
+    const p2Emoji = getAvatarEmojiById(data.player2.avatar);
+
+    const isP1Winner = data.winnerId === data.player1.userId;
+    const isP2Winner = data.winnerId === data.player2.userId;
+    const isDraw = !data.winnerId;
+
+    const el = document.createElement('div');
+    el.className = 'chat-combat-msg';
+    el.innerHTML =
+        `<div class="chat-combat-title">\u2694\uFE0F PVP Combat</div>` +
+        `<div class="chat-combat-players">` +
+            `<div class="chat-combat-player ${isP1Winner ? 'chat-combat-winner' : ''} ${!isP1Winner && !isDraw ? 'chat-combat-loser' : ''}">` +
+                `<span class="chat-combat-avatar">${p1Emoji}</span>` +
+                `<span class="chat-combat-name">${escapeHtml(data.player1.username)}</span>` +
+                `${isP1Winner ? '<span class="chat-combat-crown">\uD83D\uDC51</span>' : ''}` +
+            `</div>` +
+            `<div class="chat-combat-vs">VS</div>` +
+            `<div class="chat-combat-player ${isP2Winner ? 'chat-combat-winner' : ''} ${!isP2Winner && !isDraw ? 'chat-combat-loser' : ''}">` +
+                `<span class="chat-combat-avatar">${p2Emoji}</span>` +
+                `<span class="chat-combat-name">${escapeHtml(data.player2.username)}</span>` +
+                `${isP2Winner ? '<span class="chat-combat-crown">\uD83D\uDC51</span>' : ''}` +
+            `</div>` +
+        `</div>` +
+        `${isDraw ? '<div class="chat-combat-draw">Draw!</div>' : ''}` +
+        `<div class="chat-combat-replay-hint">\u25B6 Tap to replay</div>`;
+
+    el.addEventListener('click', () => {
+        const socket = getSocket();
+        if (socket) {
+            socket.emit('chat:get-combat', { combatId: data.combatId });
+        }
+    });
+
+    container.appendChild(el);
+}
+
+// --- Player profile modal ---
+
+function showPlayerProfileModal(data) {
+    const modal = document.getElementById('chat-profile-modal');
+    const content = document.getElementById('chat-profile-content');
+    if (!modal || !content) return;
+
+    const emoji = getAvatarEmojiById(data.profilePicture);
+    const equipment = data.equipment || {};
+
+    let equipmentHtml = '';
+    const slots = ['hat', 'armor', 'belt', 'boots', 'gloves', 'necklace', 'ring', 'weapon'];
+    slots.forEach(slot => {
+        const item = equipment[slot];
+        const icon = EQUIPMENT_ICONS[slot] || '';
+        if (item) {
+            const tierDef = TIERS[(item.tier || 1) - 1];
+            equipmentHtml += `<div class="chat-profile-equip-item">` +
+                `<span class="chat-profile-equip-icon">${icon}</span>` +
+                `<span class="chat-profile-equip-name" style="color:${tierDef.color}">${tierDef.name}</span>` +
+                `<span class="chat-profile-equip-level">Lv.${item.level}</span>` +
+                `</div>`;
+        } else {
+            equipmentHtml += `<div class="chat-profile-equip-item chat-profile-equip-empty">` +
+                `<span class="chat-profile-equip-icon">${icon}</span>` +
+                `<span class="chat-profile-equip-name">Empty</span>` +
+                `</div>`;
+        }
+    });
+
+    content.innerHTML =
+        `<button class="modal-close-btn" id="chat-profile-close">\u2715</button>` +
+        `<div class="chat-profile-header">` +
+            `<div class="chat-profile-avatar">${emoji}</div>` +
+            `<div class="chat-profile-info">` +
+                `<div class="chat-profile-name">${escapeHtml(data.username)}</div>` +
+                `<div class="chat-profile-rank">${data.rank.icon} ${data.rank.name}</div>` +
+            `</div>` +
+        `</div>` +
+        `<div class="chat-profile-stats">` +
+            `<div class="chat-profile-stat">\uD83D\uDD25 <span>Power</span><strong>${formatNum(data.power)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2764\uFE0F <span>HP</span><strong>${formatNum(data.maxHP)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2694\uFE0F <span>Damage</span><strong>${formatNum(data.damage)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2692\uFE0F <span>Forge</span><strong>Lv.${data.forgeLevel}</strong></div>` +
+        `</div>` +
+        `<div class="chat-profile-pvp-stats">` +
+            `<span>\uD83C\uDFC6 ${data.pvpRating} ELO</span>` +
+            `<span>\u2705 ${data.pvpWins}W</span>` +
+            `<span>\u274C ${data.pvpLosses}L</span>` +
+        `</div>` +
+        `<div class="chat-profile-section-title">Equipment</div>` +
+        `<div class="chat-profile-equipment">${equipmentHtml}</div>` +
+        `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F Challenge to PVP</button>`;
+
+    modal.classList.add('active');
+
+    document.getElementById('chat-profile-close')?.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    // PVP fight button — joins queue (triggers PvP matchmaking)
+    document.getElementById('chat-profile-fight')?.addEventListener('click', () => {
+        modal.classList.remove('active');
+        const socket = getSocket();
+        if (socket) {
+            socket.emit('pvp:queue');
+        }
+    });
+}
+
+// --- Combat replay modal ---
+
+function showCombatReplay(log) {
+    const modal = document.getElementById('chat-replay-modal');
+    const content = document.getElementById('chat-replay-content');
+    if (!modal || !content) return;
+
+    const p1Emoji = getAvatarEmojiById(log.player1.avatar);
+    const p2Emoji = getAvatarEmojiById(log.player2.avatar);
+    const isP1Winner = log.winnerId === log.player1.userId;
+    const isP2Winner = log.winnerId === log.player2.userId;
+
+    let turnsHtml = '';
+    (log.turns || []).forEach(t => {
+        turnsHtml += `<div class="replay-turn">` +
+            `<div class="replay-turn-num">Turn ${t.turn}</div>` +
+            `<div class="replay-turn-row">` +
+                `<span class="replay-action">${actionIcon(t.player1.action)} ${t.player1.damage > 0 ? t.player1.damage + ' dmg' : ''}${t.player1.isCrit ? ' CRIT!' : ''}</span>` +
+                `<span class="replay-hp">${Math.floor(t.player1.currentHP)}/${t.player1.maxHP}</span>` +
+            `</div>` +
+            `<div class="replay-turn-row">` +
+                `<span class="replay-action">${actionIcon(t.player2.action)} ${t.player2.damage > 0 ? t.player2.damage + ' dmg' : ''}${t.player2.isCrit ? ' CRIT!' : ''}</span>` +
+                `<span class="replay-hp">${Math.floor(t.player2.currentHP)}/${t.player2.maxHP}</span>` +
+            `</div>` +
+            `</div>`;
+    });
+
+    content.innerHTML =
+        `<button class="modal-close-btn" id="chat-replay-close">\u2715</button>` +
+        `<div class="chat-combat-title">\u2694\uFE0F Combat Replay</div>` +
+        `<div class="chat-combat-players" style="margin-bottom:12px">` +
+            `<div class="chat-combat-player ${isP1Winner ? 'chat-combat-winner' : ''}">` +
+                `<span class="chat-combat-avatar">${p1Emoji}</span>` +
+                `<span class="chat-combat-name">${escapeHtml(log.player1.username)}</span>` +
+            `</div>` +
+            `<div class="chat-combat-vs">VS</div>` +
+            `<div class="chat-combat-player ${isP2Winner ? 'chat-combat-winner' : ''}">` +
+                `<span class="chat-combat-avatar">${p2Emoji}</span>` +
+                `<span class="chat-combat-name">${escapeHtml(log.player2.username)}</span>` +
+            `</div>` +
+        `</div>` +
+        `<div class="replay-turns">${turnsHtml}</div>`;
+
+    modal.classList.add('active');
+
+    document.getElementById('chat-replay-close')?.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+}
+
+function actionIcon(action) {
+    switch (action) {
+        case 'attack': return '\u2694\uFE0F';
+        case 'defend': return '\uD83D\uDEE1\uFE0F';
+        case 'special': return '\uD83D\uDCA5';
+        default: return '';
+    }
+}
+
+// --- Share combat from PVP result screen ---
+
+export function shareCombatInChat(combatId) {
+    const socket = getSocket();
+    if (!socket || !combatId) return;
+    socket.emit('chat:share-combat', { combatId, channel: 'general' });
+}
+
+// --- Utility ---
 
 function updatePreview() {
     const previewContainer = document.getElementById('chat-preview-messages');
@@ -167,6 +406,10 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+function formatNum(n) {
+    return (n || 0).toLocaleString('en-US');
 }
 
 export function refreshChatSocket() {

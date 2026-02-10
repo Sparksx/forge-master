@@ -4,6 +4,7 @@
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
+import { shareCombatInChat } from './chat.js';
 
 let pvpState = 'idle'; // idle | queued | matched | fighting | ended
 
@@ -179,6 +180,22 @@ function showResult(data) {
         ratingChange.textContent = `Rating: ${change >= 0 ? '+' : ''}${change}`;
         ratingChange.className = `pvp-rating-change ${change >= 0 ? 'positive' : 'negative'}`;
     }
+
+    // Add share button
+    const resultSection = document.getElementById('pvp-result-section');
+    let shareBtn = document.getElementById('pvp-share-btn');
+    if (!shareBtn && resultSection && data.combatId) {
+        shareBtn = document.createElement('button');
+        shareBtn.id = 'pvp-share-btn';
+        shareBtn.className = 'btn pvp-share-btn';
+        shareBtn.textContent = '\uD83D\uDCE4 Share in Chat';
+        shareBtn.addEventListener('click', () => {
+            shareCombatInChat(data.combatId);
+            shareBtn.disabled = true;
+            shareBtn.textContent = '\u2705 Shared!';
+        });
+        resultSection.appendChild(shareBtn);
+    }
 }
 
 function resetPvpUI() {
@@ -192,6 +209,10 @@ function resetPvpUI() {
     // Clear error
     const errorEl = document.getElementById('pvp-error');
     if (errorEl) errorEl.textContent = '';
+
+    // Remove share button
+    const shareBtn = document.getElementById('pvp-share-btn');
+    if (shareBtn) shareBtn.remove();
 
     if (turnTimerInterval) clearInterval(turnTimerInterval);
 }

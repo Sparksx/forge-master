@@ -1896,16 +1896,16 @@ h1 {
     background: rgba(240, 192, 64, 0.15);
 }
 
+.chat-time {
+    color: #666;
+    font-size: 0.7em;
+    margin-right: 6px;
+}
+
 .chat-sender {
     color: #f0c040;
     font-size: 0.8em;
     font-weight: bold;
-    margin-right: 8px;
-}
-
-.chat-time {
-    color: #666;
-    font-size: 0.7em;
 }
 
 .chat-text {
@@ -2597,6 +2597,315 @@ h1 {
 
 .chat-msg-own .chat-msg-body {
     text-align: left;
+}
+
+/* =============================================
+   CHAT COMBAT MESSAGE
+   ============================================= */
+
+.chat-combat-msg {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(240, 192, 64, 0.3);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    max-width: 90%;
+    align-self: center;
+}
+
+.chat-combat-msg:active {
+    opacity: 0.8;
+}
+
+.chat-combat-title {
+    text-align: center;
+    color: #f0c040;
+    font-weight: bold;
+    font-size: 0.85em;
+    margin-bottom: 8px;
+}
+
+.chat-combat-players {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.chat-combat-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    min-width: 70px;
+}
+
+.chat-combat-winner {
+    background: rgba(76, 175, 80, 0.25);
+    border: 1px solid rgba(76, 175, 80, 0.5);
+}
+
+.chat-combat-loser {
+    opacity: 0.6;
+}
+
+.chat-combat-avatar {
+    font-size: 1.5em;
+}
+
+.chat-combat-name {
+    font-size: 0.75em;
+    color: #ddd;
+    font-weight: 600;
+    text-align: center;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-combat-crown {
+    font-size: 0.8em;
+}
+
+.chat-combat-vs {
+    color: #f0c040;
+    font-weight: bold;
+    font-size: 0.8em;
+}
+
+.chat-combat-draw {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.8em;
+    margin-top: 4px;
+}
+
+.chat-combat-replay-hint {
+    text-align: center;
+    color: #888;
+    font-size: 0.7em;
+    margin-top: 6px;
+}
+
+/* =============================================
+   CHAT PLAYER PROFILE MODAL
+   ============================================= */
+
+.chat-profile-modal-content {
+    max-width: 340px;
+    padding: 16px;
+}
+
+.chat-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.chat-profile-avatar {
+    font-size: 2.5em;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(240, 192, 64, 0.4);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.chat-profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-profile-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #f0c040;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-profile-rank {
+    font-size: 0.85em;
+    color: #ccc;
+    margin-top: 2px;
+}
+
+.chat-profile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.chat-profile-stat {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.8em;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.chat-profile-stat span {
+    flex: 1;
+}
+
+.chat-profile-stat strong {
+    color: #fff;
+}
+
+.chat-profile-pvp-stats {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    font-size: 0.8em;
+    color: #aaa;
+    margin-bottom: 12px;
+    padding: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.chat-profile-section-title {
+    font-size: 0.8em;
+    color: #f0c040;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.chat-profile-equipment {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.chat-profile-equip-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75em;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+}
+
+.chat-profile-equip-empty {
+    opacity: 0.4;
+}
+
+.chat-profile-equip-icon {
+    flex-shrink: 0;
+}
+
+.chat-profile-equip-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-profile-equip-level {
+    color: #aaa;
+    font-size: 0.9em;
+}
+
+.chat-profile-fight-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #d32f2f;
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+
+.chat-profile-fight-btn:hover {
+    background: #b71c1c;
+}
+
+/* =============================================
+   CHAT COMBAT REPLAY MODAL
+   ============================================= */
+
+.chat-replay-modal-content {
+    max-width: 360px;
+    padding: 16px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.replay-turns {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.replay-turn {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+.replay-turn-num {
+    font-size: 0.7em;
+    color: #f0c040;
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.replay-turn-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: #ccc;
+    padding: 1px 0;
+}
+
+.replay-action {
+    color: #ddd;
+}
+
+.replay-hp {
+    color: #888;
+    font-size: 0.9em;
+}
+
+/* =============================================
+   PVP SHARE BUTTON
+   ============================================= */
+
+.pvp-share-btn {
+    margin-top: 10px;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.pvp-share-btn:hover {
+    background: #1557b0;
+}
+
+.pvp-share-btn:disabled {
+    background: #4caf50;
+    cursor: default;
 }
 
 /* =============================================

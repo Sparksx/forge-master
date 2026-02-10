@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment } from '../../shared/stats.js';
+import { storeCombatLog } from './chat.js';
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
 const queue = new Map();
@@ -109,6 +110,7 @@ function tryMatch(io) {
             socket: p1.socket,
             userId: p1.userId,
             username: p1.username,
+            profilePicture: p1.stats.profilePicture,
             maxHP: p1.stats.maxHP,
             currentHP: p1.stats.maxHP,
             damage: p1.stats.damage,
@@ -121,6 +123,7 @@ function tryMatch(io) {
             socket: p2.socket,
             userId: p2.userId,
             username: p2.username,
+            profilePicture: p2.stats.profilePicture,
             maxHP: p2.stats.maxHP,
             currentHP: p2.stats.maxHP,
             damage: p2.stats.damage,
@@ -131,6 +134,7 @@ function tryMatch(io) {
         },
         turn: 1,
         turnTimer: null,
+        turnLog: [],
     };
 
     matches.set(matchId, match);
@@ -208,6 +212,9 @@ function resolveTurn(io, match) {
             maxHP: p2.maxHP,
         },
     };
+
+    // Record turn for combat log
+    match.turnLog.push(turnResult);
 
     // Send perspective-aware results
     p1.socket.emit('pvp:turn-result', {
@@ -313,7 +320,30 @@ async function endMatch(io, match, winnerId, reason) {
         console.error('PvP rating update error:', err);
     }
 
+    // Store combat log for sharing in chat
+    const combatId = match.id;
+    storeCombatLog(combatId, {
+        player1: {
+            userId: p1.userId,
+            username: p1.username,
+            avatar: p1.profilePicture || 'wizard',
+            maxHP: p1.maxHP,
+            damage: p1.damage,
+        },
+        player2: {
+            userId: p2.userId,
+            username: p2.username,
+            avatar: p2.profilePicture || 'wizard',
+            maxHP: p2.maxHP,
+            damage: p2.damage,
+        },
+        winnerId,
+        reason,
+        turns: match.turnLog,
+    });
+
     const endData = {
+        combatId,
         winnerId,
         reason,
         player1: { userId: p1.userId, username: p1.username, ratingChange: p1Change },
@@ -333,7 +363,7 @@ async function getPlayerStats(userId) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { pvpRating: true, gameState: true }
+            select: { pvpRating: true, profilePicture: true, gameState: true }
         });
         if (!user || !user.gameState) return null;
 
@@ -346,6 +376,7 @@ async function getPlayerStats(userId) {
             critChance,
             critMultiplier,
             rating: user.pvpRating,
+            profilePicture: user.profilePicture,
         };
     } catch (err) {
         console.error('getPlayerStats error:', err);
