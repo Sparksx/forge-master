@@ -4,7 +4,7 @@ import {
     GROWTH_EXPONENT, TIERS, FORGE_LEVELS
 } from './config.js';
 import { calculateItemStats, calculateStats } from '../shared/stats.js';
-import { getEquipmentByType, getHighestLevelForTier, setForgedItem, getForgeLevel } from './state.js';
+import { getEquipmentByType, getHighestLevelForSlot, trackForgedLevel, setForgedItem, getForgeLevel } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
 // Re-export shared functions so existing imports keep working
@@ -56,18 +56,19 @@ export function forgeEquipment() {
     const randomType = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
     const tier = rollTier(getForgeLevel());
 
-    const highestLevelForTier = getHighestLevelForTier(tier);
+    const highestForSlot = getHighestLevelForSlot(randomType, tier);
 
     let randomLevel;
-    if (highestLevelForTier !== null) {
-        const minLevel = Math.max(1, highestLevelForTier - LEVEL_RANGE);
-        const maxLevel = Math.min(MAX_LEVEL, highestLevelForTier + LEVEL_RANGE);
+    if (highestForSlot !== null) {
+        const minLevel = Math.max(1, highestForSlot - LEVEL_RANGE);
+        const maxLevel = Math.min(MAX_LEVEL, highestForSlot + LEVEL_RANGE);
         randomLevel = Math.floor(Math.random() * (maxLevel - minLevel + 1)) + minLevel;
     } else {
         randomLevel = Math.floor(Math.random() * INITIAL_LEVEL_MAX) + 1;
     }
 
     const item = createItem(randomType, randomLevel, tier);
+    trackForgedLevel(randomType, tier, randomLevel);
     setForgedItem(item);
     gameEvents.emit(EVENTS.ITEM_FORGED, item);
 
