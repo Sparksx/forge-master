@@ -1,6 +1,6 @@
 import { getCombatProgress } from '../state.js';
 import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
-import { getWaveLabel, WAVE_COUNT, SUB_WAVE_COUNT } from '../monsters.js';
+import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT } from '../monsters.js';
 import { createElement, formatNumber } from './helpers.js';
 
 let renderedMonsterCount = 0;
@@ -109,7 +109,7 @@ export function updateWaveDisplay() {
 
     const progressFill = document.getElementById('wave-progress-fill');
     if (progressFill) {
-        const total = WAVE_COUNT * SUB_WAVE_COUNT;
+        const total = getMaxWaveCount() * SUB_WAVE_COUNT;
         const current = (currentWave - 1) * SUB_WAVE_COUNT + currentSubWave;
         progressFill.style.width = `${(current / total) * 100}%`;
     }

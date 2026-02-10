@@ -9,6 +9,8 @@ import {
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
     getPlayerLevel, getPlayerXP, getXPToNextLevel,
+    getStudyValue, addEssence, setForgedItem, getTechLevel, getTechEffect,
+    addGold, saveGame,
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
 import { createElement, formatNumber, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
@@ -23,6 +25,7 @@ const autoForge = {
     selectedTiers: new Set(),
     timer: null,
     stopping: false,
+    autoStudy: false,  // if true, rejected items are studied (essence) instead of sold (gold)
 };
 
 // ===== Toast Notifications =====
@@ -35,6 +38,35 @@ export function showForgeToast(item) {
 
 export function showSellToast({ item, goldEarned }) {
     showToast(`+${formatNumber(goldEarned)}g`, 'sell');
+}
+
+export function showStudyToast(essenceEarned) {
+    showToast(`+${formatNumber(essenceEarned)} 🔮`, 'study');
+}
+
+/** Study (dismantle) the currently forged item for essence instead of gold */
+export function studyForgedItem() {
+    const item = getForgedItem();
+    if (!item) return 0;
+
+    let essenceEarned = getStudyValue(item);
+    const studyBonus = getTechEffect('essenceStudy'); // +25% per level
+    essenceEarned = Math.floor(essenceEarned * (1 + studyBonus / 100));
+
+    // Double Harvest: chance to also get gold
+    const doubleChance = getTechEffect('doubleHarvest');
+    if (doubleChance > 0 && Math.random() * 100 < doubleChance) {
+        const goldBonus = getTechEffect('goldRush');
+        const goldValue = Math.floor(getSellValue(item) * (1 + goldBonus / 100));
+        addGold(goldValue);
+        showToast(`🎰 Double! +${formatNumber(goldValue)}g`, 'sell');
+    }
+
+    addEssence(essenceEarned);
+    setForgedItem(null);
+    saveGame();
+    showStudyToast(essenceEarned);
+    return essenceEarned;
 }
 
 // ===== Stats & Equipment =====
@@ -297,14 +329,22 @@ export function showDecisionModal(item, onClose) {
         currentCard.appendChild(createElement('div', 'comparison-label', 'Current'));
         currentCard.appendChild(buildItemCard(currentItem, item));
         const sellNewValue = getSellValue(item);
-        currentCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellNewValue)}g)`));
-        currentCard.addEventListener('click', () => { sellForgedItem(); hideDecisionModal(); });
+        const studyNewValue = getStudyValue(item);
+        currentCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellNewValue)}💰 / +${formatNumber(studyNewValue)}🔮)`));
+        currentCard.addEventListener('click', () => {
+            if (autoForge.active && autoForge.autoStudy) {
+                studyForgedItem();
+            } else {
+                sellForgedItem();
+            }
+            hideDecisionModal();
+        });
 
         const newCard = createElement('div', 'item-comparison new-item clickable');
         newCard.appendChild(createElement('div', 'comparison-label', 'New'));
         newCard.appendChild(buildItemCard(item, currentItem));
         const sellOldValue = getSellValue(currentItem);
-        newCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellOldValue)}g)`));
+        newCard.appendChild(createElement('div', 'keep-label', `Keep (+${formatNumber(sellOldValue)}💰)`));
         newCard.addEventListener('click', () => {
             const forgedItem = getForgedItem();
             if (forgedItem) equipItem(forgedItem);
@@ -317,18 +357,24 @@ export function showDecisionModal(item, onClose) {
         itemInfo.appendChild(buildItemCard(item));
 
         const sellValue = getSellValue(item);
-        itemInfo.appendChild(createElement('div', 'sell-value', `Sell value: ${formatNumber(sellValue)} gold`));
+        const studyValue = getStudyValue(item);
 
-        const buttons = createElement('div', 'modal-buttons');
-        const sellBtn = createElement('button', 'btn btn-sell', `Sell (+${formatNumber(sellValue)}g)`);
+        const valuesRow = createElement('div', 'sell-value');
+        valuesRow.innerHTML = `Sell: ${formatNumber(sellValue)} 💰 &nbsp;|&nbsp; Study: ${formatNumber(studyValue)} 🔮`;
+        itemInfo.appendChild(valuesRow);
+
+        const buttons = createElement('div', 'modal-buttons modal-buttons-3');
+        const sellBtn = createElement('button', 'btn btn-sell', `Sell (+${formatNumber(sellValue)}💰)`);
         sellBtn.addEventListener('click', () => { sellForgedItem(); hideDecisionModal(); });
+        const studyBtn = createElement('button', 'btn btn-study', `Study (+${formatNumber(studyValue)}🔮)`);
+        studyBtn.addEventListener('click', () => { studyForgedItem(); hideDecisionModal(); });
         const equipBtn = createElement('button', 'btn btn-equip', 'Equip');
         equipBtn.addEventListener('click', () => {
             const forgedItem = getForgedItem();
             if (forgedItem) equipItem(forgedItem);
             hideDecisionModal();
         });
-        buttons.append(sellBtn, equipBtn);
+        buttons.append(sellBtn, studyBtn, equipBtn);
         itemInfo.appendChild(buttons);
     }
 
@@ -350,9 +396,14 @@ export function isAutoForging() {
     return autoForge.active;
 }
 
+function getEffectiveAutoForgeInterval() {
+    const quickForgeBonus = getTechEffect('quickForge'); // -15% per level
+    return Math.floor(AUTO_FORGE_INTERVAL * (1 - quickForgeBonus / 100));
+}
+
 function scheduleNextAutoForge() {
     if (autoForge.stopping || !autoForge.active) { cleanupAutoForge(); return; }
-    autoForge.timer = setTimeout(() => { doOneAutoForge(); }, AUTO_FORGE_INTERVAL);
+    autoForge.timer = setTimeout(() => { doOneAutoForge(); }, getEffectiveAutoForgeInterval());
 }
 
 function doOneAutoForge() {
@@ -362,7 +413,11 @@ function doOneAutoForge() {
     if (autoForge.selectedTiers.has(item.tier)) {
         showDecisionModal(item, () => { scheduleNextAutoForge(); });
     } else {
-        sellForgedItem();
+        if (autoForge.autoStudy) {
+            studyForgedItem();
+        } else {
+            sellForgedItem();
+        }
         scheduleNextAutoForge();
     }
 }
@@ -394,7 +449,11 @@ function showAutoForgeModal() {
     if (!info) return;
     info.textContent = '';
 
-    info.appendChild(createElement('div', 'auto-forge-desc', 'Select tiers to keep. Other items will be auto-sold.'));
+    const hasAutoStudyTech = getTechLevel('autoStudy') >= 1;
+    const desc = hasAutoStudyTech
+        ? 'Select tiers to keep. Others will be auto-sold or auto-studied.'
+        : 'Select tiers to keep. Other items will be auto-sold.';
+    info.appendChild(createElement('div', 'auto-forge-desc', desc));
 
     const tierList = createElement('div', 'auto-forge-tiers');
     const forgeLevel = getForgeLevel();
@@ -418,6 +477,19 @@ function showAutoForgeModal() {
 
     info.appendChild(tierList);
 
+    // Auto-study toggle (only visible with autoStudy tech)
+    if (hasAutoStudyTech) {
+        const studyRow = createElement('label', 'auto-forge-study-row');
+        const studyCheck = document.createElement('input');
+        studyCheck.type = 'checkbox';
+        studyCheck.className = 'auto-forge-checkbox';
+        studyCheck.id = 'auto-study-toggle';
+        studyCheck.checked = autoForge.autoStudy;
+        const studyLabel = createElement('span', 'auto-forge-study-label', '🔮 Auto-study (essence au lieu d\'or)');
+        studyRow.append(studyCheck, studyLabel);
+        info.appendChild(studyRow);
+    }
+
     const startBtn = createElement('button', 'btn btn-start-auto', '\u25B6 Start Auto Forge');
     startBtn.addEventListener('click', () => {
         const selected = new Set();
@@ -428,6 +500,8 @@ function showAutoForgeModal() {
         autoForge.selectedTiers = selected;
         autoForge.active = true;
         autoForge.stopping = false;
+        const studyToggle = document.getElementById('auto-study-toggle');
+        autoForge.autoStudy = studyToggle ? studyToggle.checked : false;
         hideAutoForgeModal();
         updateAutoForgeButton();
         scheduleNextAutoForge();

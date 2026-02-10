@@ -4,6 +4,7 @@
 // Lose at X-1 → restart X-1
 
 import { HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, GROWTH_EXPONENT } from './config.js';
+import { getTechEffect } from './state.js';
 
 export const WAVE_COUNT = 10;
 export const SUB_WAVE_COUNT = 10;
@@ -20,7 +21,23 @@ export const WAVE_THEMES = [
     { emoji: '🐉', name: 'Drake',      color: '#c62828' },  // Wave 8
     { emoji: '😈', name: 'Demon',      color: '#d50000' },  // Wave 9
     { emoji: '🔥', name: 'Infernal',   color: '#ff6f00' },  // Wave 10
+    // Extended waves (unlocked by Wave Breaker tech)
+    { emoji: '🦇', name: 'Abyssal Bat', color: '#4a148c' }, // Wave 11
+    { emoji: '🐙', name: 'Kraken',     color: '#0d47a1' },  // Wave 12
+    { emoji: '🧊', name: 'Frost Giant', color: '#4fc3f7' }, // Wave 13
+    { emoji: '⚡', name: 'Thunder God', color: '#ffd600' }, // Wave 14
+    { emoji: '🌑', name: 'Void Walker', color: '#37474f' }, // Wave 15
+    { emoji: '☄️', name: 'Meteor',      color: '#ff3d00' }, // Wave 16
+    { emoji: '🌪️', name: 'Tempest',     color: '#80cbc4' }, // Wave 17
+    { emoji: '💎', name: 'Crystal Titan', color: '#e1bee7' }, // Wave 18
+    { emoji: '🌋', name: 'Magma Lord',  color: '#bf360c' }, // Wave 19
+    { emoji: '👁️', name: 'Eldritch',    color: '#880e4f' }, // Wave 20
 ];
+
+/** Get the current max wave count (base 10 + waveBreaker tech bonus) */
+export function getMaxWaveCount() {
+    return WAVE_COUNT + getTechEffect('waveBreaker');
+}
 
 // Sub-wave name suffixes
 const SUB_NAMES = ['Scout', 'Grunt', 'Fighter', 'Warrior', 'Veteran', 'Elite', 'Champion', 'Warlord', 'Tyrant', 'Boss'];
@@ -54,7 +71,8 @@ export function getMonsterCount(subWave) {
  *   T2+ gear needed for wave 3+
  */
 export function getMonsterForWave(wave, subWave) {
-    const theme = WAVE_THEMES[wave - 1];
+    const themeIndex = Math.min(wave - 1, WAVE_THEMES.length - 1);
+    const theme = WAVE_THEMES[themeIndex];
     const subName = SUB_NAMES[subWave - 1];
 
     const stage = (wave - 1) * SUB_WAVE_COUNT + subWave; // 1-100

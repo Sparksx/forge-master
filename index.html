@@ -57,6 +57,10 @@
                     <span class="header-power-icon" aria-hidden="true">🔥</span>
                     <span class="header-power-value" id="header-power-value">110</span>
                 </div>
+                <div class="essence-display" id="essence-display" aria-label="Essence amount">
+                    <span class="essence-icon" aria-hidden="true">🔮</span>
+                    <span class="essence-value" id="essence-amount">0</span>
+                </div>
                 <div class="gold-display" id="gold-display" aria-label="Gold amount">
                     <span class="gold-icon" aria-hidden="true">💰</span>
                     <span class="gold-value" id="gold-amount">0</span>
@@ -277,7 +281,16 @@
                     <div class="placeholder-content"><p>Pets coming soon...</p></div>
                 </div>
                 <div class="sub-tab-content" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
-                    <div class="placeholder-content"><p>Techs coming soon...</p></div>
+                    <div class="tech-tree-container">
+                        <!-- Active research banner -->
+                        <div class="tech-research-active" id="tech-research-active"></div>
+
+                        <!-- Branch sub-tabs -->
+                        <div class="tech-branch-nav" id="tech-branch-nav" role="tablist" aria-label="Tech branches"></div>
+
+                        <!-- Tech list for selected branch -->
+                        <div class="tech-list" id="tech-list" role="list" aria-label="Technologies"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -384,6 +397,8 @@
                 <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-100k">+100K Gold</button>
                 <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-1m">+1M Gold</button>
                 <button class="btn admin-btn admin-btn-gold" id="admin-add-gold-10m">+10M Gold</button>
+                <button class="btn admin-btn admin-btn-essence" id="admin-add-essence-1k">+1K Essence</button>
+                <button class="btn admin-btn admin-btn-essence" id="admin-add-essence-10k">+10K Essence</button>
                 <button class="btn admin-btn admin-btn-reset" id="admin-reset">Reset Progression</button>
             </div>
         </div>

@@ -6,6 +6,7 @@ import {
     LEVEL_MILESTONE_INTERVAL, LEVEL_MILESTONE_MULTIPLIER,
     PROFILE_PICTURES
 } from './config.js';
+import { TECHS, getTechById } from './tech-config.js';
 import { gameEvents, EVENTS } from './events.js';
 import { apiFetch, getAccessToken } from './api.js';
 
@@ -110,6 +111,13 @@ const gameState = {
         xp: 0,
         profilePicture: 'wizard',
     },
+    // Tech tree
+    essence: 0,
+    research: {
+        completed: {},   // { [techId]: level }
+        active: null,    // { techId, level, startedAt, duration } or null
+        queue: [],       // [{ techId, level }]
+    },
 };
 
 export function resetGame() {
@@ -121,6 +129,8 @@ export function resetGame() {
     gameState.forgeHighestLevel = createEmptyForgeTracker();
     gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
     gameState.player = { level: 1, xp: 0, profilePicture: 'wizard' };
+    gameState.essence = 0;
+    gameState.research = { completed: {}, active: null, queue: [] };
 }
 
 // --- Player level getters / setters ---
@@ -247,7 +257,9 @@ export function getForgeLevel() {
 }
 
 export function getSellValue(item) {
-    return item.level * (item.tier || 1);
+    const base = item.level * (item.tier || 1);
+    const goldRushPct = getTechEffect('goldRush'); // +20% per level
+    return Math.floor(base * (1 + goldRushPct / 100));
 }
 
 export function getForgeUpgradeCost() {
@@ -384,6 +396,85 @@ export function setCombatWave(wave, subWave) {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
+// --- Essence & Research state ---
+
+export function getEssence() {
+    return gameState.essence;
+}
+
+export function addEssence(amount) {
+    gameState.essence += amount;
+    saveGame();
+    gameEvents.emit(EVENTS.ESSENCE_CHANGED, gameState.essence);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function spendEssence(amount) {
+    if (gameState.essence < amount) return false;
+    gameState.essence -= amount;
+    saveGame();
+    gameEvents.emit(EVENTS.ESSENCE_CHANGED, gameState.essence);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+export function getStudyValue(item) {
+    return item.level * (item.tier || 1) * (item.tier || 1);
+}
+
+export function getResearchState() {
+    return gameState.research;
+}
+
+export function getTechLevel(techId) {
+    return gameState.research.completed[techId] || 0;
+}
+
+export function setResearchActive(active) {
+    gameState.research.active = active;
+    saveGame();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function completeResearch(techId, level) {
+    gameState.research.completed[techId] = level;
+    gameState.research.active = null;
+    saveGame();
+    gameEvents.emit(EVENTS.RESEARCH_COMPLETED, { techId, level });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function getResearchQueue() {
+    return gameState.research.queue;
+}
+
+export function addToResearchQueue(entry) {
+    gameState.research.queue.push(entry);
+    saveGame();
+    gameEvents.emit(EVENTS.RESEARCH_QUEUED, entry);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function shiftResearchQueue() {
+    const next = gameState.research.queue.shift();
+    saveGame();
+    return next || null;
+}
+
+/** Get effective value of a tech effect for game systems */
+export function getTechEffect(effectType) {
+    let total = 0;
+    for (const tech of TECHS) {
+        if (tech.effect.type === effectType) {
+            const level = getTechLevel(tech.id);
+            if (level > 0) {
+                total += tech.effect.perLevel * level;
+            }
+        }
+    }
+    return total;
+}
+
 let saveTimeout = null;
 const SAVE_DEBOUNCE = 2000; // 2 seconds
 
@@ -397,6 +488,8 @@ export function saveGame() {
             forgeHighestLevel: gameState.forgeHighestLevel,
             combat: gameState.combat,
             player: gameState.player,
+            essence: gameState.essence,
+            research: gameState.research,
         };
         if (gameState.forgeUpgrade) {
             data.forgeUpgrade = gameState.forgeUpgrade;
@@ -423,6 +516,8 @@ async function saveToServer() {
             forgeUpgrade: gameState.forgeUpgrade || null,
             combat: gameState.combat,
             player: gameState.player,
+            essence: gameState.essence,
+            research: gameState.research,
         };
         await apiFetch('/api/game/state', {
             method: 'PUT',
@@ -496,6 +591,42 @@ function applyLoadedData(loaded) {
         }
         if (typeof loaded.player.profilePicture === 'string' && PROFILE_PICTURES.some(p => p.id === loaded.player.profilePicture)) {
             gameState.player.profilePicture = loaded.player.profilePicture;
+        }
+    }
+
+    // Restore essence
+    if (typeof loaded.essence === 'number' && loaded.essence >= 0) {
+        gameState.essence = Math.floor(loaded.essence);
+    }
+
+    // Restore research state
+    if (loaded.research && typeof loaded.research === 'object') {
+        if (loaded.research.completed && typeof loaded.research.completed === 'object') {
+            gameState.research.completed = {};
+            for (const [techId, level] of Object.entries(loaded.research.completed)) {
+                const tech = getTechById(techId);
+                if (tech && typeof level === 'number' && level >= 1 && level <= tech.maxLevel) {
+                    gameState.research.completed[techId] = level;
+                }
+            }
+        }
+        if (loaded.research.active && typeof loaded.research.active === 'object') {
+            const { techId, level, startedAt, duration } = loaded.research.active;
+            if (techId && typeof startedAt === 'number' && typeof duration === 'number') {
+                const elapsed = (Date.now() - startedAt) / 1000;
+                if (elapsed >= duration) {
+                    // Research completed while offline
+                    gameState.research.completed[techId] = level;
+                    gameState.research.active = null;
+                } else {
+                    gameState.research.active = { techId, level, startedAt, duration };
+                }
+            }
+        }
+        if (Array.isArray(loaded.research.queue)) {
+            gameState.research.queue = loaded.research.queue.filter(
+                q => q && q.techId && typeof q.level === 'number'
+            );
         }
     }
 

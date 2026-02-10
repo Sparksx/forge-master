@@ -1,8 +1,8 @@
 import { BASE_HEALTH, BASE_DAMAGE } from './config.js';
-import { getEquipment, getCombatProgress, setCombatWave } from './state.js';
+import { getEquipment, getCombatProgress, setCombatWave, getTechEffect } from './state.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 import { gameEvents, EVENTS } from './events.js';
-import { getMonsterForWave, getMonsterCount, WAVE_COUNT, SUB_WAVE_COUNT } from './monsters.js';
+import { getMonsterForWave, getMonsterCount, getMaxWaveCount, SUB_WAVE_COUNT } from './monsters.js';
 
 // Combat tick rate (ms)
 const TICK_RATE = 100;
@@ -51,9 +51,17 @@ export function getMonsterProgress() {
 function getPlayerStats() {
     const equipment = getEquipment();
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
-    const maxHP = BASE_HEALTH + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
-    const baseDmg = BASE_DAMAGE + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
-    const attackSpeed = Math.max(400, 1500 - (bonuses.attackSpeed || 0) * 15);
+
+    // Tech bonuses
+    const vitalityPct = getTechEffect('vitality');       // +10% base health per level
+    const strengthPct = getTechEffect('strength');         // +10% base damage per level
+    const swiftPct = getTechEffect('swiftStrikes');        // +5% attack speed per level
+
+    const maxHP = Math.floor((BASE_HEALTH * (1 + vitalityPct / 100)) + totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
+    const baseDmg = Math.floor((BASE_DAMAGE * (1 + strengthPct / 100)) + totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
+    const totalAttackSpeed = (bonuses.attackSpeed || 0) + swiftPct;
+    const attackSpeed = Math.max(400, 1500 - totalAttackSpeed * 15);
+
     return {
         maxHP,
         damage: baseDmg,
@@ -301,8 +309,9 @@ function onMonsterDefeated() {
         nextWave = currentWave + 1;
     }
 
-    if (nextWave > WAVE_COUNT) {
-        nextWave = WAVE_COUNT;
+    const maxWaves = getMaxWaveCount();
+    if (nextWave > maxWaves) {
+        nextWave = maxWaves;
         nextSubWave = SUB_WAVE_COUNT;
     }
 

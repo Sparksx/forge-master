@@ -2296,6 +2296,15 @@ h1 {
     background: #f57f17;
 }
 
+.admin-btn-essence {
+    background: #7e57c2;
+    color: white;
+}
+
+.admin-btn-essence:hover {
+    background: #5e35b1;
+}
+
 .admin-btn-reset {
     background: #d32f2f;
     margin-top: 8px;
@@ -2923,4 +2932,411 @@ h1 {
     color: #1a1a2e;
     font-weight: 800;
     font-size: clamp(0.9em, 1.3vw, 1.1em) !important;
+}
+
+/* =============================================
+   ESSENCE HEADER DISPLAY
+   ============================================= */
+
+.essence-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.essence-icon {
+    font-size: clamp(1em, 1.5vw, 1.3em);
+}
+
+.essence-value {
+    font-size: clamp(1em, 1.6vw, 1.2em);
+    font-weight: bold;
+    color: #7e57c2;
+}
+
+/* =============================================
+   STUDY BUTTON & TOAST
+   ============================================= */
+
+.btn-study {
+    background: linear-gradient(135deg, #7e57c2, #5e35b1);
+    color: white;
+}
+
+.btn-study:hover {
+    background: linear-gradient(135deg, #9575cd, #7e57c2);
+}
+
+.toast-study {
+    background: linear-gradient(135deg, #7e57c2, #5e35b1);
+    color: white;
+    font-weight: 700;
+}
+
+.modal-buttons-3 {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-buttons-3 .btn {
+    flex: 1;
+    font-size: clamp(0.8em, 1.1vw, 0.95em);
+    padding: clamp(8px, 1.2vw, 12px);
+}
+
+/* Auto-study toggle row */
+.auto-forge-study-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    margin-top: 4px;
+    border-top: 1px solid #eee;
+    cursor: pointer;
+}
+
+.auto-forge-study-label {
+    color: #7e57c2;
+    font-weight: 600;
+    font-size: clamp(0.85em, 1.2vw, 1em);
+}
+
+/* =============================================
+   TECH TREE
+   ============================================= */
+
+.tech-tree-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+    overflow-y: auto;
+    padding-bottom: 8px;
+}
+
+/* ── Active Research Banner ─────────────────── */
+
+.tech-research-active {
+    flex-shrink: 0;
+}
+
+.tech-research-active.has-research {
+    background: #f5f0ff;
+    border: 1px solid #d1c4e9;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.research-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.research-banner-title {
+    font-weight: 700;
+    font-size: clamp(0.9em, 1.3vw, 1.05em);
+    color: #5e35b1;
+}
+
+.research-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.research-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7e57c2, #b388ff);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.research-banner-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.research-timer-text {
+    font-size: clamp(0.85em, 1.2vw, 1em);
+    font-weight: 600;
+    color: #555;
+}
+
+.btn-speed-up-research {
+    font-size: clamp(0.75em, 1vw, 0.85em) !important;
+    padding: 4px 10px !important;
+    flex: 0 !important;
+    white-space: nowrap;
+}
+
+/* Research queue */
+.research-queue {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #d1c4e9;
+}
+
+.research-queue-label {
+    font-size: clamp(0.75em, 1vw, 0.85em);
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.research-queue-item {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    color: #7e57c2;
+    padding: 2px 0;
+}
+
+/* ── Branch Tabs ────────────────────────────── */
+
+.tech-branch-nav {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+
+.tech-branch-tab {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 2px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: #f5f5f5;
+    color: #888;
+    font-size: clamp(0.65em, 1.1vw, 0.8em);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.tech-branch-tab.active {
+    background: #5e35b1;
+    color: white;
+    border-color: #5e35b1;
+}
+
+/* ── Tech List ──────────────────────────────── */
+
+.tech-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── Tech Card ──────────────────────────────── */
+
+.tech-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    transition: border-color 0.2s, opacity 0.2s;
+}
+
+.tech-card.tech-locked {
+    opacity: 0.5;
+    border-color: #e0e0e0;
+}
+
+.tech-card.tech-maxed {
+    border-color: #ffd600;
+    background: linear-gradient(135deg, #fffde7, #fff9c4);
+}
+
+.tech-card.tech-active {
+    border-color: #7e57c2;
+    background: #f5f0ff;
+}
+
+.tech-card.tech-queued {
+    border-color: #b39ddb;
+    background: #faf5ff;
+}
+
+.tech-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.tech-card-icon {
+    font-size: 1.4em;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+
+.tech-card-name-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.tech-card-name {
+    font-weight: 700;
+    font-size: clamp(0.85em, 1.2vw, 1em);
+    color: #333;
+}
+
+.tech-card-desc {
+    font-size: clamp(0.7em, 1vw, 0.82em);
+    color: #888;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
+.tech-card-level-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.tech-card-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.tech-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    border: 1px solid #ccc;
+}
+
+.tech-dot-filled {
+    background: #7e57c2;
+    border-color: #5e35b1;
+}
+
+.tech-card-level {
+    font-size: clamp(0.65em, 0.9vw, 0.75em);
+    color: #999;
+    font-weight: 600;
+}
+
+/* ── Tech Card Status ───────────────────────── */
+
+.tech-card-status {
+    margin-top: 6px;
+    font-size: clamp(0.75em, 1vw, 0.85em);
+    font-weight: 700;
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 4px;
+}
+
+.tech-status-max {
+    color: #f9a825;
+    background: rgba(249, 168, 37, 0.1);
+}
+
+.tech-status-active {
+    color: #7e57c2;
+    background: rgba(126, 87, 194, 0.1);
+}
+
+.tech-status-queued {
+    color: #b39ddb;
+    background: rgba(179, 157, 219, 0.1);
+}
+
+/* ── Tech Card Requires ─────────────────────── */
+
+.tech-card-requires {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.tech-lock-icon {
+    font-size: 0.9em;
+    flex-shrink: 0;
+}
+
+.tech-lock-text {
+    font-size: clamp(0.7em, 1vw, 0.8em);
+    color: #999;
+}
+
+/* ── Tech Card Action ───────────────────────── */
+
+.tech-card-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.tech-card-cost {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    font-weight: 700;
+    color: #7e57c2;
+}
+
+.tech-card-cost.tech-cost-insufficient {
+    color: #c62828;
+}
+
+.tech-card-time {
+    font-size: clamp(0.75em, 1vw, 0.85em);
+    color: #999;
+}
+
+.btn-research {
+    margin-left: auto;
+    flex: 0 !important;
+    padding: 6px 14px !important;
+    font-size: clamp(0.75em, 1vw, 0.85em) !important;
+    background: linear-gradient(135deg, #7e57c2, #5e35b1);
+    color: white;
+    white-space: nowrap;
+}
+
+.btn-research:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9575cd, #7e57c2);
+}
+
+.btn-research.btn-disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Speed-up button (shared) */
+.btn-speed-up {
+    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    color: #1a1a2e;
+    font-weight: 700;
+}
+
+.btn-speed-up:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ffcf33, #ffa000);
+}
+
+.btn-speed-up.btn-disabled {
+    background: #ccc;
+    color: #888;
+    cursor: not-allowed;
+    transform: none !important;
 }
