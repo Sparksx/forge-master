@@ -1,4 +1,5 @@
 import '../style.css';
+import '../admin.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
 import { forgeEquipment } from './forge.js';
@@ -20,6 +21,7 @@ import { connectSocket } from './socket-client.js';
 import { initChat, refreshChatSocket } from './chat.js';
 import { initPvp, refreshPvpSocket } from './pvp.js';
 import { getAccessToken } from './api.js';
+import { initAdminUI } from './ui/admin-ui.js';
 
 // PWA: Register service worker
 if ('serviceWorker' in navigator) {
@@ -259,108 +261,8 @@ async function startGame() {
     initChat();
     initPvp();
 
-    // Admin panel (only for username "Sparks")
-    initAdminPanel();
-}
-
-const ADMIN_USERNAME = 'Sparks';
-
-function initAdminPanel() {
-    const user = getCurrentUser();
-    const fab = document.getElementById('admin-fab');
-    if (!fab) return;
-
-    if (!user || user.username !== ADMIN_USERNAME) {
-        fab.classList.add('hidden');
-        return;
-    }
-
-    fab.classList.remove('hidden');
-
-    // Drag & drop support for admin FAB
-    let isDragging = false;
-    let dragStartX = 0, dragStartY = 0;
-    let fabStartX = 0, fabStartY = 0;
-    let hasMoved = false;
-
-    function onPointerDown(e) {
-        isDragging = true;
-        hasMoved = false;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        const rect = fab.getBoundingClientRect();
-        fabStartX = rect.left;
-        fabStartY = rect.top;
-        fab.setPointerCapture(e.pointerId);
-        fab.style.transition = 'none';
-    }
-
-    function onPointerMove(e) {
-        if (!isDragging) return;
-        const dx = e.clientX - dragStartX;
-        const dy = e.clientY - dragStartY;
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
-        if (!hasMoved) return;
-        const newX = Math.max(0, Math.min(window.innerWidth - 40, fabStartX + dx));
-        const newY = Math.max(0, Math.min(window.innerHeight - 40, fabStartY + dy));
-        fab.style.left = newX + 'px';
-        fab.style.top = newY + 'px';
-        fab.style.right = 'auto';
-        fab.style.bottom = 'auto';
-    }
-
-    function onPointerUp(e) {
-        isDragging = false;
-        fab.style.transition = '';
-        if (hasMoved) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    }
-
-    fab.addEventListener('pointerdown', onPointerDown);
-    fab.addEventListener('pointermove', onPointerMove);
-    fab.addEventListener('pointerup', onPointerUp);
-
-    fab.addEventListener('click', (e) => {
-        if (hasMoved) { hasMoved = false; return; }
-        document.getElementById('admin-modal').classList.add('active');
-    });
-
-    document.getElementById('admin-add-gold-10k').addEventListener('click', () => {
-        addGold(10_000);
-    });
-
-    document.getElementById('admin-add-gold-100k').addEventListener('click', () => {
-        addGold(100_000);
-    });
-
-    document.getElementById('admin-add-gold-1m').addEventListener('click', () => {
-        addGold(1_000_000);
-    });
-
-    document.getElementById('admin-add-gold-10m').addEventListener('click', () => {
-        addGold(10_000_000);
-    });
-
-    document.getElementById('admin-add-essence-1k').addEventListener('click', () => {
-        addEssence(1_000);
-    });
-
-    document.getElementById('admin-add-essence-10k').addEventListener('click', () => {
-        addEssence(10_000);
-    });
-
-    document.getElementById('admin-reset').addEventListener('click', () => {
-        if (!confirm('Reset all progression? This cannot be undone.')) return;
-        stopCombat();
-        resetGame();
-        saveGame();
-        updateUI();
-        updateWaveDisplay();
-        startCombat();
-        document.getElementById('admin-modal').classList.remove('active');
-    });
+    // Admin/Moderator panel (role-based)
+    initAdminUI();
 }
 
 // Wire DOM interactions

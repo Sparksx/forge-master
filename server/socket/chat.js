@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment } from '../../shared/stats.js';
+import { getActiveMute, logAudit } from '../middleware/auth.js';
 
 // In-memory combat log store with 24h TTL
 const combatLogs = new Map();
@@ -44,6 +45,20 @@ export function registerChatHandlers(io, socket) {
         const trimmed = content.trim().slice(0, 500);
         if (!trimmed) return;
 
+        // Check if user is muted
+        try {
+            const mute = await getActiveMute(socket.user.userId);
+            if (mute) {
+                const remaining = Math.ceil((mute.expiresAt.getTime() - Date.now()) / 60000);
+                socket.emit('chat:error', {
+                    message: `You are muted for ${remaining} more minute(s). Reason: ${mute.reason}`,
+                });
+                return;
+            }
+        } catch (err) {
+            console.error('Mute check error:', err);
+        }
+
         try {
             const message = await prisma.chatMessage.create({
                 data: {
@@ -56,7 +71,7 @@ export function registerChatHandlers(io, socket) {
                     content: true,
                     channel: true,
                     createdAt: true,
-                    sender: { select: { id: true, username: true, profilePicture: true } },
+                    sender: { select: { id: true, username: true, profilePicture: true, role: true } },
                 }
             });
 
@@ -65,6 +80,7 @@ export function registerChatHandlers(io, socket) {
                 sender: message.sender.username,
                 senderId: message.sender.id,
                 senderAvatar: message.sender.profilePicture,
+                senderRole: message.sender.role,
                 content: message.content,
                 channel: message.channel,
                 createdAt: message.createdAt,
@@ -131,6 +147,7 @@ export function registerChatHandlers(io, socket) {
                     id: true,
                     username: true,
                     profilePicture: true,
+                    role: true,
                     pvpRating: true,
                     pvpWins: true,
                     pvpLosses: true,
@@ -138,6 +155,9 @@ export function registerChatHandlers(io, socket) {
                         select: {
                             equipment: true,
                             forgeLevel: true,
+                            gold: true,
+                            essence: true,
+                            player: true,
                         }
                     }
                 }
@@ -155,10 +175,18 @@ export function registerChatHandlers(io, socket) {
             // Determine ELO rank
             const rank = getEloRank(user.pvpRating);
 
-            socket.emit('chat:player-profile', {
+            // Get requesting user's role to decide what to include
+            const requestingUser = await prisma.user.findUnique({
+                where: { id: socket.user.userId },
+                select: { role: true },
+            });
+            const isStaff = requestingUser && (requestingUser.role === 'admin' || requestingUser.role === 'moderator');
+
+            const profileData = {
                 userId: user.id,
                 username: user.username,
                 profilePicture: user.profilePicture,
+                role: user.role,
                 pvpRating: user.pvpRating,
                 pvpWins: user.pvpWins,
                 pvpLosses: user.pvpLosses,
@@ -168,9 +196,75 @@ export function registerChatHandlers(io, socket) {
                 forgeLevel: user.gameState?.forgeLevel || 1,
                 equipment,
                 rank,
-            });
+            };
+
+            // Include moderation data for staff
+            if (isStaff) {
+                const [warnings, activeBans, activeMutes] = await Promise.all([
+                    prisma.warning.findMany({
+                        where: { userId },
+                        include: { issuer: { select: { username: true } } },
+                        orderBy: { createdAt: 'desc' },
+                        take: 10,
+                    }),
+                    prisma.ban.findMany({
+                        where: { userId, active: true },
+                        orderBy: { createdAt: 'desc' },
+                        take: 5,
+                    }),
+                    prisma.mute.findMany({
+                        where: { userId, active: true },
+                        orderBy: { createdAt: 'desc' },
+                        take: 5,
+                    }),
+                ]);
+
+                const player = user.gameState?.player || { level: 1 };
+
+                profileData.moderation = {
+                    warnings,
+                    activeBans,
+                    activeMutes,
+                    gold: user.gameState?.gold || 0,
+                    essence: user.gameState?.essence || 0,
+                    playerLevel: typeof player === 'object' ? player.level : 1,
+                };
+            }
+
+            socket.emit('chat:player-profile', profileData);
         } catch (err) {
             console.error('Player profile error:', err);
+        }
+    });
+
+    // ─── Moderator: delete message via socket ─────────────────────
+    socket.on('chat:delete-message', async (data) => {
+        const { messageId } = data || {};
+        if (!messageId || typeof messageId !== 'number') return;
+
+        try {
+            // Check role
+            const user = await prisma.user.findUnique({
+                where: { id: socket.user.userId },
+                select: { role: true },
+            });
+            if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return;
+
+            const message = await prisma.chatMessage.findUnique({ where: { id: messageId } });
+            if (!message) return;
+
+            await prisma.chatMessage.delete({ where: { id: messageId } });
+            await logAudit(socket.user.userId, 'delete_message', message.senderId, {
+                messageId, channel: message.channel,
+            });
+
+            // Notify all clients in the channel to remove the message
+            io.to(`chat:${message.channel}`).emit('chat:message-deleted', {
+                messageId,
+                channel: message.channel,
+            });
+        } catch (err) {
+            console.error('Delete message error:', err);
         }
     });
 
@@ -204,7 +298,7 @@ async function sendHistory(socket, channel) {
                 content: true,
                 channel: true,
                 createdAt: true,
-                sender: { select: { id: true, username: true, profilePicture: true } },
+                sender: { select: { id: true, username: true, profilePicture: true, role: true } },
             }
         });
 
@@ -213,6 +307,7 @@ async function sendHistory(socket, channel) {
             sender: m.sender.username,
             senderId: m.sender.id,
             senderAvatar: m.sender.profilePicture,
+            senderRole: m.sender.role,
             content: m.content,
             channel: m.channel,
             createdAt: m.createdAt,

@@ -1,0 +1,684 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Admin & Moderator Panel Styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Role Badges (chat) ───────────────────────────────────────── */
+
+.chat-role-badge {
+    display: inline-block;
+    font-size: 0.6em;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 4px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+
+.chat-role-admin {
+    background: linear-gradient(135deg, #ff6b35, #ff2e63);
+    color: #fff;
+}
+
+.chat-role-mod {
+    background: linear-gradient(135deg, #4a90d9, #6c5ce7);
+    color: #fff;
+}
+
+/* ─── Chat Delete Button ───────────────────────────────────────── */
+
+.chat-delete-btn {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: rgba(255, 46, 99, 0.7);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+}
+
+.chat-msg {
+    position: relative;
+}
+
+.chat-msg:hover .chat-delete-btn {
+    opacity: 1;
+}
+
+/* ─── System Message ───────────────────────────────────────────── */
+
+.chat-msg-system {
+    padding: 6px 12px !important;
+    background: none !important;
+}
+
+.chat-system-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    text-align: center;
+    justify-content: center;
+}
+
+.chat-system-icon {
+    font-size: 1.1em;
+}
+
+.chat-system-text {
+    color: #ffd700;
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+/* ─── Local Notice ─────────────────────────────────────────────── */
+
+.chat-msg-notice {
+    padding: 4px 12px !important;
+    background: none !important;
+}
+
+.chat-notice-text {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 0.8em;
+    font-style: italic;
+    padding: 4px 8px;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 6px;
+}
+
+/* ─── Moderation section in player profile ─────────────────────── */
+
+.chat-profile-moderation {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-profile-mod-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 0.8em;
+    color: #aaa;
+    margin-bottom: 6px;
+}
+
+.chat-profile-mod-warnings {
+    margin-bottom: 6px;
+}
+
+.chat-profile-mod-label {
+    font-size: 0.8em;
+    color: #ffaa33;
+    font-weight: 600;
+}
+
+.chat-profile-mod-warn-item {
+    font-size: 0.75em;
+    color: #ccc;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-profile-mod-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-right: 6px;
+    margin-top: 4px;
+}
+
+.chat-profile-mod-banned {
+    background: rgba(255, 46, 99, 0.2);
+    color: #ff2e63;
+}
+
+.chat-profile-mod-muted {
+    background: rgba(255, 170, 51, 0.2);
+    color: #ffaa33;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Admin Panel Modal
+   ═══════════════════════════════════════════════════════════════════ */
+
+.admin-modal-content {
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    width: 95%;
+}
+
+/* ─── Navigation ───────────────────────────────────────────────── */
+
+.admin-nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-nav-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.admin-nav-btn.active {
+    background: rgba(74, 144, 217, 0.3);
+    border-color: #4a90d9;
+    color: #fff;
+}
+
+.admin-nav-btn:hover {
+    background: rgba(74, 144, 217, 0.2);
+}
+
+/* ─── Search ───────────────────────────────────────────────────── */
+
+.admin-search-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.admin-search-bar input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+.admin-search-bar input::placeholder {
+    color: #666;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────── */
+
+.admin-btn {
+    padding: 6px 12px;
+    font-size: 0.8em;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    font-weight: 600;
+}
+
+.admin-btn:active {
+    transform: scale(0.95);
+}
+
+.admin-btn-gold {
+    background: linear-gradient(135deg, #f5a623, #e09422);
+    color: #fff;
+}
+
+.admin-btn-essence {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color: #fff;
+}
+
+.admin-btn-warn {
+    background: linear-gradient(135deg, #ffaa33, #f59e0b);
+    color: #000;
+}
+
+.admin-btn-mute {
+    background: linear-gradient(135deg, #6c5ce7, #5b4bd5);
+    color: #fff;
+}
+
+.admin-btn-ban {
+    background: linear-gradient(135deg, #ff6b35, #e55a2b);
+    color: #fff;
+}
+
+.admin-btn-permban {
+    background: linear-gradient(135deg, #ff2e63, #dc2626);
+    color: #fff;
+}
+
+.admin-btn-kick {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+}
+
+.admin-btn-reset {
+    background: linear-gradient(135deg, #666, #444);
+    color: #fff;
+}
+
+/* ─── User List ────────────────────────────────────────────────── */
+
+.admin-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.admin-user-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.admin-user-item:hover {
+    background: rgba(74, 144, 217, 0.15);
+}
+
+.admin-user-name {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.admin-user-meta {
+    color: #666;
+    font-size: 0.75em;
+    margin-left: auto;
+}
+
+.admin-role-badge {
+    font-size: 0.7em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-role-admin {
+    background: linear-gradient(135deg, #ff6b35, #ff2e63);
+    color: #fff;
+}
+
+.admin-role-moderator {
+    background: linear-gradient(135deg, #4a90d9, #6c5ce7);
+    color: #fff;
+}
+
+.admin-role-user {
+    background: rgba(255, 255, 255, 0.1);
+    color: #aaa;
+}
+
+/* ─── User Detail Card ─────────────────────────────────────────── */
+
+.admin-user-detail-card {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.admin-user-detail-card h3 {
+    margin-bottom: 8px;
+    font-size: 1em;
+    color: #fff;
+}
+
+.admin-user-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.8em;
+    color: #aaa;
+}
+
+.admin-user-stats span {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.admin-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.admin-resource-row {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-resource-row h4 {
+    font-size: 0.85em;
+    color: #ccc;
+    margin-bottom: 6px;
+}
+
+.admin-resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.admin-resource-actions label {
+    font-size: 0.8em;
+    color: #aaa;
+}
+
+.admin-resource-actions select {
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+/* ─── History ──────────────────────────────────────────────────── */
+
+.admin-history {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-history h4 {
+    font-size: 0.85em;
+    color: #ccc;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.admin-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-history-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    color: #bbb;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-history-warn {
+    border-left: 3px solid #ffaa33;
+}
+
+.admin-history-ban {
+    border-left: 3px solid #ff2e63;
+}
+
+.admin-history-mute {
+    border-left: 3px solid #6c5ce7;
+}
+
+.admin-history-date {
+    color: #888;
+    margin-right: 6px;
+}
+
+.admin-history-by {
+    color: #666;
+    font-style: italic;
+    margin-right: 6px;
+}
+
+.admin-history-reason {
+    display: block;
+    margin-top: 2px;
+}
+
+.admin-status-active {
+    color: #ff2e63;
+    font-weight: 700;
+}
+
+.admin-status-expired {
+    color: #666;
+}
+
+/* ─── Stats Grid ───────────────────────────────────────────────── */
+
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+}
+
+.admin-stat-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 10px;
+    text-align: center;
+}
+
+.admin-stat-value {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #fff;
+}
+
+.admin-stat-label {
+    font-size: 0.7em;
+    color: #888;
+    margin-top: 4px;
+}
+
+/* ─── Logs Table ───────────────────────────────────────────────── */
+
+.admin-logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75em;
+}
+
+.admin-logs-table th,
+.admin-logs-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-logs-table th {
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85em;
+}
+
+.admin-logs-table td {
+    color: #ccc;
+}
+
+.admin-action-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    background: rgba(74, 144, 217, 0.2);
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.admin-log-details {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #666 !important;
+}
+
+.admin-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.8em;
+    color: #888;
+}
+
+/* ─── Broadcast ────────────────────────────────────────────────── */
+
+.admin-broadcast {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-broadcast h3 {
+    font-size: 0.95em;
+    color: #ffd700;
+}
+
+.admin-broadcast textarea {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 6px;
+    resize: vertical;
+    font-size: 0.85em;
+}
+
+.admin-broadcast textarea::placeholder {
+    color: #666;
+}
+
+/* ─── Admin Mode Toggle ────────────────────────────────────────── */
+
+.admin-mode-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-mode-section h4 {
+    font-size: 0.9em;
+    color: #ffd700;
+    margin-bottom: 4px;
+}
+
+.admin-mode-desc {
+    font-size: 0.75em;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.admin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.admin-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.admin-toggle-slider {
+    width: 40px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 11px;
+    position: relative;
+    transition: background 0.3s;
+}
+
+.admin-toggle-slider::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.admin-toggle input:checked + .admin-toggle-slider {
+    background: linear-gradient(135deg, #ff6b35, #ff2e63);
+}
+
+.admin-toggle input:checked + .admin-toggle-slider::after {
+    transform: translateX(18px);
+}
+
+.admin-toggle-label {
+    font-size: 0.85em;
+    color: #ccc;
+}
+
+/* ─── Self Section ─────────────────────────────────────────────── */
+
+.admin-self-section h3 {
+    font-size: 0.95em;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.admin-info {
+    font-size: 0.8em;
+    color: #888;
+}
+
+/* ─── Loading, Error, Empty states ─────────────────────────────── */
+
+.admin-loading {
+    text-align: center;
+    color: #888;
+    font-size: 0.85em;
+    padding: 16px;
+}
+
+.admin-error {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 0.85em;
+    padding: 16px;
+}
+
+.admin-empty {
+    text-align: center;
+    color: #666;
+    font-size: 0.8em;
+    padding: 8px;
+}

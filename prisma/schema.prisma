@@ -16,15 +16,21 @@ model User {
   googleId       String?   @unique
   discordId      String?   @unique
   profilePicture String    @default("wizard") @db.VarChar(30)
+  role           String    @default("user") @db.VarChar(20) // "user" | "moderator" | "admin"
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   pvpRating      Int       @default(1000)
   pvpWins        Int       @default(0)
   pvpLosses      Int       @default(0)
 
-  gameState    GameState?
-  sentMessages ChatMessage[] @relation("sender")
-  refreshTokens RefreshToken[]
+  gameState      GameState?
+  sentMessages   ChatMessage[] @relation("sender")
+  refreshTokens  RefreshToken[]
+  bans           Ban[]         @relation("bannedUser")
+  mutes          Mute[]        @relation("mutedUser")
+  warnings       Warning[]     @relation("warnedUser")
+  issuedWarnings Warning[]     @relation("warningIssuer")
+  auditLogs      AuditLog[]    @relation("auditActor")
 }
 
 model GameState {
@@ -63,4 +69,55 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model Ban {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation("bannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  reason    String    @db.VarChar(500)
+  issuedBy  Int
+  expiresAt DateTime? // null = permanent
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, active])
+}
+
+model Mute {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("mutedUser", fields: [userId], references: [id], onDelete: Cascade)
+  reason    String   @db.VarChar(500)
+  issuedBy  Int
+  expiresAt DateTime
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId, active])
+}
+
+model Warning {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("warnedUser", fields: [userId], references: [id], onDelete: Cascade)
+  reason    String   @db.VarChar(500)
+  issuedBy  Int
+  issuer    User     @relation("warningIssuer", fields: [issuedBy], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int
+  actor     User     @relation("auditActor", fields: [actorId], references: [id])
+  action    String   @db.VarChar(50)
+  targetId  Int?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetId])
 }
