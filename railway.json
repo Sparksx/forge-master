@@ -6,7 +6,7 @@
   },
   "deploy": {
     "startCommand": "node server/index.js",
-    "preDeployCommand": "prisma db push --accept-data-loss --skip-generate",
+    "preDeployCommand": "prisma db push --accept-data-loss",
     "restartPolicyType": "ON_FAILURE"
   }
 }
