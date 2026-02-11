@@ -13,6 +13,7 @@ import {
     addGold, saveGame, getProfileEmoji,
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
+import { gameEvents, EVENTS } from '../events.js';
 import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
 
@@ -323,94 +324,192 @@ export function showDecisionModal(item, onClose) {
     const modal = document.getElementById('decision-modal');
     const itemInfo = document.getElementById('forged-item-info');
 
-    const currentItem = getEquipmentByType(item.type);
-    itemInfo.textContent = '';
+    const slotType = item.type;
+    let topItem = getEquipmentByType(slotType);
+    let bottomItem = item;
+    let hasSwapped = false;
+    let powerDiffShown = null;
 
-    if (currentItem) {
-        const instruction = createElement('div', 'choice-instruction', 'Choose the equipment to keep');
-        itemInfo.appendChild(instruction);
+    renderDecisionContent();
+    modal.classList.add('active');
 
-        const container = createElement('div', 'comparison-container');
-
-        const currentCard = createElement('div', 'item-comparison current-item');
-        currentCard.appendChild(createElement('div', 'comparison-label', 'Current'));
-        currentCard.appendChild(buildItemCard(currentItem, item));
-        const sellNewValue = getSellValue(item);
-        const studyNewValue = getStudyValue(item);
-        const keepBtns = createElement('div', 'keep-buttons');
-        const keepSellBtn = createElement('button', 'btn btn-sell btn-keep-choice', `💰 +${formatNumber(sellNewValue)}`);
-        keepSellBtn.addEventListener('click', () => { sellForgedItem(); hideDecisionModal(); });
-        const keepStudyBtn = createElement('button', 'btn btn-study btn-keep-choice', `🔮 +${formatNumber(studyNewValue)}`);
-        keepStudyBtn.addEventListener('click', () => { studyForgedItem(); hideDecisionModal(); });
-        keepBtns.append(keepSellBtn, keepStudyBtn);
-        currentCard.appendChild(keepBtns);
-
-        const newCard = createElement('div', 'item-comparison new-item clickable');
-        newCard.appendChild(createElement('div', 'comparison-label', 'New'));
-        newCard.appendChild(buildItemCard(item, currentItem));
-        const sellOldValue = getSellValue(currentItem);
-        const studyOldValue = getStudyValue(currentItem);
-
-        let studyMode = false;
-        const toggleRow = createElement('div', 'equip-reward-toggle');
-        const goldOption = createElement('button', 'toggle-option toggle-option-active', `💰 +${formatNumber(sellOldValue)}`);
-        const essenceOption = createElement('button', 'toggle-option', `🔮 +${formatNumber(studyOldValue)}`);
-        goldOption.addEventListener('click', (e) => {
-            e.stopPropagation();
-            studyMode = false;
-            goldOption.classList.add('toggle-option-active');
-            essenceOption.classList.remove('toggle-option-active');
-        });
-        essenceOption.addEventListener('click', (e) => {
-            e.stopPropagation();
-            studyMode = true;
-            essenceOption.classList.add('toggle-option-active');
-            goldOption.classList.remove('toggle-option-active');
-        });
-        toggleRow.append(goldOption, essenceOption);
-        newCard.appendChild(toggleRow);
-
-        newCard.addEventListener('click', () => {
-            const forgedItem = getForgedItem();
-            if (forgedItem) {
-                if (studyMode) {
-                    studyItem(currentItem);
-                    equipItem(forgedItem, { studyOld: true });
-                } else {
-                    equipItem(forgedItem);
-                }
-            }
-            hideDecisionModal();
-        });
-
-        container.append(currentCard, newCard);
-        itemInfo.appendChild(container);
-    } else {
-        itemInfo.appendChild(buildItemCard(item));
-
-        const sellValue = getSellValue(item);
-        const studyValue = getStudyValue(item);
-
-        const valuesRow = createElement('div', 'sell-value');
-        valuesRow.innerHTML = `Sell: ${formatNumber(sellValue)} 💰 &nbsp;|&nbsp; Study: ${formatNumber(studyValue)} 🔮`;
-        itemInfo.appendChild(valuesRow);
-
-        const buttons = createElement('div', 'modal-buttons modal-buttons-3');
-        const sellBtn = createElement('button', 'btn btn-sell', `Sell (+${formatNumber(sellValue)}💰)`);
-        sellBtn.addEventListener('click', () => { sellForgedItem(); hideDecisionModal(); });
-        const studyBtn = createElement('button', 'btn btn-study', `Study (+${formatNumber(studyValue)}🔮)`);
-        studyBtn.addEventListener('click', () => { studyForgedItem(); hideDecisionModal(); });
-        const equipBtn = createElement('button', 'btn btn-equip', 'Equip');
-        equipBtn.addEventListener('click', () => {
-            const forgedItem = getForgedItem();
-            if (forgedItem) equipItem(forgedItem);
-            hideDecisionModal();
-        });
-        buttons.append(sellBtn, studyBtn, equipBtn);
-        itemInfo.appendChild(buttons);
+    function calculateEquipPowerDiff(itemToEquip) {
+        const currentPower = cachedStats.power;
+        const equipment = { ...getEquipment() };
+        equipment[itemToEquip.type] = itemToEquip;
+        const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
+        const hypotheticalPower = calculatePowerScore(
+            BASE_HEALTH + totalHealth, BASE_DAMAGE + totalDamage, bonuses
+        );
+        return hypotheticalPower - currentPower;
     }
 
-    modal.classList.add('active');
+    function renderDecisionContent() {
+        itemInfo.textContent = '';
+
+        // === TOP SECTION: Equipped Item ===
+        const topSection = createElement('div', 'decision-section decision-top');
+
+        const topHeader = createElement('div', 'decision-header');
+        const topLabel = createElement('div', 'decision-label decision-label-equipped',
+            topItem ? '⚔️ Équipé' : `${EQUIPMENT_ICONS[slotType]} Emplacement vide`);
+        topHeader.appendChild(topLabel);
+
+        if (powerDiffShown !== null) {
+            const sign = powerDiffShown >= 0 ? '+' : '-';
+            const badgeClass = powerDiffShown >= 0 ? 'power-up' : 'power-down';
+            const badge = createElement('span', `decision-power-badge ${badgeClass}`,
+                `${sign}${formatCompact(Math.abs(powerDiffShown))} ⚡`);
+            topHeader.appendChild(badge);
+        }
+
+        topSection.appendChild(topHeader);
+
+        if (topItem) {
+            const topCard = createElement('div', 'decision-card');
+            topCard.appendChild(buildItemCard(topItem, bottomItem));
+            topSection.appendChild(topCard);
+        } else {
+            const emptyDiv = createElement('div', 'decision-empty');
+            emptyDiv.textContent = 'Aucun équipement dans cet emplacement';
+            topSection.appendChild(emptyDiv);
+        }
+
+        itemInfo.appendChild(topSection);
+
+        // === BOTTOM SECTION: Action Item ===
+        const bottomSection = createElement('div', 'decision-section decision-bottom');
+
+        const bottomLabel = createElement('div', 'decision-label decision-label-new',
+            hasSwapped ? '📦 Ancien' : '✨ Nouveau');
+        bottomSection.appendChild(bottomLabel);
+
+        const bottomCard = createElement('div', 'decision-card');
+        bottomCard.appendChild(buildItemCard(bottomItem, topItem));
+        bottomSection.appendChild(bottomCard);
+
+        // === ACTIONS ===
+        const actionsContainer = createElement('div', 'decision-actions');
+
+        // Equip button (visually separated from sell/study)
+        const powerDiff = calculateEquipPowerDiff(bottomItem);
+        const sign = powerDiff >= 0 ? '+' : '-';
+        const equipLabel = `🔄 Équiper (${sign}${formatCompact(Math.abs(powerDiff))} ⚡)`;
+        const equipBtn = createElement('button', 'btn decision-btn-equip', equipLabel);
+        if (powerDiff > 0) equipBtn.classList.add('equip-upgrade');
+        if (powerDiff < 0) equipBtn.classList.add('equip-downgrade');
+        equipBtn.addEventListener('click', handleEquip);
+        actionsContainer.appendChild(equipBtn);
+
+        // Separator
+        const separator = createElement('div', 'decision-separator');
+        actionsContainer.appendChild(separator);
+
+        // Sell & Study buttons (grouped together)
+        const disposeGroup = createElement('div', 'decision-dispose-group');
+
+        const sellValue = getSellValue(bottomItem);
+        const sellBtn = createElement('button', 'btn decision-btn-sell',
+            `💰 Vendre · ${formatNumber(sellValue)}g`);
+        sellBtn.addEventListener('click', handleSell);
+
+        const baseStudyValue = getStudyValue(bottomItem);
+        const studyBonus = getTechEffect('essenceStudy');
+        const effectiveStudyValue = Math.floor(baseStudyValue * (1 + studyBonus / 100));
+        const studyBtn = createElement('button', 'btn decision-btn-study',
+            `🔮 Étudier · ${formatNumber(effectiveStudyValue)}`);
+        studyBtn.addEventListener('click', handleStudy);
+
+        disposeGroup.append(sellBtn, studyBtn);
+        actionsContainer.appendChild(disposeGroup);
+
+        bottomSection.appendChild(actionsContainer);
+        itemInfo.appendChild(bottomSection);
+    }
+
+    function handleEquip() {
+        if (!topItem) {
+            // Empty slot — just equip and close
+            equipItem(bottomItem);
+            hideDecisionModal();
+            return;
+        }
+
+        // Calculate power diff before equipping
+        const diff = calculateEquipPowerDiff(bottomItem);
+
+        const oldTop = topItem;
+
+        // Equip the bottom item without selling the old one
+        equipItem(bottomItem, { studyOld: true });
+
+        // Store old item as forgedItem so it is preserved if modal closes
+        setForgedItem(oldTop);
+
+        // Update modal state
+        topItem = bottomItem;
+        bottomItem = oldTop;
+        hasSwapped = !hasSwapped;
+        powerDiffShown = diff;
+
+        // Re-render
+        renderDecisionContent();
+
+        // Fade out power badge after a short delay
+        setTimeout(() => {
+            const badge = itemInfo.querySelector('.decision-power-badge');
+            if (badge) badge.classList.add('badge-fade-out');
+        }, 2000);
+    }
+
+    function handleSell() {
+        // Selling a higher-tier item than what is equipped requires confirmation
+        if (topItem && (bottomItem.tier || 1) > (topItem.tier || 1)) {
+            showSellConfirmation();
+            return;
+        }
+        doSell();
+    }
+
+    function doSell() {
+        const goldEarned = getSellValue(bottomItem);
+        addGold(goldEarned);
+        gameEvents.emit(EVENTS.ITEM_SOLD, { item: bottomItem, goldEarned });
+        setForgedItem(null);
+        hideDecisionModal();
+    }
+
+    function handleStudy() {
+        studyItem(bottomItem);
+        setForgedItem(null);
+        saveGame();
+        hideDecisionModal();
+    }
+
+    function showSellConfirmation() {
+        // Remove existing overlay if any
+        const existing = modal.querySelector('.decision-confirm-overlay');
+        if (existing) existing.remove();
+
+        const overlay = createElement('div', 'decision-confirm-overlay');
+        const box = createElement('div', 'decision-confirm-box');
+
+        const title = createElement('div', 'decision-confirm-title', '⚠️ Confirmer la vente');
+        const msg = createElement('div', 'decision-confirm-msg',
+            'Cet item a un tier supérieur à celui équipé. Êtes-vous sûr de vouloir le vendre ?');
+
+        const btns = createElement('div', 'decision-confirm-btns');
+        const cancelBtn = createElement('button', 'btn decision-confirm-cancel', 'Annuler');
+        cancelBtn.addEventListener('click', () => overlay.remove());
+        const confirmBtn = createElement('button', 'btn decision-confirm-yes', 'Confirmer la vente');
+        confirmBtn.addEventListener('click', () => { overlay.remove(); doSell(); });
+
+        btns.append(cancelBtn, confirmBtn);
+        box.append(title, msg, btns);
+        overlay.appendChild(box);
+
+        modal.querySelector('.modal-content').appendChild(overlay);
+    }
 }
 
 export function hideDecisionModal() {

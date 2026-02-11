@@ -752,7 +752,14 @@ h1 {
     font-size: clamp(1.1em, 2vw, 1.4em);
 }
 
-#forged-item-info,
+#forged-item-info {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
 #item-detail-info {
     background: #f5f5f5;
     border-radius: 8px;
@@ -906,6 +913,258 @@ h1 {
     font-size: clamp(0.75em, 1vw, 0.85em);
     border-radius: 6px;
     font-weight: 600;
+}
+
+/* ===== Decision Modal Redesign ===== */
+
+.decision-section {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: clamp(10px, 1.5vw, 14px);
+    border: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.decision-top {
+    margin-bottom: 10px;
+    border: 2px solid #999;
+    background: #f0f0f0;
+}
+
+.decision-bottom {
+    border: 2px solid #4a4a4a;
+}
+
+.decision-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.decision-label {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.decision-label-equipped {
+    color: #888;
+}
+
+.decision-label-new {
+    color: #4a4a4a;
+    margin-bottom: 6px;
+}
+
+.decision-card {
+    /* item card wrapper */
+}
+
+.decision-empty {
+    padding: 12px;
+    color: #999;
+    font-style: italic;
+    font-size: clamp(0.85em, 1.2vw, 0.95em);
+}
+
+.decision-power-badge {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    font-weight: 800;
+    padding: 2px 10px;
+    border-radius: 12px;
+    animation: badgePop 0.4s ease-out;
+}
+
+.decision-power-badge.power-up {
+    color: #2e7d32;
+    background: #e8f5e9;
+}
+
+.decision-power-badge.power-down {
+    color: #c62828;
+    background: #ffebee;
+}
+
+.badge-fade-out {
+    animation: badgeFadeOut 0.5s ease-out forwards;
+}
+
+@keyframes badgePop {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes badgeFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.decision-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.decision-btn-equip {
+    display: block;
+    width: 100%;
+    padding: clamp(10px, 1.5vw, 14px);
+    font-size: clamp(0.95em, 1.3vw, 1.1em);
+    font-weight: 700;
+    background: #5a5a5a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.decision-btn-equip:hover {
+    background: #4a4a4a;
+    transform: translateY(-1px);
+}
+
+.decision-btn-equip.equip-upgrade {
+    background: #2e7d32;
+}
+
+.decision-btn-equip.equip-upgrade:hover {
+    background: #1b5e20;
+}
+
+.decision-btn-equip.equip-downgrade {
+    background: #888;
+}
+
+.decision-btn-equip.equip-downgrade:hover {
+    background: #777;
+}
+
+.decision-separator {
+    height: 1px;
+    background: #d0d0d0;
+    margin: 10px 0;
+}
+
+.decision-dispose-group {
+    display: flex;
+    gap: 8px;
+}
+
+.decision-btn-sell,
+.decision-btn-study {
+    flex: 1;
+    padding: clamp(8px, 1.2vw, 12px) 8px;
+    font-size: clamp(0.85em, 1.1vw, 0.95em);
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.decision-btn-sell {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.decision-btn-sell:hover {
+    background: #d0d0d0;
+    transform: translateY(-1px);
+}
+
+.decision-btn-study {
+    background: #ede7f6;
+    color: #5e35b1;
+}
+
+.decision-btn-study:hover {
+    background: #d1c4e9;
+    transform: translateY(-1px);
+}
+
+/* Sell Confirmation Overlay */
+.decision-confirm-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    z-index: 10;
+    animation: confirmFadeIn 0.2s ease-out;
+}
+
+.decision-confirm-box {
+    padding: 24px;
+    text-align: center;
+    max-width: 300px;
+}
+
+.decision-confirm-title {
+    font-size: clamp(1.1em, 1.6vw, 1.3em);
+    font-weight: 800;
+    color: #e65100;
+    margin-bottom: 12px;
+}
+
+.decision-confirm-msg {
+    font-size: clamp(0.85em, 1.2vw, 0.95em);
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.decision-confirm-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.decision-confirm-cancel {
+    flex: 1;
+    padding: 10px;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: clamp(0.85em, 1.1vw, 0.95em);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.decision-confirm-cancel:hover {
+    background: #d0d0d0;
+}
+
+.decision-confirm-yes {
+    flex: 1;
+    padding: 10px;
+    background: #e65100;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: clamp(0.85em, 1.1vw, 0.95em);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.decision-confirm-yes:hover {
+    background: #bf360c;
+}
+
+@keyframes confirmFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-buttons {
@@ -1166,6 +1425,10 @@ h1 {
 
 .toast-sell {
     background: #d4a017;
+}
+
+.toast-study {
+    background: #7e57c2;
 }
 
 @keyframes toastIn {
