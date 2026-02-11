@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import express from 'express';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
@@ -9,6 +10,13 @@ import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
 import prisma from './lib/prisma.js';
+
+// Sync Prisma schema to database on startup (non-fatal)
+try {
+    execSync('./node_modules/.bin/prisma db push --accept-data-loss --skip-generate', { stdio: 'inherit' });
+} catch (err) {
+    console.error('Prisma db push failed (non-fatal):', err.message);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
