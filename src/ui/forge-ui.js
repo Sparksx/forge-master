@@ -44,11 +44,8 @@ export function showStudyToast(essenceEarned) {
     showToast(`+${formatNumber(essenceEarned)} 🔮`, 'study');
 }
 
-/** Study (dismantle) the currently forged item for essence instead of gold */
-export function studyForgedItem() {
-    const item = getForgedItem();
-    if (!item) return 0;
-
+/** Study (dismantle) any item for essence, applying tech bonuses */
+function studyItem(item) {
     let essenceEarned = getStudyValue(item);
     const studyBonus = getTechEffect('essenceStudy'); // +2% per level
     essenceEarned = Math.floor(essenceEarned * (1 + studyBonus / 100));
@@ -63,9 +60,18 @@ export function studyForgedItem() {
     }
 
     addEssence(essenceEarned);
+    showStudyToast(essenceEarned);
+    return essenceEarned;
+}
+
+/** Study (dismantle) the currently forged item for essence instead of gold */
+export function studyForgedItem() {
+    const item = getForgedItem();
+    if (!item) return 0;
+
+    const essenceEarned = studyItem(item);
     setForgedItem(null);
     saveGame();
-    showStudyToast(essenceEarned);
     return essenceEarned;
 }
 
@@ -343,10 +349,37 @@ export function showDecisionModal(item, onClose) {
         newCard.appendChild(createElement('div', 'comparison-label', 'New'));
         newCard.appendChild(buildItemCard(item, currentItem));
         const sellOldValue = getSellValue(currentItem);
-        newCard.appendChild(createElement('div', 'keep-label', `Equip (+${formatNumber(sellOldValue)}💰)`));
+        const studyOldValue = getStudyValue(currentItem);
+
+        let studyMode = false;
+        const toggleRow = createElement('div', 'equip-reward-toggle');
+        const goldOption = createElement('button', 'toggle-option toggle-option-active', `💰 +${formatNumber(sellOldValue)}`);
+        const essenceOption = createElement('button', 'toggle-option', `🔮 +${formatNumber(studyOldValue)}`);
+        goldOption.addEventListener('click', (e) => {
+            e.stopPropagation();
+            studyMode = false;
+            goldOption.classList.add('toggle-option-active');
+            essenceOption.classList.remove('toggle-option-active');
+        });
+        essenceOption.addEventListener('click', (e) => {
+            e.stopPropagation();
+            studyMode = true;
+            essenceOption.classList.add('toggle-option-active');
+            goldOption.classList.remove('toggle-option-active');
+        });
+        toggleRow.append(goldOption, essenceOption);
+        newCard.appendChild(toggleRow);
+
         newCard.addEventListener('click', () => {
             const forgedItem = getForgedItem();
-            if (forgedItem) equipItem(forgedItem);
+            if (forgedItem) {
+                if (studyMode) {
+                    studyItem(currentItem);
+                    equipItem(forgedItem, { studyOld: true });
+                } else {
+                    equipItem(forgedItem);
+                }
+            }
             hideDecisionModal();
         });
 
