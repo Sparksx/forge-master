@@ -4,7 +4,7 @@ import {
     GROWTH_EXPONENT, TIERS, FORGE_LEVELS
 } from './config.js';
 import { calculateItemStats, calculateStats, calculatePowerScore } from '../shared/stats.js';
-import { getEquipmentByType, getHighestLevelForSlot, trackForgedLevel, setForgedItem, getForgeLevel, getTechEffect } from './state.js';
+import { getEquipmentByType, getHighestLevelForSlot, trackForgedLevel, setForgedItem, getForgeLevel, getTechEffect, getSellValue, addGold } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
 // Re-export shared functions so existing imports keep working
@@ -95,7 +95,7 @@ export function getEffectiveMaxLevel(type) {
     return MAX_LEVEL + bonus;
 }
 
-export function forgeEquipment() {
+function forgeOneItem() {
     const randomType = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
     const tier = rollTier(getForgeLevel());
 
@@ -119,10 +119,43 @@ export function forgeEquipment() {
 
     const item = createItem(randomType, randomLevel, tier);
     trackForgedLevel(randomType, tier, randomLevel);
-    setForgedItem(item);
-    gameEvents.emit(EVENTS.ITEM_FORGED, item);
-
     return item;
+}
+
+export function forgeEquipment() {
+    const forgeCount = 1 + getTechEffect('forgeMultiple');
+
+    if (forgeCount <= 1) {
+        const item = forgeOneItem();
+        setForgedItem(item);
+        gameEvents.emit(EVENTS.ITEM_FORGED, item);
+        return item;
+    }
+
+    // Forge multiple items, keep the best one, auto-sell the rest
+    const items = [];
+    for (let i = 0; i < forgeCount; i++) {
+        items.push(forgeOneItem());
+    }
+
+    // Sort: highest tier first, then highest level
+    items.sort((a, b) => {
+        if (b.tier !== a.tier) return b.tier - a.tier;
+        return b.level - a.level;
+    });
+
+    const best = items[0];
+
+    // Auto-sell the extras
+    for (let i = 1; i < items.length; i++) {
+        const goldEarned = getSellValue(items[i]);
+        addGold(goldEarned);
+    }
+
+    setForgedItem(best);
+    gameEvents.emit(EVENTS.ITEM_FORGED, best);
+
+    return best;
 }
 
 // calculatePowerScore is now in shared/stats.js and re-exported above

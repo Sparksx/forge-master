@@ -25,15 +25,19 @@ model User {
 }
 
 model GameState {
-  id           Int      @id @default(autoincrement())
-  userId       Int      @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  equipment    Json     @default("{}")
-  gold         Int      @default(0)
-  forgeLevel   Int      @default(1)
-  forgeUpgrade Json?
-  combat       Json     @default("{\"currentWave\":1,\"currentSubWave\":1,\"highestWave\":1,\"highestSubWave\":1}")
-  updatedAt    DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equipment        Json     @default("{}")
+  gold             Int      @default(0)
+  forgeLevel       Int      @default(1)
+  forgeUpgrade     Json?
+  combat           Json     @default("{\"currentWave\":1,\"currentSubWave\":1,\"highestWave\":1,\"highestSubWave\":1}")
+  essence          Int      @default(0)
+  player           Json     @default("{\"level\":1,\"xp\":0,\"profilePicture\":\"wizard\"}")
+  research         Json     @default("{\"completed\":{},\"active\":null,\"queue\":[]}")
+  forgeHighestLevel Json    @default("{}")
+  updatedAt        DateTime @updatedAt
 }
 
 model ChatMessage {
