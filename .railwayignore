@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.*
+*.local
+.DS_Store
+.vscode
+.idea
+*.md
+LICENSE
+coverage
+src/__tests__
+**/*.test.js
+**/*.spec.js
