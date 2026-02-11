@@ -118,6 +118,12 @@ const gameState = {
         active: null,    // { techId, level, startedAt, duration } or null
         queue: [],       // [{ techId, level }]
     },
+    // Shop state (persisted with game save to prevent re-claiming after cache clear)
+    shopState: {
+        claimedMilestones: [],
+        dailyLastClaimed: null,
+        dailyStreak: 0,
+    },
 };
 
 export function resetGame() {
@@ -487,6 +493,14 @@ let saveInFlight = false;
 let saveDirtyWhileInFlight = false;
 const SAVE_DEBOUNCE = 2000; // 2 seconds
 
+export function getShopState() {
+    return gameState.shopState;
+}
+
+export function setShopState(newState) {
+    gameState.shopState = { ...gameState.shopState, ...newState };
+}
+
 function buildSaveData() {
     const data = {
         equipment: gameState.equipment,
@@ -495,7 +509,8 @@ function buildSaveData() {
         forgeHighestLevel: gameState.forgeHighestLevel,
         forgeUpgrade: gameState.forgeUpgrade || null,
         combat: gameState.combat,
-        player: gameState.player,
+        // Embed shopState inside player JSON so it persists on server without schema changes
+        player: { ...gameState.player, shopState: gameState.shopState },
         essence: gameState.essence,
         research: gameState.research,
     };
@@ -661,6 +676,25 @@ function applyLoadedData(loaded) {
             gameState.research.queue = loaded.research.queue.filter(
                 q => q && q.techId && typeof q.level === 'number'
             );
+        }
+    }
+
+    // Restore shop state (milestones + daily rewards)
+    // shopState is embedded inside player JSON for server persistence (no schema change needed)
+    const shopData = (loaded.shopState && typeof loaded.shopState === 'object')
+        ? loaded.shopState
+        : (loaded.player?.shopState && typeof loaded.player.shopState === 'object')
+            ? loaded.player.shopState
+            : null;
+    if (shopData) {
+        if (Array.isArray(shopData.claimedMilestones)) {
+            gameState.shopState.claimedMilestones = shopData.claimedMilestones;
+        }
+        if (typeof shopData.dailyLastClaimed === 'string' || shopData.dailyLastClaimed === null) {
+            gameState.shopState.dailyLastClaimed = shopData.dailyLastClaimed;
+        }
+        if (typeof shopData.dailyStreak === 'number' && shopData.dailyStreak >= 0) {
+            gameState.shopState.dailyStreak = Math.floor(shopData.dailyStreak);
         }
     }
 

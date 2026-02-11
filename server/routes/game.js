@@ -109,7 +109,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel } = req.body;
+    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState } = req.body;
 
     try {
         const data = {};

@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, calculatePowerScore, calculateStats } from '../../shared/stats.js';
+import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_RANGE_INTERVAL, PVP_TURN_TIMEOUT } from '../../shared/pvp-config.js';
 import { storeCombatLog } from './chat.js';
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
@@ -8,16 +9,21 @@ const queue = new Map();
 // Active matches: Map<matchId, MatchState>
 const matches = new Map();
 
-const TURN_TIMEOUT = 15000; // 15s per turn
+const TURN_TIMEOUT = PVP_TURN_TIMEOUT;
 const MAX_TURNS = 50; // max turns before forced end
 const K_FACTOR = 32; // Elo K-factor base
 
-// Matchmaking: power-based primary, elo secondary
-const BASE_POWER_RANGE = 0.20;       // ±20% power
-const POWER_RANGE_EXPANSION = 0.10;  // +10% per interval
+// Leaderboard cache (avoid recalculating power for every request)
+let leaderboardCache = null;
+let leaderboardCacheTime = 0;
+const LEADERBOARD_CACHE_TTL = 60000; // 60 seconds
+
+// Matchmaking: power-based primary, elo secondary (from shared config)
+const BASE_POWER_RANGE = PVP_BASE_POWER_RANGE;
+const POWER_RANGE_EXPANSION = PVP_POWER_RANGE_EXPANSION;
 const BASE_ELO_RANGE = 200;
 const ELO_RANGE_EXPANSION = 100;
-const RANGE_INTERVAL = 5000; // ms
+const RANGE_INTERVAL = PVP_RANGE_INTERVAL;
 
 export function registerPvpHandlers(io, socket) {
     socket.on('pvp:queue', async () => {
@@ -78,23 +84,29 @@ export function registerPvpHandlers(io, socket) {
 function tryMatch(io) {
     if (queue.size < 2) return;
 
-    const entries = Array.from(queue.values());
+    // Sort by power for O(n log n) neighbor search instead of O(n²)
+    const entries = Array.from(queue.values()).sort((a, b) => a.stats.power - b.stats.power);
     const now = Date.now();
 
-    // Find the best power-compatible pair
+    // Find the best compatible adjacent pair
     let bestPair = null;
     let bestScore = Infinity;
 
-    for (let i = 0; i < entries.length; i++) {
-        for (let j = i + 1; j < entries.length; j++) {
-            const a = entries[i];
+    for (let i = 0; i < entries.length - 1; i++) {
+        const a = entries[i];
+        // Only check nearby neighbors (sorted by power, so close indices = close power)
+        const searchLimit = Math.min(entries.length, i + 10);
+        for (let j = i + 1; j < searchLimit; j++) {
             const b = entries[j];
 
             const avgPower = (a.stats.power + b.stats.power) / 2 || 1;
             const powerDiffPct = Math.abs(a.stats.power - b.stats.power) / avgPower;
+
+            // Early exit: if power diff already exceeds max possible range, skip further neighbors
+            if (powerDiffPct > BASE_POWER_RANGE + 10 * POWER_RANGE_EXPANSION) break;
+
             const eloDiff = Math.abs(a.stats.rating - b.stats.rating);
 
-            // Calculate allowed ranges based on how long each player has been waiting
             const waitA = now - (a.queuedAt || now);
             const waitB = now - (b.queuedAt || now);
             const maxWait = Math.max(waitA, waitB);
@@ -104,7 +116,6 @@ function tryMatch(io) {
             const allowedEloRange = BASE_ELO_RANGE + expansions * ELO_RANGE_EXPANSION;
 
             if (powerDiffPct <= allowedPowerRange && eloDiff <= allowedEloRange) {
-                // Composite score: prioritize power proximity, then elo
                 const score = powerDiffPct * 200 + eloDiff;
                 if (score < bestScore) {
                     bestScore = score;
@@ -377,6 +388,8 @@ async function endMatch(io, match, winnerId, reason) {
             updates.push(prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: { increment: p2Change }, pvpWins: { increment: 1 } } }));
         }
         await Promise.all(updates);
+        // Invalidate leaderboard cache since ratings changed
+        leaderboardCache = null;
     } catch (err) {
         console.error('PvP rating update error:', err);
     }
@@ -451,6 +464,10 @@ async function getPlayerStats(userId) {
 }
 
 async function getLeaderboard() {
+    // Return cached leaderboard if still fresh
+    if (leaderboardCache && (Date.now() - leaderboardCacheTime) < LEADERBOARD_CACHE_TTL) {
+        return leaderboardCache;
+    }
     try {
         const players = await prisma.user.findMany({
             where: { pvpWins: { gt: 0 } },
@@ -466,7 +483,7 @@ async function getLeaderboard() {
             },
         });
 
-        return players.map(p => {
+        const result = players.map(p => {
             let power = 0;
             if (p.gameState) {
                 const { totalHealth, totalDamage, bonuses } = calculateStats(p.gameState.equipment || {});
@@ -481,6 +498,10 @@ async function getLeaderboard() {
                 power,
             };
         });
+
+        leaderboardCache = result;
+        leaderboardCacheTime = Date.now();
+        return result;
     } catch (err) {
         console.error('Leaderboard error:', err);
         return [];

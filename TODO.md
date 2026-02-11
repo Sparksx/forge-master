@@ -55,16 +55,16 @@
 
 ## 🟡 Priorité moyenne — Architecture & Performance
 
-- [ ] **Cache des éléments DOM** — `showDecisionModal()` et `updateStats()` requêtent les mêmes éléments à chaque appel. Cacher les refs à l'init
-- [ ] **Re-render ciblé** — `updateEquipmentSlots()` met à jour les 8 slots même si un seul a changé. Cibler le slot modifié
-- [ ] **Error boundaries** — Les handlers de click n'ont pas de try-catch. Un échec dans `equipItem()` laisse la modal bloquée ouverte
-- [ ] **Matchmaking O(n²)** — `server/socket/pvp.js:86` utilise une boucle imbriquée pour trouver des matchs. Pour 1000 joueurs en queue, c'est 500k comparaisons. Trier la queue par rating et chercher le voisin le plus proche
-- [ ] **Fuite mémoire monstres morts** — `combat.js` itère sur tous les monstres à chaque tick, y compris les morts (`currentHP <= 0`). Filtrer les monstres morts ou les retirer du tableau
-- [ ] **DOM non-limité dans le combat log PvP** — `pvp.js:241` ajoute un élément DOM par tour sans limite. Après 100+ tours, ralentissement du rendu. Garder seulement les 20 dernières entrées
-- [ ] **Leaderboard non-caché** — `server/socket/pvp.js:457` recalcule le power score de chaque joueur à chaque requête de leaderboard. Ajouter un cache avec TTL de 60 secondes
-- [ ] **Constantes dupliquées client/serveur** — Les seuils de matchmaking (range 100, expansion 50/5s) et le timeout de tour (15s) sont hardcodés séparément côté client (`pvp.js`) et serveur (`server/socket/pvp.js`). Centraliser dans `shared/`
-- [ ] **Timeouts sur les fetch** — `api.js` et `server/routes/auth.js` (appels Discord/Google) n'ont aucun timeout. Un serveur qui ne répond pas bloque indéfiniment. Ajouter `AbortController` avec timeout de 10s
-- [ ] **Milestones côté serveur** — Les milestones du shop (`src/shop.js`) sont stockées uniquement en localStorage. Un joueur qui vide son cache peut re-réclamer toutes les récompenses. Persister côté serveur dans le `GameState`
+- [x] **Cache des éléments DOM** — `showDecisionModal()` et `updateStats()` requêtent les mêmes éléments à chaque appel. Cachés dans `domCache` avec lazy init dans `forge-ui.js`
+- [x] **Re-render ciblé** — `updateEquipmentSlots()` met à jour les 8 slots même si un seul a changé. Extrait `renderSingleSlot(type)` pour cibler un slot unique
+- [x] **Error boundaries** — Try-catch ajouté sur les handlers de click forge/equipment dans `main.js`. Ferme automatiquement les modals bloquées en cas d'erreur
+- [x] **Matchmaking O(n²)** — Queue triée par power, recherche limitée aux 10 voisins les plus proches + early exit quand l'écart dépasse le range max
+- [x] **Fuite mémoire monstres morts** — Ajout d'un compteur `aliveMonstersCount` décrémenté à la mort, utilisé pour skip l'itération quand tous sont morts
+- [x] **DOM non-limité dans le combat log PvP** — Limite de 20 entrées dans le combat log PvP avec suppression FIFO
+- [x] **Leaderboard non-caché** — Cache avec TTL de 60s, invalidé à la fin de chaque match PvP
+- [x] **Constantes dupliquées client/serveur** — Centralisées dans `shared/pvp-config.js`, importées par client et serveur
+- [x] **Timeouts sur les fetch** — `AbortController` avec timeout 10s sur `apiFetch()` et `refreshAccessToken()` via helper `withTimeout()`
+- [x] **Milestones côté serveur** — Shop state (milestones + daily) centralisé dans `state.js`, embarqué dans le JSON `player` pour persistance serveur sans migration de schéma. `shop.js` utilise `getShopState()`/`setShopState()` au lieu de localStorage
 
 ## 🟡 Priorité moyenne — Qualité du code
 

@@ -8,6 +8,7 @@ import { getCurrentUser } from './auth.js';
 import { shareCombatInChat } from './chat.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 import { getEquipment } from './state.js';
+import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_RANGE_INTERVAL } from '../shared/pvp-config.js';
 
 let pvpState = 'idle'; // idle | queued | matched | fighting | ended
 let myPower = 0;
@@ -203,8 +204,8 @@ function updateQueuePowerRange() {
     if (!el || !myPower) return;
 
     const elapsed = Date.now() - queueStartTime;
-    const expansions = Math.floor(elapsed / 5000);
-    const rangePct = 0.20 + expansions * 0.10;
+    const expansions = Math.floor(elapsed / PVP_RANGE_INTERVAL);
+    const rangePct = PVP_BASE_POWER_RANGE + expansions * PVP_POWER_RANGE_EXPANSION;
     const low = Math.round(myPower * (1 - rangePct));
     const high = Math.round(myPower * (1 + rangePct));
 
@@ -230,7 +231,7 @@ function updateCombatUI(data) {
     updateHP('pvp-your-hp', data.you.currentHP, data.you.maxHP, 'pvp-your-hp-text');
     updateHP('pvp-opponent-hp', data.opponent.currentHP, data.opponent.maxHP, 'pvp-opponent-hp-text');
 
-    // Show turn log
+    // Show turn log (keep only last 20 entries to avoid DOM bloat)
     const log = document.getElementById('pvp-combat-log');
     if (log) {
         const line = document.createElement('div');
@@ -239,6 +240,9 @@ function updateCombatUI(data) {
         const theirAction = data.opponent.action;
         line.textContent = `Turn ${data.turn}: You ${yourAction} (${data.opponent.damage} dmg taken) \u2014 Opponent ${theirAction} (${data.you.damage} dmg taken)`;
         log.appendChild(line);
+        while (log.children.length > 20) {
+            log.firstChild.remove();
+        }
         log.scrollTop = log.scrollHeight;
     }
 }

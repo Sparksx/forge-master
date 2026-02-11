@@ -19,6 +19,7 @@ let combatPaused = false;
 let monstersInWave = [];     // all monsters for current sub-wave
 let currentMonsterIndex = 0; // which monster the player focuses
 let totalMonstersInWave = 0;
+let aliveMonstersCount = 0;  // track alive count to skip iteration when all dead
 
 export function getPlayerCombatState() {
     return playerState;
@@ -79,6 +80,7 @@ function spawnWaveMonsters() {
     const { currentWave, currentSubWave } = getCombatProgress();
     const count = getMonsterCount(currentSubWave);
     totalMonstersInWave = count;
+    aliveMonstersCount = count;
     currentMonsterIndex = 0;
     monstersInWave = [];
 
@@ -250,6 +252,7 @@ function playerAttack() {
 
     if (monsterState.currentHP <= 0) {
         monsterState.currentHP = 0;
+        aliveMonstersCount--;
         onMonsterDefeated();
     }
 }
@@ -290,8 +293,7 @@ function onMonsterDefeated() {
     });
 
     // Check if any monsters remain alive
-    const hasAlive = monstersInWave.some(m => m.currentHP > 0);
-    if (hasAlive) {
+    if (aliveMonstersCount > 0) {
         advanceFocus();
         gameEvents.emit(EVENTS.COMBAT_FOCUS_CHANGED, {
             focusIndex: currentMonsterIndex,

@@ -171,14 +171,20 @@ async function startGame() {
 
     // Forge button: show pending item or forge new batch (disabled during auto-forge)
     document.getElementById('forge-btn').addEventListener('click', () => {
-        if (isAutoForging()) return;
-        const pending = getForgedItem();
-        if (pending) {
-            showDecisionModal(pending);
-        } else {
-            const items = forgeEquipment();
-            items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
-            showForgedBatch(items);
+        try {
+            if (isAutoForging()) return;
+            const pending = getForgedItem();
+            if (pending) {
+                showDecisionModal(pending);
+            } else {
+                const items = forgeEquipment();
+                items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
+                showForgedBatch(items);
+            }
+        } catch (err) {
+            console.error('Forge error:', err);
+            const activeModal = document.querySelector('.modal.active');
+            if (activeModal) activeModal.classList.remove('active');
         }
     });
 
@@ -208,10 +214,14 @@ async function startGame() {
 
     // Equipment slot clicks -> item detail modal
     document.querySelector('.body-container').addEventListener('click', (e) => {
-        const slot = e.target.closest('.equipment-slot');
-        if (!slot) return;
-        const type = slot.dataset.type;
-        if (type) showItemDetailModal(type);
+        try {
+            const slot = e.target.closest('.equipment-slot');
+            if (!slot) return;
+            const type = slot.dataset.type;
+            if (type) showItemDetailModal(type);
+        } catch (err) {
+            console.error('Item detail error:', err);
+        }
     });
 
     document.getElementById('item-detail-close').addEventListener('click', hideItemDetailModal);
