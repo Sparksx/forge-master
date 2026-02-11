@@ -23,6 +23,10 @@ export default [
                 Set: 'readonly',
                 Promise: 'readonly',
                 process: 'readonly',
+                URLSearchParams: 'readonly',
+                FormData: 'readonly',
+                navigator: 'readonly',
+                confirm: 'readonly',
             },
         },
         rules: {
