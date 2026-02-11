@@ -357,9 +357,9 @@ export function upgradeForge() {
     return startForgeUpgrade();
 }
 
-export function equipItem(item) {
+export function equipItem(item, { studyOld = false } = {}) {
     const oldItem = gameState.equipment[item.type];
-    if (oldItem) {
+    if (oldItem && !studyOld) {
         const goldEarned = getSellValue(oldItem);
         gameState.gold += goldEarned;
         gameEvents.emit(EVENTS.ITEM_SOLD, { item: oldItem, goldEarned });
