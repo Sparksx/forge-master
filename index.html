@@ -4,14 +4,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Forge Master</title>
+    <title>Anvil Legends</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="Forge equipment, conquer dungeons, and battle other players in this idle RPG!">
+
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Anvil Legends">
+    <link rel="apple-touch-icon" href="/icon-192.svg">
 </head>
 
 <body>
     <!-- Auth Screen (shown before login) -->
     <div class="auth-screen" id="auth-screen" role="main" aria-label="Authentication">
         <div class="auth-container">
-            <h1 class="auth-title">Forge Master</h1>
+            <h1 class="auth-title">Anvil Legends</h1>
             <p class="auth-subtitle">Login or create an account to play</p>
 
             <!-- Login Form -->
@@ -45,6 +56,7 @@
         <!-- Persistent Header (always visible, even over modals) -->
         <header class="app-header" id="app-header" role="banner">
             <div class="header-row">
+                <button class="header-btn hidden" id="pwa-install-btn" aria-label="Install app" title="Install app">📲</button>
                 <button class="header-btn" id="profile-btn" aria-label="Open profile">👤</button>
                 <div class="header-level" id="header-level" aria-label="Player level">
                     <span class="header-level-label">Lv.</span>

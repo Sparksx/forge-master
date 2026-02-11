@@ -40,7 +40,7 @@ app.get('{*path}', (req, res, next) => {
 });
 
 server.listen(PORT, async () => {
-    console.log(`Forge Master server running on port ${PORT} (${NODE_ENV})`);
+    console.log(`Anvil Legends server running on port ${PORT} (${NODE_ENV})`);
 
     // Cleanup expired refresh tokens on startup
     try {

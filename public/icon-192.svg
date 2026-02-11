@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#16213e"/>
+    </linearGradient>
+    <linearGradient id="anvil" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8a8a8a"/>
+      <stop offset="100%" style="stop-color:#4a4a4a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0a030"/>
+      <stop offset="100%" style="stop-color:#e06020"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+  <!-- Anvil body -->
+  <path d="M46 120 L56 90 L136 90 L146 120 Z" fill="url(#anvil)" stroke="#666" stroke-width="2"/>
+  <!-- Anvil top (horn + face) -->
+  <path d="M30 90 Q30 72 50 72 L142 72 Q162 72 162 90 Z" fill="#6a6a6a" stroke="#555" stroke-width="2"/>
+  <!-- Anvil base -->
+  <rect x="56" y="120" width="80" height="12" rx="3" fill="#3a3a3a" stroke="#555" stroke-width="1.5"/>
+  <rect x="50" y="132" width="92" height="10" rx="4" fill="#2a2a2a" stroke="#444" stroke-width="1.5"/>
+  <!-- Hammer -->
+  <rect x="88" y="28" width="8" height="40" rx="2" fill="#8B6914" stroke="#6B4914" stroke-width="1"/>
+  <rect x="74" y="22" width="36" height="16" rx="3" fill="#777" stroke="#555" stroke-width="1.5"/>
+  <!-- Sparks -->
+  <circle cx="72" cy="68" r="3" fill="#ffcc00" opacity="0.9"/>
+  <circle cx="110" cy="62" r="2.5" fill="#ff8800" opacity="0.8"/>
+  <circle cx="90" cy="58" r="2" fill="#ffdd44" opacity="0.9"/>
+  <circle cx="120" cy="66" r="2" fill="#ffaa00" opacity="0.7"/>
+  <circle cx="80" cy="56" r="1.5" fill="#ffee66" opacity="0.8"/>
+  <!-- Text -->
+  <text x="96" y="168" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="bold" fill="#f0a030" text-anchor="middle" letter-spacing="1">ANVIL LEGENDS</text>
+</svg>
