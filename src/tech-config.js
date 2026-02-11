@@ -419,12 +419,12 @@ export const TECHS = [
         icon: '🧠',
         branch: 'automation',
         maxLevel: 3,
-        description: 'Niv.1: filtre niveau min — Niv.2: filtre stats min — Niv.3: règles custom',
-        baseCost: 200,
-        costScale: 3,
-        baseTime: 300,       // 5 min
-        timeScale: 3,
-        requires: [],
+        description: 'Niv.1: filtre niveau min — Niv.2: filtre stats min — Niv.3: filtre par slot',
+        baseCost: 1500,
+        costScale: 4,
+        baseTime: 1800,      // 30 min
+        timeScale: 4,
+        requires: [{ tech: 'forgeMultiple', level: 2 }, { tech: 'goldRush', level: 5 }],
         effect: { type: 'smartFilter', perLevel: 1 },
     },
     {
@@ -434,11 +434,11 @@ export const TECHS = [
         branch: 'automation',
         maxLevel: 1,
         description: 'Auto-équipe si strictement meilleur',
-        baseCost: 3000,
+        baseCost: 8000,
         costScale: 1,
-        baseTime: 3600,      // 1h
+        baseTime: 7200,      // 2h
         timeScale: 1,
-        requires: [{ tech: 'smartFilter', level: 2 }],
+        requires: [{ tech: 'smartFilter', level: 3 }, { tech: 'forgeMultiple', level: 3 }],
         effect: { type: 'autoEquip', perLevel: 1 },
     },
     {
@@ -448,11 +448,11 @@ export const TECHS = [
         branch: 'automation',
         maxLevel: 3,
         description: '+1 recherche en file d\'attente',
-        baseCost: 400,
-        costScale: 3,
-        baseTime: 600,       // 10 min
-        timeScale: 3,
-        requires: [{ tech: 'smartFilter', level: 1 }],
+        baseCost: 2000,
+        costScale: 4,
+        baseTime: 2400,      // 40 min
+        timeScale: 4,
+        requires: [{ tech: 'smartFilter', level: 1 }, { tech: 'essenceStudy', level: 3 }],
         effect: { type: 'researchQueue', perLevel: 1 },
     },
     {
@@ -462,11 +462,11 @@ export const TECHS = [
         branch: 'automation',
         maxLevel: 1,
         description: 'L\'auto-forge peut auto-étudier pour l\'essence',
-        baseCost: 150,
+        baseCost: 800,
         costScale: 1,
-        baseTime: 180,       // 3 min
+        baseTime: 900,       // 15 min
         timeScale: 1,
-        requires: [],
+        requires: [{ tech: 'essenceStudy', level: 3 }],
         effect: { type: 'autoStudy', perLevel: 1 },
     },
 ];

@@ -27,6 +27,10 @@ const autoForge = {
     timer: null,
     stopping: false,
     autoStudy: false,  // if true, rejected items are studied (essence) instead of sold (gold)
+    // Smart filter settings (persisted across auto-forge sessions)
+    minLevel: 0,           // Niv.1: minimum item level (0 = disabled)
+    minStats: 0,           // Niv.2: minimum main stat value (0 = disabled)
+    selectedSlots: null,   // Niv.3: Set of slot types to keep, or null = all
 };
 
 // ===== Toast Notifications =====
@@ -537,6 +541,60 @@ function scheduleNextAutoForge() {
     autoForge.timer = setTimeout(() => { doOneAutoForge(); }, getEffectiveAutoForgeInterval());
 }
 
+/** Check if an item passes all active smart filter criteria */
+function passesSmartFilter(item) {
+    const filterLevel = getTechEffect('smartFilter');
+
+    // Niv.1+: minimum level filter
+    if (filterLevel >= 1 && autoForge.minLevel > 0) {
+        if (item.level < autoForge.minLevel) return false;
+    }
+
+    // Niv.2+: minimum main stat filter
+    if (filterLevel >= 2 && autoForge.minStats > 0) {
+        const mainStat = item.stats || 0;
+        if (mainStat < autoForge.minStats) return false;
+    }
+
+    // Niv.3+: slot type filter
+    if (filterLevel >= 3 && autoForge.selectedSlots && autoForge.selectedSlots.size > 0) {
+        if (!autoForge.selectedSlots.has(item.type)) return false;
+    }
+
+    return true;
+}
+
+/** Try to auto-equip an item if autoEquip tech is active and item is strictly better */
+function tryAutoEquip(item) {
+    if (getTechEffect('autoEquip') < 1) return false;
+
+    const currentEquipped = getEquipmentByType(item.type);
+    if (!currentEquipped) {
+        // Empty slot — always equip
+        equipItem(item);
+        showToast(`🔄 Auto-équipé: ${EQUIPMENT_ICONS[item.type] || ''} Lv.${item.level}`, 'forge');
+        return true;
+    }
+
+    // Calculate power with current vs with new item
+    const equipment = { ...getEquipment() };
+    const { totalHealth: curH, totalDamage: curD, bonuses: curB } = calculateStats(equipment);
+    const currentPower = calculatePowerScore(BASE_HEALTH + curH, BASE_DAMAGE + curD, curB);
+
+    equipment[item.type] = item;
+    const { totalHealth: newH, totalDamage: newD, bonuses: newB } = calculateStats(equipment);
+    const newPower = calculatePowerScore(BASE_HEALTH + newH, BASE_DAMAGE + newD, newB);
+
+    if (newPower > currentPower) {
+        equipItem(item);
+        const diff = newPower - currentPower;
+        showToast(`🔄 Auto-équipé: ${EQUIPMENT_ICONS[item.type] || ''} Lv.${item.level} (+${formatCompact(diff)} ⚡)`, 'forge');
+        return true;
+    }
+
+    return false;
+}
+
 function doOneAutoForge() {
     if (autoForge.stopping || !autoForge.active) { cleanupAutoForge(); return; }
     const items = forgeEquipment();
@@ -544,9 +602,16 @@ function doOneAutoForge() {
     // Emit events for all items (toasts, treasure hunter)
     items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
 
-    // Separate matching (shown to player) and non-matching (auto-disposed)
-    const matching = items.filter(item => autoForge.selectedTiers.has(item.tier));
-    const nonMatching = items.filter(item => !autoForge.selectedTiers.has(item.tier));
+    // Separate matching (tier + smart filter) and non-matching (auto-disposed)
+    const matching = [];
+    const nonMatching = [];
+    for (const item of items) {
+        if (autoForge.selectedTiers.has(item.tier) && passesSmartFilter(item)) {
+            matching.push(item);
+        } else {
+            nonMatching.push(item);
+        }
+    }
 
     // Auto-sell/study non-matching items
     for (const item of nonMatching) {
@@ -559,8 +624,16 @@ function doOneAutoForge() {
         }
     }
 
-    // Show matching items one by one, then schedule next auto-forge
-    showAutoForgeBatch(matching);
+    // Auto-equip matching items if tech is active, show remaining to player
+    const remaining = [];
+    for (const item of matching) {
+        if (!tryAutoEquip(item)) {
+            remaining.push(item);
+        }
+    }
+
+    // Show remaining items one by one, then schedule next auto-forge
+    showAutoForgeBatch(remaining);
 }
 
 function showAutoForgeBatch(items) {
@@ -603,9 +676,12 @@ function showAutoForgeModal() {
     info.textContent = '';
 
     const hasAutoStudyTech = getTechLevel('autoStudy') >= 1;
+    const smartFilterLevel = getTechEffect('smartFilter');
+    const hasAutoEquip = getTechEffect('autoEquip') >= 1;
+
     const desc = hasAutoStudyTech
-        ? 'Select tiers to keep. Others will be auto-sold or auto-studied.'
-        : 'Select tiers to keep. Other items will be auto-sold.';
+        ? 'Sélectionnez les tiers à garder. Le reste sera auto-vendu ou auto-étudié.'
+        : 'Sélectionnez les tiers à garder. Le reste sera auto-vendu.';
     info.appendChild(createElement('div', 'auto-forge-desc', desc));
 
     const tierList = createElement('div', 'auto-forge-tiers');
@@ -630,6 +706,67 @@ function showAutoForgeModal() {
 
     info.appendChild(tierList);
 
+    // === Smart Filter section (only if tech researched) ===
+    if (smartFilterLevel >= 1) {
+        const filterSection = createElement('div', 'auto-forge-filter-section');
+        const filterTitle = createElement('div', 'auto-forge-filter-title', '🧠 Filtre Intelligent');
+        filterSection.appendChild(filterTitle);
+
+        // Niv.1: Minimum level filter
+        const levelRow = createElement('div', 'auto-forge-filter-row');
+        const levelLabel = createElement('label', 'auto-forge-filter-label', 'Niveau min :');
+        const levelInput = document.createElement('input');
+        levelInput.type = 'number';
+        levelInput.className = 'auto-forge-filter-input';
+        levelInput.id = 'smart-filter-min-level';
+        levelInput.min = '0';
+        levelInput.max = '999';
+        levelInput.value = autoForge.minLevel || 0;
+        levelInput.placeholder = '0';
+        levelRow.append(levelLabel, levelInput);
+        filterSection.appendChild(levelRow);
+
+        // Niv.2: Minimum stats filter
+        if (smartFilterLevel >= 2) {
+            const statsRow = createElement('div', 'auto-forge-filter-row');
+            const statsLabel = createElement('label', 'auto-forge-filter-label', 'Stat principale min :');
+            const statsInput = document.createElement('input');
+            statsInput.type = 'number';
+            statsInput.className = 'auto-forge-filter-input';
+            statsInput.id = 'smart-filter-min-stats';
+            statsInput.min = '0';
+            statsInput.max = '99999';
+            statsInput.value = autoForge.minStats || 0;
+            statsInput.placeholder = '0';
+            statsRow.append(statsLabel, statsInput);
+            filterSection.appendChild(statsRow);
+        }
+
+        // Niv.3: Slot type filter
+        if (smartFilterLevel >= 3) {
+            const slotTitle = createElement('div', 'auto-forge-filter-subtitle', 'Slots à garder :');
+            filterSection.appendChild(slotTitle);
+
+            const slotList = createElement('div', 'auto-forge-slot-list');
+            EQUIPMENT_TYPES.forEach(type => {
+                const row = createElement('label', 'auto-forge-slot-row');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'auto-forge-slot-checkbox';
+                checkbox.dataset.slot = type;
+                checkbox.checked = !autoForge.selectedSlots || autoForge.selectedSlots.has(type);
+
+                const icon = EQUIPMENT_ICONS[type] || '';
+                const slotLabel = createElement('span', 'auto-forge-slot-name', `${icon} ${capitalizeFirst(type)}`);
+                row.append(checkbox, slotLabel);
+                slotList.appendChild(row);
+            });
+            filterSection.appendChild(slotList);
+        }
+
+        info.appendChild(filterSection);
+    }
+
     // Auto-study toggle (only visible with autoStudy tech)
     if (hasAutoStudyTech) {
         const studyRow = createElement('label', 'auto-forge-study-row');
@@ -643,7 +780,14 @@ function showAutoForgeModal() {
         info.appendChild(studyRow);
     }
 
-    const startBtn = createElement('button', 'btn btn-start-auto', '\u25B6 Start Auto Forge');
+    // Auto-equip indicator (if tech is active)
+    if (hasAutoEquip) {
+        const equipRow = createElement('div', 'auto-forge-equip-row');
+        equipRow.textContent = '🔄 Auto-équipement actif — les items strictement meilleurs seront équipés automatiquement';
+        info.appendChild(equipRow);
+    }
+
+    const startBtn = createElement('button', 'btn btn-start-auto', '\u25B6 Lancer l\'Auto Forge');
     startBtn.addEventListener('click', () => {
         const selected = new Set();
         tierList.querySelectorAll('.auto-forge-checkbox:checked').forEach(cb => {
@@ -655,6 +799,26 @@ function showAutoForgeModal() {
         autoForge.stopping = false;
         const studyToggle = document.getElementById('auto-study-toggle');
         autoForge.autoStudy = studyToggle ? studyToggle.checked : false;
+
+        // Read smart filter values
+        if (smartFilterLevel >= 1) {
+            const minLevelInput = document.getElementById('smart-filter-min-level');
+            autoForge.minLevel = minLevelInput ? parseInt(minLevelInput.value, 10) || 0 : 0;
+        }
+        if (smartFilterLevel >= 2) {
+            const minStatsInput = document.getElementById('smart-filter-min-stats');
+            autoForge.minStats = minStatsInput ? parseInt(minStatsInput.value, 10) || 0 : 0;
+        }
+        if (smartFilterLevel >= 3) {
+            const slotCheckboxes = info.querySelectorAll('.auto-forge-slot-checkbox');
+            const selectedSlots = new Set();
+            slotCheckboxes.forEach(cb => {
+                if (cb.checked) selectedSlots.add(cb.dataset.slot);
+            });
+            // If all slots selected, treat as no filter
+            autoForge.selectedSlots = selectedSlots.size === EQUIPMENT_TYPES.length ? null : selectedSlots;
+        }
+
         hideAutoForgeModal();
         updateAutoForgeButton();
         scheduleNextAutoForge();

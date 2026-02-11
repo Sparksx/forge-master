@@ -3678,6 +3678,105 @@ h1 {
     font-size: clamp(0.85em, 1.2vw, 1em);
 }
 
+/* --- Smart Filter Section --- */
+
+.auto-forge-filter-section {
+    margin: 12px 0;
+    padding: 10px 12px;
+    background: #f0f4ff;
+    border: 1px solid #c5d4f7;
+    border-radius: 8px;
+}
+
+.auto-forge-filter-title {
+    font-weight: 700;
+    font-size: clamp(0.9em, 1.3vw, 1.05em);
+    color: #3f51b5;
+    margin-bottom: 8px;
+}
+
+.auto-forge-filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+}
+
+.auto-forge-filter-label {
+    font-size: clamp(0.85em, 1.2vw, 0.95em);
+    color: #444;
+    font-weight: 600;
+}
+
+.auto-forge-filter-input {
+    width: 80px;
+    padding: 4px 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-size: 0.9em;
+    text-align: right;
+}
+
+.auto-forge-filter-input:focus {
+    outline: none;
+    border-color: #3f51b5;
+    box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.15);
+}
+
+.auto-forge-filter-subtitle {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    color: #555;
+    font-weight: 600;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.auto-forge-slot-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+.auto-forge-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: #e8edf8;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+}
+
+.auto-forge-slot-row:hover {
+    background: #dde3f3;
+}
+
+.auto-forge-slot-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #3f51b5;
+    cursor: pointer;
+}
+
+.auto-forge-slot-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.auto-forge-equip-row {
+    padding: 8px 10px;
+    margin: 8px 0;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    font-size: clamp(0.8em, 1.1vw, 0.88em);
+    color: #2e7d32;
+    font-weight: 600;
+    text-align: center;
+}
+
 /* =============================================
    TECH TREE
    ============================================= */
