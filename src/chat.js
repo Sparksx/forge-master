@@ -1,12 +1,14 @@
 /**
  * Chat UI — real-time chat with preview and full-page overlay.
- * Includes player profile viewing, PVP combat sharing, and combat replay.
+ * Includes player profile viewing, PVP combat sharing, combat replay,
+ * and moderation features (message deletion, role badges, system messages).
  */
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { getProfileEmoji } from './state.js';
 import { PROFILE_PICTURES, EQUIPMENT_ICONS, TIERS } from './config.js';
+import { isStaff, deleteChatMessage } from './admin.js';
 
 let chatOpen = false;
 let recentMessages = []; // Keep last messages for preview
@@ -97,6 +99,43 @@ function setupSocketListeners() {
         }
     });
 
+    // Message deleted by moderator
+    socket.on('chat:message-deleted', (data) => {
+        const { messageId } = data;
+        const container = document.getElementById('chat-messages');
+        if (!container) return;
+        const msgEl = container.querySelector(`[data-msg-id="${messageId}"]`);
+        if (msgEl) {
+            msgEl.remove();
+        }
+        recentMessages = recentMessages.filter(m => m.id !== messageId);
+        updatePreview();
+    });
+
+    // System broadcast message
+    socket.on('chat:system', (data) => {
+        appendSystemMessage(data);
+        scrollToBottom();
+
+        if (!chatOpen) {
+            const chatPreview = document.getElementById('chat-preview');
+            chatPreview?.classList.add('has-unread');
+        }
+    });
+
+    // Chat error (e.g. muted)
+    socket.on('chat:error', (data) => {
+        if (data?.message) {
+            appendLocalNotice(data.message);
+            scrollToBottom();
+        }
+    });
+
+    // Admin kicked
+    socket.on('admin:kicked', (data) => {
+        appendLocalNotice(data?.message || 'You have been disconnected by a moderator.');
+    });
+
     // Combat shared in chat
     socket.on('chat:combat', (data) => {
         appendCombatMessage(data);
@@ -139,7 +178,6 @@ function getAvatarEmoji(msg) {
     if (user && msg.senderId === user.id) {
         return getProfileEmoji();
     }
-    // Use avatar from server message data, fallback to wizard
     if (msg.senderAvatar) {
         const pic = PROFILE_PICTURES.find(p => p.id === msg.senderAvatar);
         if (pic) return pic.emoji;
@@ -155,37 +193,91 @@ function getAvatarEmojiById(avatarId) {
     return '\uD83E\uDDD9';
 }
 
+function getRoleBadge(role) {
+    if (role === 'admin') return '<span class="chat-role-badge chat-role-admin">ADMIN</span>';
+    if (role === 'moderator') return '<span class="chat-role-badge chat-role-mod">MOD</span>';
+    return '';
+}
+
 function appendMessage(msg) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
 
     const user = getCurrentUser();
     const isOwn = user && msg.senderId === user.id;
+    const staff = isStaff();
 
     const el = document.createElement('div');
     el.className = `chat-msg ${isOwn ? 'chat-msg-own' : ''}`;
+    el.dataset.msgId = msg.id;
 
     const avatar = getAvatarEmoji(msg);
     const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const roleBadge = getRoleBadge(msg.senderRole);
+
+    let deleteBtn = '';
+    if (staff && !isOwn) {
+        deleteBtn = `<button class="chat-delete-btn" data-delete-id="${msg.id}" title="Supprimer">&#10005;</button>`;
+    }
 
     el.innerHTML = `<span class="chat-avatar">${avatar}</span>` +
         `<div class="chat-msg-body">` +
         `<span class="chat-time">${time}</span>` +
-        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>` +
+        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>${roleBadge}` +
         `<div class="chat-text">${escapeHtml(msg.content)}</div>` +
-        `</div>`;
+        `</div>` +
+        deleteBtn;
 
     // Click on other player's message to view profile
     if (!isOwn && msg.senderId) {
-        el.style.cursor = 'pointer';
-        el.addEventListener('click', () => {
-            const socket = getSocket();
-            if (socket) {
-                socket.emit('chat:player-profile', { userId: msg.senderId });
+        const body = el.querySelector('.chat-msg-body');
+        if (body) {
+            body.style.cursor = 'pointer';
+            body.addEventListener('click', () => {
+                const socket = getSocket();
+                if (socket) {
+                    socket.emit('chat:player-profile', { userId: msg.senderId });
+                }
+            });
+        }
+    }
+
+    // Wire delete button
+    const delBtn = el.querySelector('.chat-delete-btn');
+    if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const msgId = parseInt(delBtn.dataset.deleteId);
+            if (msgId && confirm('Supprimer ce message?')) {
+                deleteChatMessage(msgId);
             }
         });
     }
 
+    container.appendChild(el);
+}
+
+function appendSystemMessage(data) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const el = document.createElement('div');
+    el.className = 'chat-msg chat-msg-system';
+    el.innerHTML =
+        `<div class="chat-system-content">` +
+            `<span class="chat-system-icon">📢</span>` +
+            `<span class="chat-system-text">${escapeHtml(data.content)}</span>` +
+        `</div>`;
+    container.appendChild(el);
+}
+
+function appendLocalNotice(text) {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    const el = document.createElement('div');
+    el.className = 'chat-msg chat-msg-notice';
+    el.innerHTML = `<div class="chat-notice-text">${escapeHtml(text)}</div>`;
     container.appendChild(el);
 }
 
@@ -241,6 +333,7 @@ function showPlayerProfileModal(data) {
 
     const emoji = getAvatarEmojiById(data.profilePicture);
     const equipment = data.equipment || {};
+    const roleBadge = getRoleBadge(data.role);
 
     let equipmentHtml = '';
     const slots = ['hat', 'armor', 'belt', 'boots', 'gloves', 'necklace', 'ring', 'weapon'];
@@ -262,12 +355,34 @@ function showPlayerProfileModal(data) {
         }
     });
 
+    // Moderation section for staff
+    let moderationHtml = '';
+    if (data.moderation) {
+        const mod = data.moderation;
+        moderationHtml = `<div class="chat-profile-moderation">` +
+            `<div class="chat-profile-section-title">Moderation</div>` +
+            `<div class="chat-profile-mod-stats">` +
+                `<span>Lv.${mod.playerLevel}</span>` +
+                `<span>Gold: ${(mod.gold || 0).toLocaleString()}</span>` +
+                `<span>Essence: ${(mod.essence || 0).toLocaleString()}</span>` +
+            `</div>` +
+            `<div class="chat-profile-mod-warnings">` +
+                `<span class="chat-profile-mod-label">Avertissements: ${mod.warnings?.length || 0}</span>` +
+                (mod.warnings?.length > 0 ? mod.warnings.slice(0, 3).map(w =>
+                    `<div class="chat-profile-mod-warn-item">${escapeHtml(w.reason)} <small>(${new Date(w.createdAt).toLocaleDateString('fr-FR')})</small></div>`
+                ).join('') : '') +
+            `</div>` +
+            (mod.activeBans?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-banned">Banni</div>` : '') +
+            (mod.activeMutes?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-muted">Mute</div>` : '') +
+        `</div>`;
+    }
+
     content.innerHTML =
         `<button class="modal-close-btn" id="chat-profile-close">\u2715</button>` +
         `<div class="chat-profile-header">` +
             `<div class="chat-profile-avatar">${emoji}</div>` +
             `<div class="chat-profile-info">` +
-                `<div class="chat-profile-name">${escapeHtml(data.username)}</div>` +
+                `<div class="chat-profile-name">${escapeHtml(data.username)} ${roleBadge}</div>` +
                 `<div class="chat-profile-rank">${data.rank.icon} ${data.rank.name}</div>` +
             `</div>` +
         `</div>` +
@@ -284,6 +399,7 @@ function showPlayerProfileModal(data) {
         `</div>` +
         `<div class="chat-profile-section-title">Equipment</div>` +
         `<div class="chat-profile-equipment">${equipmentHtml}</div>` +
+        moderationHtml +
         `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F Challenge to PVP</button>`;
 
     modal.classList.add('active');
@@ -292,7 +408,7 @@ function showPlayerProfileModal(data) {
         modal.classList.remove('active');
     });
 
-    // PVP fight button — joins queue (triggers PvP matchmaking)
+    // PVP fight button
     document.getElementById('chat-profile-fight')?.addEventListener('click', () => {
         modal.classList.remove('active');
         const socket = getSocket();

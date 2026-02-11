@@ -7,6 +7,7 @@ import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
 import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
+import adminRoutes from './routes/admin.js';
 import prisma from './lib/prisma.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,7 @@ app.use(express.json());
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

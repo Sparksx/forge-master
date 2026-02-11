@@ -59,6 +59,7 @@ async function issueTokens(user, res, statusCode = 200) {
         user: {
             id: user.id, username: user.username, email: user.email,
             isGuest: user.isGuest,
+            role: user.role || 'user',
             hasDiscord: !!user.discordId,
             hasGoogle: !!user.googleId,
         },
@@ -490,7 +491,7 @@ router.get('/me', requireAuth, async (req, res) => {
             select: {
                 id: true, username: true, email: true, profilePicture: true,
                 pvpRating: true, pvpWins: true, pvpLosses: true,
-                isGuest: true, googleId: true, discordId: true,
+                isGuest: true, role: true, googleId: true, discordId: true,
             }
         });
         if (!user) {
@@ -504,6 +505,7 @@ router.get('/me', requireAuth, async (req, res) => {
                 discordId: undefined,
                 hasGoogle: !!user.googleId,
                 hasDiscord: !!user.discordId,
+                role: user.role || 'user',
             }
         });
     } catch (err) {
