@@ -57,7 +57,11 @@ async function refreshAccessToken() {
         clear();
 
         if (!res.ok) {
-            clearTokens();
+            // Only clear tokens on definitive auth rejection.
+            // Transient server errors should not destroy the session.
+            if (res.status === 401 || res.status === 403) {
+                clearTokens();
+            }
             return false;
         }
 

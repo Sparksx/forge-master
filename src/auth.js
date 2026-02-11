@@ -17,7 +17,8 @@ export function getCurrentUser() {
 
 export async function performLogout() {
     try {
-        await apiFetch('/api/auth/logout', { method: 'POST', body: {} });
+        const token = getStoredRefreshToken();
+        await apiFetch('/api/auth/logout', { method: 'POST', body: { refreshToken: token } });
     } catch { /* ignore */ }
     currentUser = null;
     clearTokens();
@@ -234,7 +235,7 @@ function loadGoogleGSI() {
         window.google.accounts.id.initialize({
             client_id: GOOGLE_CLIENT_ID,
             callback: handleGoogleCredential,
-            auto_select: false,
+            auto_select: true,
         });
     };
     document.head.appendChild(script);
@@ -408,7 +409,11 @@ async function tryRestoreSession() {
         });
 
         if (!res.ok) {
-            clearTokens();
+            // Only clear tokens on definitive auth rejection (401/403).
+            // Server errors (500) are transient — keep the token for next visit.
+            if (res.status === 401 || res.status === 403) {
+                clearTokens();
+            }
             showAuthScreen();
             return null;
         }
@@ -425,10 +430,11 @@ async function tryRestoreSession() {
             return currentUser;
         }
 
-        clearTokens();
+        // /me failed but tokens may still be valid — don't clear them
         showAuthScreen();
         return null;
     } catch {
+        // Network error — keep tokens intact for next attempt
         showAuthScreen();
         return null;
     }
