@@ -1,7 +1,9 @@
-import { getCombatProgress } from '../state.js';
+import { getCombatProgress, getEquippedSkills } from '../state.js';
 import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
 import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT } from '../monsters.js';
 import { createElement, formatNumber } from './helpers.js';
+import { getSkillById, getSkillCooldown, getSkillTier } from '../skills-config.js';
+import { canActivateSkill, activateSkill, getCooldownRemaining, getSkillLevel, isEffectActive } from '../skills.js';
 
 let renderedMonsterCount = 0;
 
@@ -187,4 +189,115 @@ export function triggerMonsterHitAnimation(monsterIndex) {
     if (!row) return;
     row.classList.add('attacking');
     setTimeout(() => row.classList.remove('attacking'), 300);
+}
+
+// ── Skill HUD (shown during combat) ────────────────────────
+
+export function renderSkillHUD() {
+    const container = document.getElementById('skill-hud');
+    if (!container) return;
+    container.textContent = '';
+
+    const equipped = getEquippedSkills();
+    if (equipped.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+    container.classList.remove('hidden');
+
+    equipped.forEach(skillId => {
+        const skill = getSkillById(skillId);
+        if (!skill) return;
+
+        const tier = getSkillTier(skill);
+        const btn = createElement('div', 'skill-hud-btn');
+        btn.dataset.skillId = skillId;
+        btn.style.borderColor = tier.color;
+
+        const icon = createElement('span', 'skill-hud-icon', skill.icon);
+        btn.appendChild(icon);
+
+        if (skill.type === 'active') {
+            const cdRemaining = getCooldownRemaining(skillId);
+            const isActive = isEffectActive(skillId);
+
+            if (isActive) {
+                btn.classList.add('skill-hud-active');
+            } else if (cdRemaining > 0) {
+                btn.classList.add('skill-hud-cooldown');
+                const cdText = createElement('span', 'skill-hud-cd', `${Math.ceil(cdRemaining / 1000)}s`);
+                btn.appendChild(cdText);
+                // Cooldown overlay
+                const level = getSkillLevel(skillId);
+                const totalCd = getSkillCooldown(skill, level);
+                const pct = (cdRemaining / (totalCd * 1000)) * 100;
+                const overlay = createElement('div', 'skill-hud-cd-overlay');
+                overlay.style.height = `${pct}%`;
+                btn.appendChild(overlay);
+            } else {
+                btn.classList.add('skill-hud-ready');
+            }
+
+            btn.addEventListener('click', () => {
+                if (canActivateSkill(skillId)) {
+                    activateSkill(skillId);
+                }
+            });
+        } else {
+            // Passive: just show a subtle indicator
+            btn.classList.add('skill-hud-passive');
+            const tag = createElement('span', 'skill-hud-passive-tag', 'P');
+            btn.appendChild(tag);
+        }
+
+        container.appendChild(btn);
+    });
+}
+
+export function updateSkillHUD() {
+    const container = document.getElementById('skill-hud');
+    if (!container) return;
+
+    const equipped = getEquippedSkills();
+    if (equipped.length === 0) return;
+
+    // Update cooldowns/active states in-place
+    equipped.forEach(skillId => {
+        const skill = getSkillById(skillId);
+        if (!skill || skill.type !== 'active') return;
+
+        const btn = container.querySelector(`[data-skill-id="${skillId}"]`);
+        if (!btn) return;
+
+        const cdRemaining = getCooldownRemaining(skillId);
+        const isActive = isEffectActive(skillId);
+
+        btn.classList.toggle('skill-hud-active', isActive);
+        btn.classList.toggle('skill-hud-cooldown', !isActive && cdRemaining > 0);
+        btn.classList.toggle('skill-hud-ready', !isActive && cdRemaining <= 0);
+
+        // Update cooldown text
+        let cdText = btn.querySelector('.skill-hud-cd');
+        let overlay = btn.querySelector('.skill-hud-cd-overlay');
+
+        if (cdRemaining > 0 && !isActive) {
+            if (!cdText) {
+                cdText = createElement('span', 'skill-hud-cd');
+                btn.appendChild(cdText);
+            }
+            cdText.textContent = `${Math.ceil(cdRemaining / 1000)}s`;
+
+            if (!overlay) {
+                overlay = createElement('div', 'skill-hud-cd-overlay');
+                btn.appendChild(overlay);
+            }
+            const level = getSkillLevel(skillId);
+            const totalCd = getSkillCooldown(skill, level);
+            const pct = (cdRemaining / (totalCd * 1000)) * 100;
+            overlay.style.height = `${pct}%`;
+        } else {
+            if (cdText) cdText.remove();
+            if (overlay) overlay.remove();
+        }
+    });
 }

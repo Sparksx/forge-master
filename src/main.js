@@ -10,8 +10,10 @@ import {
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
     isAutoForging, showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
-    triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus
+    triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus,
+    renderSkillHUD, updateSkillHUD,
 } from './ui.js';
+import { initSkillsUI } from './ui/skills-ui.js';
 import { showToast } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
@@ -91,10 +93,12 @@ gameEvents.on(EVENTS.PLAYER_LEVEL_UP, ({ level, reward }) => {
 gameEvents.on(EVENTS.COMBAT_START, (data) => {
     updateCombatInfo(data);
     updateCombatUI();
+    renderSkillHUD();
 });
 
 gameEvents.on(EVENTS.COMBAT_TICK, () => {
     updateCombatUI();
+    updateSkillHUD();
 });
 
 gameEvents.on(EVENTS.COMBAT_PLAYER_HIT, ({ damage, isCrit, monsterIndex }) => {
@@ -135,8 +139,22 @@ gameEvents.on(EVENTS.COMBAT_FOCUS_CHANGED, (data) => {
     updateMonsterFocus(data);
 });
 
-// Refresh player combat stats when equipment changes
+// Refresh player combat stats when equipment or skills change
 gameEvents.on(EVENTS.ITEM_EQUIPPED, () => {
+    refreshPlayerStats();
+});
+
+gameEvents.on(EVENTS.SKILL_EQUIPPED, () => {
+    refreshPlayerStats();
+    renderSkillHUD();
+});
+
+gameEvents.on(EVENTS.SKILL_UNEQUIPPED, () => {
+    refreshPlayerStats();
+    renderSkillHUD();
+});
+
+gameEvents.on(EVENTS.SKILL_LEVELED, () => {
     refreshPlayerStats();
 });
 
@@ -261,6 +279,9 @@ async function startGame() {
     initResearch();
     initTechUI();
     updateEssenceDisplay();
+
+    // Init skills system
+    initSkillsUI();
 
     // Start combat system
     updateWaveDisplay();

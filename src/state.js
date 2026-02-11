@@ -7,6 +7,7 @@ import {
     PROFILE_PICTURES
 } from './config.js';
 import { TECHS, getTechById } from './tech-config.js';
+import { SKILLS, getSkillById as getSkillDef, MAX_EQUIPPED_SKILLS, getSkillMaxLevel } from './skills-config.js';
 import { gameEvents, EVENTS } from './events.js';
 import { apiFetch, getAccessToken } from './api.js';
 
@@ -118,6 +119,11 @@ const gameState = {
         active: null,    // { techId, level, startedAt, duration } or null
         queue: [],       // [{ techId, level }]
     },
+    // Skills
+    skills: {
+        unlocked: {},   // { [skillId]: level }  (level >= 1 means unlocked)
+        equipped: [],   // [skillId, ...] max 3
+    },
     // Shop state (persisted with game save to prevent re-claiming after cache clear)
     shopState: {
         claimedMilestones: [],
@@ -137,6 +143,7 @@ export function resetGame() {
     gameState.player = { level: 1, xp: 0, profilePicture: 'wizard' };
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
+    gameState.skills = { unlocked: {}, equipped: [] };
 }
 
 // --- Player level getters / setters ---
@@ -474,6 +481,28 @@ export function shiftResearchQueue() {
     return next || null;
 }
 
+// --- Skills state ---
+
+export function getSkillsState() {
+    return gameState.skills;
+}
+
+export function setSkillUnlocked(skillId, level) {
+    gameState.skills.unlocked[skillId] = level;
+}
+
+export function setSkillLevel(skillId, level) {
+    gameState.skills.unlocked[skillId] = level;
+}
+
+export function getEquippedSkills() {
+    return gameState.skills.equipped;
+}
+
+export function setEquippedSkills(equipped) {
+    gameState.skills.equipped = equipped;
+}
+
 /** Get effective value of a tech effect for game systems */
 export function getTechEffect(effectType) {
     let total = 0;
@@ -513,6 +542,7 @@ function buildSaveData() {
         player: { ...gameState.player, shopState: gameState.shopState },
         essence: gameState.essence,
         research: gameState.research,
+        skills: gameState.skills,
     };
     return data;
 }
@@ -676,6 +706,24 @@ function applyLoadedData(loaded) {
             gameState.research.queue = loaded.research.queue.filter(
                 q => q && q.techId && typeof q.level === 'number'
             );
+        }
+    }
+
+    // Restore skills state
+    if (loaded.skills && typeof loaded.skills === 'object') {
+        if (loaded.skills.unlocked && typeof loaded.skills.unlocked === 'object') {
+            gameState.skills.unlocked = {};
+            for (const [skillId, level] of Object.entries(loaded.skills.unlocked)) {
+                const skill = getSkillDef(skillId);
+                if (skill && typeof level === 'number' && level >= 1 && level <= getSkillMaxLevel(skill)) {
+                    gameState.skills.unlocked[skillId] = level;
+                }
+            }
+        }
+        if (Array.isArray(loaded.skills.equipped)) {
+            gameState.skills.equipped = loaded.skills.equipped.filter(id => {
+                return typeof id === 'string' && gameState.skills.unlocked[id];
+            }).slice(0, MAX_EQUIPPED_SKILLS);
         }
     }
 

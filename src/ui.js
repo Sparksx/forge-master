@@ -16,6 +16,7 @@ export {
     updateCombatUI, updateCombatInfo, updateWaveDisplay,
     showDamageNumber, showCombatResult,
     triggerAttackAnimation, triggerHitAnimation, triggerMonsterHitAnimation,
+    renderSkillHUD, updateSkillHUD,
 } from './ui/combat-ui.js';
 
 export {
