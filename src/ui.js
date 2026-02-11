@@ -6,7 +6,7 @@ export {
     updateStats, getCachedStats, updateEquipmentSlots,
     updateForgeInfo, showForgeUpgradeModal, hideForgeUpgradeModal,
     showDecisionModal, hideDecisionModal,
-    isAutoForging, handleAutoForgeClick, handleItemForged,
+    isAutoForging, handleAutoForgeClick,
     showItemDetailModal, hideItemDetailModal,
     updateUI,
 } from './ui/forge-ui.js';

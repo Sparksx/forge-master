@@ -539,18 +539,40 @@ function scheduleNextAutoForge() {
 
 function doOneAutoForge() {
     if (autoForge.stopping || !autoForge.active) { cleanupAutoForge(); return; }
-    const item = forgeEquipment();
+    const items = forgeEquipment();
 
-    if (autoForge.selectedTiers.has(item.tier)) {
-        showDecisionModal(item, () => { scheduleNextAutoForge(); });
-    } else {
+    // Emit events for all items (toasts, treasure hunter)
+    items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
+
+    // Separate matching (shown to player) and non-matching (auto-disposed)
+    const matching = items.filter(item => autoForge.selectedTiers.has(item.tier));
+    const nonMatching = items.filter(item => !autoForge.selectedTiers.has(item.tier));
+
+    // Auto-sell/study non-matching items
+    for (const item of nonMatching) {
         if (autoForge.autoStudy) {
-            studyForgedItem();
+            studyItem(item);
         } else {
-            sellForgedItem();
+            const goldEarned = getSellValue(item);
+            addGold(goldEarned);
+            gameEvents.emit(EVENTS.ITEM_SOLD, { item, goldEarned });
         }
-        scheduleNextAutoForge();
     }
+
+    // Show matching items one by one, then schedule next auto-forge
+    showAutoForgeBatch(matching);
+}
+
+function showAutoForgeBatch(items) {
+    if (items.length === 0) {
+        scheduleNextAutoForge();
+        return;
+    }
+    const [first, ...remaining] = items;
+    setForgedItem(first);
+    showDecisionModal(first, () => {
+        showAutoForgeBatch(remaining);
+    });
 }
 
 function cleanupAutoForge() {
