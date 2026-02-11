@@ -56,7 +56,12 @@ async function issueTokens(user, res, statusCode = 200) {
     res.status(statusCode).json({
         accessToken,
         refreshToken,
-        user: { id: user.id, username: user.username, email: user.email, isGuest: user.isGuest },
+        user: {
+            id: user.id, username: user.username, email: user.email,
+            isGuest: user.isGuest,
+            hasDiscord: !!user.discordId,
+            hasGoogle: !!user.googleId,
+        },
     });
 }
 

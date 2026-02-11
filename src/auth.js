@@ -271,11 +271,15 @@ async function handleGoogleCredential(response) {
 function handleOAuthCallback() {
     const url = new URL(window.location.href);
     const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
     const path = url.pathname;
 
     if (code && path.includes('/auth/discord/callback')) {
         // Clean URL
         window.history.replaceState({}, '', '/');
+        if (state === 'link') {
+            return handleDiscordLinkCallback(code);
+        }
         return handleDiscordCallback(code);
     }
 
@@ -309,6 +313,84 @@ async function handleDiscordCallback(code) {
         showAuthScreen();
         return null;
     }
+}
+
+async function handleDiscordLinkCallback(code) {
+    try {
+        const res = await apiFetch('/api/auth/link-discord', {
+            method: 'POST',
+            body: { code },
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            console.error('Discord link failed:', data.error);
+            return null;
+        }
+
+        // Update current user with linked info
+        if (currentUser) {
+            currentUser.hasDiscord = true;
+            currentUser.isGuest = false;
+            if (data.user?.email) currentUser.email = data.user.email;
+        }
+        return currentUser;
+    } catch (err) {
+        console.error('Discord link error:', err);
+        return null;
+    }
+}
+
+/** Start Discord OAuth flow for account linking */
+export function startDiscordLink() {
+    if (!DISCORD_CLIENT_ID) return;
+    const params = new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        redirect_uri: DISCORD_REDIRECT_URI,
+        response_type: 'code',
+        scope: 'identify email',
+        state: 'link',
+    });
+    window.location.href = `https://discord.com/api/oauth2/authorize?${params}`;
+}
+
+/** Link Google account to current user via GSI credential */
+export async function linkGoogle() {
+    if (!GOOGLE_CLIENT_ID) return { ok: false, error: 'Google login is not configured' };
+
+    return new Promise((resolve) => {
+        if (window.google?.accounts?.id) {
+            // Re-initialize with a link-specific callback
+            window.google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: async (response) => {
+                    try {
+                        const res = await apiFetch('/api/auth/link-google', {
+                            method: 'POST',
+                            body: { credential: response.credential },
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            resolve({ ok: false, error: data.error || 'Google link failed' });
+                            return;
+                        }
+                        if (currentUser) {
+                            currentUser.hasGoogle = true;
+                            currentUser.isGuest = false;
+                            if (data.user?.email) currentUser.email = data.user.email;
+                        }
+                        resolve({ ok: true });
+                    } catch {
+                        resolve({ ok: false, error: 'Network error' });
+                    }
+                },
+                auto_select: false,
+            });
+            window.google.accounts.id.prompt();
+        } else {
+            resolve({ ok: false, error: 'Google Sign-In not loaded' });
+        }
+    });
 }
 
 async function tryRestoreSession() {
