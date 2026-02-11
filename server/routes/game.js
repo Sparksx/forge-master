@@ -70,6 +70,14 @@ function isValidForgeHighestLevel(forgeHighestLevel) {
     return true;
 }
 
+function isValidSkills(skills) {
+    if (typeof skills !== 'object' || Array.isArray(skills) || skills === null) return false;
+    if (skills.unlocked !== undefined && (typeof skills.unlocked !== 'object' || Array.isArray(skills.unlocked))) return false;
+    if (skills.equipped !== undefined && !Array.isArray(skills.equipped)) return false;
+    if (skills.equipped && skills.equipped.length > 3) return false;
+    return true;
+}
+
 // GET /api/game/state — load player's game state
 router.get('/state', requireAuth, async (req, res) => {
     try {
@@ -100,6 +108,7 @@ router.get('/state', requireAuth, async (req, res) => {
             player: state.player,
             research: state.research,
             forgeHighestLevel: state.forgeHighestLevel,
+            skills: state.skills,
         });
     } catch (err) {
         console.error('Load state error:', err);
@@ -109,7 +118,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState } = req.body;
+    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
 
     try {
         const data = {};
@@ -167,6 +176,12 @@ router.put('/state', requireAuth, async (req, res) => {
             }
             data.forgeHighestLevel = forgeHighestLevel;
         }
+        if (skills !== undefined) {
+            if (!isValidSkills(skills)) {
+                return res.status(400).json({ error: 'Invalid skills structure' });
+            }
+            data.skills = skills;
+        }
 
         const state = await prisma.gameState.upsert({
             where: { userId: req.user.userId },
@@ -182,6 +197,7 @@ router.put('/state', requireAuth, async (req, res) => {
                 player: player || { level: 1, xp: 0, profilePicture: 'wizard' },
                 research: research || { completed: {}, active: null, queue: [] },
                 forgeHighestLevel: forgeHighestLevel || {},
+                skills: skills || { unlocked: {}, equipped: [] },
             }
         });
 

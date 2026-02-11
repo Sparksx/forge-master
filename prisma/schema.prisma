@@ -46,6 +46,7 @@ model GameState {
   player           Json     @default("{\"level\":1,\"xp\":0,\"profilePicture\":\"wizard\"}")
   research         Json     @default("{\"completed\":{},\"active\":null,\"queue\":[]}")
   forgeHighestLevel Json    @default("{}")
+  skills           Json     @default("{\"unlocked\":{},\"equipped\":[]}")
   updatedAt        DateTime @updatedAt
 }
 
