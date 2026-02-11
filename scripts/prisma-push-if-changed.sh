@@ -8,7 +8,7 @@ PRISMA="./node_modules/.bin/prisma"
 CURRENT_HASH=$(sha256sum "$SCHEMA_FILE" | cut -d' ' -f1)
 
 # Try to read the stored hash from the database (table may not exist yet)
-STORED_HASH=$(node -e "
+STORED_HASH=$(node --input-type=commonjs -e "
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient();
 p.\$queryRaw\`SELECT hash FROM _prisma_schema_hash LIMIT 1\`
@@ -26,7 +26,7 @@ echo "Schema changed, running prisma db push..."
 $PRISMA db push --accept-data-loss --skip-generate
 
 # Store the new hash (create table if needed)
-node -e "
+node --input-type=commonjs -e "
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient();
 (async () => {
