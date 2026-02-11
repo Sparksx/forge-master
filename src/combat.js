@@ -192,9 +192,9 @@ function combatTick() {
         playerState.currentHP = Math.min(playerState.maxHP, playerState.currentHP + regenAmount);
     }
 
-    // Player attacks the focused monster
+    // Player attacks the focused monster (subtract to preserve overflow from background tabs)
     if (lastPlayerAttack >= playerState.attackSpeed) {
-        lastPlayerAttack = 0;
+        lastPlayerAttack -= playerState.attackSpeed;
         playerAttack();
     }
 
@@ -205,7 +205,7 @@ function combatTick() {
 
         lastMonsterAttacks[i] += TICK_RATE;
         if (lastMonsterAttacks[i] >= m.attackSpeed) {
-            lastMonsterAttacks[i] = 0;
+            lastMonsterAttacks[i] -= m.attackSpeed;
             singleMonsterAttack(i);
             if (playerState.currentHP <= 0) break;
         }

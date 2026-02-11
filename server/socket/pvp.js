@@ -9,6 +9,7 @@ const queue = new Map();
 const matches = new Map();
 
 const TURN_TIMEOUT = 15000; // 15s per turn
+const MAX_TURNS = 50; // max turns before forced end
 const K_FACTOR = 32; // Elo K-factor base
 
 // Matchmaking: power-based primary, elo secondary
@@ -257,6 +258,17 @@ function resolveTurn(io, match) {
         endMatch(io, match, p1.userId, 'ko');
     } else if (p1.currentHP <= 0) {
         endMatch(io, match, p2.userId, 'ko');
+    } else if (match.turn >= MAX_TURNS) {
+        // Stalemate: player with higher HP% wins
+        const p1Pct = p1.currentHP / p1.maxHP;
+        const p2Pct = p2.currentHP / p2.maxHP;
+        if (p1Pct > p2Pct) {
+            endMatch(io, match, p1.userId, 'timeout');
+        } else if (p2Pct > p1Pct) {
+            endMatch(io, match, p2.userId, 'timeout');
+        } else {
+            endMatch(io, match, null, 'draw');
+        }
     } else {
         match.turn++;
         startTurnTimer(io, match);

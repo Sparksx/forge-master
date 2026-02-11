@@ -483,6 +483,8 @@ export function getTechEffect(effectType) {
 }
 
 let saveTimeout = null;
+let saveInFlight = false;
+let saveDirtyWhileInFlight = false;
 const SAVE_DEBOUNCE = 2000; // 2 seconds
 
 function buildSaveData() {
@@ -508,14 +510,22 @@ export function saveGame() {
         console.error('Error saving game locally:', error);
     }
 
-    // Debounced save to server
+    // Debounced save to server with in-flight protection
     if (getAccessToken()) {
+        if (saveInFlight) {
+            // A save is already in progress — mark dirty so we re-save when it finishes
+            saveDirtyWhileInFlight = true;
+            return;
+        }
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = setTimeout(saveToServer, SAVE_DEBOUNCE);
     }
 }
 
 async function saveToServer() {
+    saveTimeout = null;
+    saveInFlight = true;
+    saveDirtyWhileInFlight = false;
     try {
         await apiFetch('/api/game/state', {
             method: 'PUT',
@@ -523,14 +533,24 @@ async function saveToServer() {
         });
     } catch (error) {
         console.error('Error saving game to server:', error);
+    } finally {
+        saveInFlight = false;
+        // If state changed while we were saving, schedule another save
+        if (saveDirtyWhileInFlight) {
+            saveDirtyWhileInFlight = false;
+            if (getAccessToken()) {
+                saveTimeout = setTimeout(saveToServer, SAVE_DEBOUNCE);
+            }
+        }
     }
 }
 
 // Flush any pending debounced save immediately (used on page hide/unload)
 function flushSaveToServer() {
-    if (saveTimeout && getAccessToken()) {
-        clearTimeout(saveTimeout);
+    if ((saveTimeout || saveDirtyWhileInFlight) && getAccessToken()) {
+        if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = null;
+        saveDirtyWhileInFlight = false;
         saveToServer();
     }
 }

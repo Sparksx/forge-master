@@ -157,18 +157,23 @@ router.post('/guest', authLimiter, async (req, res) => {
     try {
         // Generate unique guest username (retry on collision)
         let username;
-        let attempts = 0;
-        do {
+        let user;
+        for (let attempts = 0; attempts < 10; attempts++) {
             username = generateGuestUsername();
-            attempts++;
-        } while (
-            attempts < 10 &&
-            await prisma.user.findUnique({ where: { username } })
-        );
-
-        const user = await prisma.user.create({
-            data: { username, isGuest: true }
-        });
+            try {
+                user = await prisma.user.create({
+                    data: { username, isGuest: true }
+                });
+                break;
+            } catch (err) {
+                // Unique constraint violation (P2002) — retry with new username
+                if (err.code === 'P2002') continue;
+                throw err;
+            }
+        }
+        if (!user) {
+            return res.status(503).json({ error: 'Could not generate unique username, please try again' });
+        }
 
         await createDefaultGameState(user.id);
         await issueTokens(user, res, 201);
@@ -222,21 +227,27 @@ router.post('/discord', authLimiter, async (req, res) => {
         let user = await prisma.user.findUnique({ where: { discordId: discordUser.id } });
 
         if (!user) {
-            // Check if username is already taken; if so, add a suffix
-            let username = discordUser.global_name || discordUser.username || `Discord_${discordUser.id.slice(-6)}`;
-            username = username.slice(0, 24); // leave room for suffix
-            const existing = await prisma.user.findUnique({ where: { username } });
-            if (existing) {
-                username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
-            }
+            let username = (discordUser.global_name || discordUser.username || `Discord_${discordUser.id.slice(-6)}`).slice(0, 24);
 
-            user = await prisma.user.create({
-                data: {
-                    username,
-                    discordId: discordUser.id,
-                    email: discordUser.email || null,
+            // Try to create; on unique constraint collision, retry with random suffix
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    user = await prisma.user.create({
+                        data: {
+                            username,
+                            discordId: discordUser.id,
+                            email: discordUser.email || null,
+                        }
+                    });
+                    break;
+                } catch (err) {
+                    if (err.code === 'P2002' && attempt < 2) {
+                        username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
+                        continue;
+                    }
+                    throw err;
                 }
-            });
+            }
             await createDefaultGameState(user.id);
         }
 
@@ -278,18 +289,26 @@ router.post('/google', authLimiter, async (req, res) => {
 
         if (!user) {
             let username = (payload.name || payload.email?.split('@')[0] || `Google_${googleId.slice(-6)}`).slice(0, 24);
-            const existing = await prisma.user.findUnique({ where: { username } });
-            if (existing) {
-                username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
-            }
 
-            user = await prisma.user.create({
-                data: {
-                    username,
-                    googleId,
-                    email,
+            // Try to create; on unique constraint collision, retry with random suffix
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    user = await prisma.user.create({
+                        data: {
+                            username,
+                            googleId,
+                            email,
+                        }
+                    });
+                    break;
+                } catch (err) {
+                    if (err.code === 'P2002' && attempt < 2) {
+                        username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
+                        continue;
+                    }
+                    throw err;
                 }
-            });
+            }
             await createDefaultGameState(user.id);
         }
 
@@ -436,20 +455,21 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: 'User not found' });
         }
 
-        // Rotate: delete old, create new
-        await prisma.refreshToken.delete({ where: { id: stored.id } });
-
+        // Rotate: delete old + create new atomically to avoid orphaned state
         const newAccessToken = generateAccessToken(user);
         const newRefreshToken = generateRefreshToken(user);
-
         const decoded = jwt.decode(newRefreshToken);
-        await prisma.refreshToken.create({
-            data: {
-                token: newRefreshToken,
-                userId: user.id,
-                expiresAt: new Date(decoded.exp * 1000),
-            }
-        });
+
+        await prisma.$transaction([
+            prisma.refreshToken.delete({ where: { id: stored.id } }),
+            prisma.refreshToken.create({
+                data: {
+                    token: newRefreshToken,
+                    userId: user.id,
+                    expiresAt: new Date(decoded.exp * 1000),
+                }
+            }),
+        ]);
 
         res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     } catch (err) {

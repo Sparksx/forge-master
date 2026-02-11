@@ -63,23 +63,28 @@ async function refreshAccessToken() {
 export async function apiFetch(url, options = {}) {
     const headers = { ...options.headers };
 
+    // Serialize body once (avoid mutating the caller's options object)
+    let body = options.body;
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(body);
+    }
+
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(options.body);
-    }
 
-    let res = await fetch(url, { ...options, headers });
+    const fetchOpts = { ...options, headers, body };
+    let res = await fetch(url, fetchOpts);
 
     // If 401, try refreshing the token and retry once
     if (res.status === 401 && refreshToken) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-            res = await fetch(url, { ...options, headers });
+            fetchOpts.headers = { ...headers, Authorization: `Bearer ${accessToken}` };
+            res = await fetch(url, fetchOpts);
         } else {
+            clearTokens();
             if (onAuthLost) onAuthLost();
             throw new Error('Session expired');
         }

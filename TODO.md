@@ -42,16 +42,16 @@
 
 ## 🔴 Priorité haute — Bugs & Sécurité
 
-- [ ] **Race condition sur la sauvegarde** — `saveGame()` dans `state.js` utilise un debounce simple. Des appels rapides (forge + upgrade + vente) peuvent perdre des sauvegardes intermédiaires. Remplacer par un système de queue ou un flag dirty/pending
-- [ ] **Accumulation de dégâts en combat** — `combat.js:196` remet `lastPlayerAttack = 0` au lieu de soustraire `attackSpeed`. Si le navigateur met l'onglet en arrière-plan et que plusieurs ticks s'accumulent, le joueur frappe plusieurs fois d'un coup. Utiliser `lastPlayerAttack -= attackSpeed`
-- [ ] **Body consommé sur retry API** — `api.js:77` rejoue un fetch après un refresh token, mais le body de la requête originale peut être déjà consommé. Cloner les options de requête ou reconstruire le body avant le retry
-- [ ] **Refresh token non transactionnel** — `server/routes/auth.js:440` supprime l'ancien refresh token puis crée le nouveau sans transaction. Si la création échoue, l'utilisateur est déconnecté. Envelopper dans `prisma.$transaction()`
-- [ ] **Collision username guest** — `server/routes/auth.js:169` tente 10 fois de trouver un username unique. Si toutes les tentatives échouent, `user` est undefined et crash sur `createDefaultGameState(user.id)`. Ajouter un throw explicite
-- [ ] **Race condition username Discord/Google** — Deux utilisateurs Discord avec le même username qui se connectent simultanément passent le check `findUnique`, puis les deux tentent un `create`. Utiliser le catch de la contrainte unique pour retry au lieu du check préalable
-- [ ] **Validation gold négative manquante** — `server/routes/game.js:122` fait `Math.floor(gold)` mais ne vérifie pas si gold est négatif. Un client malveillant peut sauvegarder un solde négatif
-- [ ] **Socket sans refresh token** — `socket-client.js` s'initialise avec un access token mais ne gère pas son expiration. Si le token expire, le socket est rejeté silencieusement. Ajouter un listener sur `disconnect` pour ré-authentifier
-- [ ] **Null check manquant PvP stats** — `server/socket/pvp.js:27` appelle `getPlayerStats()` qui peut retourner null, mais aucun check avant d'accéder aux propriétés. Crash serveur si le joueur n'a pas d'équipement
-- [ ] **Stalemate infini en PvP** — Si les deux joueurs choisissent "defend" chaque tour, le match continue indéfiniment. Ajouter un nombre max de tours (ex: 50) avec victoire au joueur ayant le plus de HP
+- [x] **Race condition sur la sauvegarde** — `saveGame()` dans `state.js` utilise un debounce simple. Remplacé par un système dirty flag + in-flight protection pour ne jamais perdre de sauvegardes intermédiaires
+- [x] **Accumulation de dégâts en combat** — `combat.js` remettait `lastPlayerAttack = 0` au lieu de soustraire `attackSpeed`. Corrigé avec `lastPlayerAttack -= attackSpeed` pour éviter les multi-hits sur les onglets en arrière-plan
+- [x] **Body consommé sur retry API** — `api.js` sérialisait le body dans l'objet options du caller. Corrigé : le body est copié localement et l'objet caller n'est plus muté. `clearTokens()` ajouté sur auth perdu
+- [x] **Refresh token non transactionnel** — `server/routes/auth.js` supprimait l'ancien token puis créait le nouveau sans transaction. Corrigé avec `prisma.$transaction()` pour atomicité
+- [x] **Collision username guest** — `server/routes/auth.js` pouvait crash si toutes les tentatives échouaient. Corrigé : utilisation directe de `prisma.user.create` avec catch P2002 + retour 503 explicite
+- [x] **Race condition username Discord/Google** — Le pattern check-then-create pouvait rater en concurrent. Corrigé : try/create avec catch P2002 et retry avec suffix aléatoire (Discord et Google)
+- [x] **Validation gold négative manquante** — `server/routes/game.js` acceptait n'importe quel nombre. Corrigé : validation explicite `gold >= 0`, `forgeLevel` borné 1-30, `essence >= 0` avec erreurs 400
+- [x] **Socket sans refresh token** — `socket-client.js` ne gérait pas l'expiration du token. Corrigé : mise à jour de `socket.auth` sur `connect_error` et reconnexion automatique sur `io server disconnect`
+- [x] **Null check manquant PvP stats** — `server/socket/pvp.js:27` vérifie déjà null et émet `pvp:error` (déjà corrigé)
+- [x] **Stalemate infini en PvP** — Ajout d'une limite de 50 tours (`MAX_TURNS`). Au-delà, victoire au joueur avec le meilleur % de HP, ou match nul
 
 ## 🟡 Priorité moyenne — Architecture & Performance
 
