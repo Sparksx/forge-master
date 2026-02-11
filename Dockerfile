@@ -31,15 +31,15 @@ COPY prisma.config.ts ./
 # Install production dependencies only
 RUN npm ci --omit=dev
 
-# Copy generated Prisma client from builder
+# Copy server code and shared modules FIRST
+COPY server ./server
+COPY shared ./shared
+
+# Copy generated Prisma client from builder AFTER (overwrites server/generated)
 COPY --from=builder /app/server/generated ./server/generated
 
 # Copy built frontend
 COPY --from=builder /app/dist ./dist
-
-# Copy server code and shared modules
-COPY server ./server
-COPY shared ./shared
 
 EXPOSE 3000
 
