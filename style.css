@@ -2221,6 +2221,7 @@ h1 {
     left: 0;
     right: 0;
     bottom: 0;
+    height: 100%;
     background: #1a1a2e;
     display: none;
     flex-direction: column;
@@ -3380,6 +3381,12 @@ h1 {
    CHAT PLAYER PROFILE MODAL
    ============================================= */
 
+/* Show chat profile & replay modals above the chat fullpage overlay (z-index: 2000) */
+#chat-profile-modal,
+#chat-replay-modal {
+    z-index: 2100;
+}
+
 .chat-profile-modal-content {
     max-width: 340px;
     padding: 16px;
@@ -3521,6 +3528,125 @@ h1 {
 
 .chat-profile-fight-btn:hover {
     background: #b71c1c;
+}
+
+/* Clickable avatar & sender in chat messages */
+.chat-clickable {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.chat-avatar.chat-clickable:hover {
+    border-color: #f0c040;
+    box-shadow: 0 0 6px rgba(240, 192, 64, 0.4);
+}
+
+.chat-sender.chat-clickable:hover {
+    text-decoration: underline;
+}
+
+/* Moderation section in profile modal */
+.chat-profile-moderation {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 80, 80, 0.08);
+    border: 1px solid rgba(255, 80, 80, 0.2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.chat-profile-mod-stats {
+    display: flex;
+    gap: 10px;
+    font-size: 0.8em;
+    color: #ccc;
+    margin-bottom: 6px;
+}
+
+.chat-profile-mod-warnings {
+    margin-bottom: 6px;
+}
+
+.chat-profile-mod-label {
+    font-size: 0.8em;
+    color: #ff8a80;
+    font-weight: bold;
+}
+
+.chat-profile-mod-warn-item {
+    font-size: 0.75em;
+    color: #ccc;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-profile-mod-status {
+    display: inline-block;
+    font-size: 0.75em;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 6px;
+}
+
+.chat-profile-mod-banned {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff5252;
+}
+
+.chat-profile-mod-muted {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffab40;
+}
+
+.chat-profile-mod-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.chat-mod-btn {
+    padding: 6px 8px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75em;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+}
+
+.chat-mod-btn-warn {
+    background: #e65100;
+}
+
+.chat-mod-btn-warn:hover {
+    background: #bf360c;
+}
+
+.chat-mod-btn-mute {
+    background: #f57c00;
+}
+
+.chat-mod-btn-mute:hover {
+    background: #e65100;
+}
+
+.chat-mod-btn-ban {
+    background: #c62828;
+}
+
+.chat-mod-btn-ban:hover {
+    background: #b71c1c;
+}
+
+.chat-mod-btn-kick {
+    background: #6a1b9a;
+}
+
+.chat-mod-btn-kick:hover {
+    background: #4a148c;
 }
 
 /* =============================================

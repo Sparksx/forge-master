@@ -8,7 +8,7 @@ import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { getProfileEmoji } from './state.js';
 import { PROFILE_PICTURES, EQUIPMENT_ICONS, TIERS } from './config.js';
-import { isStaff, deleteChatMessage } from './admin.js';
+import { isStaff, deleteChatMessage, warnUser, muteUser, banUser, kickUser } from './admin.js';
 
 let chatOpen = false;
 let recentMessages = []; // Keep last messages for preview
@@ -58,6 +58,19 @@ export function initChat() {
             e.target.classList.remove('active');
         }
     });
+
+    // Adapt chat height when virtual keyboard opens/closes
+    if (window.visualViewport) {
+        const onViewportResize = () => {
+            if (!chatPanel) return;
+            const vvh = window.visualViewport.height;
+            const offset = window.visualViewport.offsetTop;
+            chatPanel.style.height = `${vvh}px`;
+            chatPanel.style.top = `${offset}px`;
+        };
+        window.visualViewport.addEventListener('resize', onViewportResize);
+        window.visualViewport.addEventListener('scroll', onViewportResize);
+    }
 
     setupSocketListeners();
 }
@@ -220,26 +233,27 @@ function appendMessage(msg) {
         deleteBtn = `<button class="chat-delete-btn" data-delete-id="${msg.id}" title="Supprimer">&#10005;</button>`;
     }
 
-    el.innerHTML = `<span class="chat-avatar">${avatar}</span>` +
+    el.innerHTML = `<span class="chat-avatar chat-clickable">${avatar}</span>` +
         `<div class="chat-msg-body">` +
         `<span class="chat-time">${time}</span>` +
-        `<span class="chat-sender">${escapeHtml(msg.sender)}</span>${roleBadge}` +
+        `<span class="chat-sender chat-clickable">${escapeHtml(msg.sender)}</span>${roleBadge}` +
         `<div class="chat-text">${escapeHtml(msg.content)}</div>` +
         `</div>` +
         deleteBtn;
 
-    // Click on other player's message to view profile
-    if (!isOwn && msg.senderId) {
-        const body = el.querySelector('.chat-msg-body');
-        if (body) {
-            body.style.cursor = 'pointer';
-            body.addEventListener('click', () => {
-                const socket = getSocket();
-                if (socket) {
-                    socket.emit('chat:player-profile', { userId: msg.senderId });
-                }
-            });
-        }
+    // Click on avatar or sender name to view profile (including own)
+    if (msg.senderId) {
+        const avatarEl = el.querySelector('.chat-avatar');
+        const senderEl = el.querySelector('.chat-sender');
+        const openProfile = (e) => {
+            e.stopPropagation();
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('chat:player-profile', { userId: msg.senderId });
+            }
+        };
+        avatarEl?.addEventListener('click', openProfile);
+        senderEl?.addEventListener('click', openProfile);
     }
 
     // Wire delete button
@@ -355,12 +369,16 @@ function showPlayerProfileModal(data) {
         }
     });
 
-    // Moderation section for staff
+    const user = getCurrentUser();
+    const isOwnProfile = user && data.userId === user.id;
+    const staff = isStaff();
+
+    // Moderation section for staff (not on own profile)
     let moderationHtml = '';
-    if (data.moderation) {
+    if (data.moderation && !isOwnProfile) {
         const mod = data.moderation;
         moderationHtml = `<div class="chat-profile-moderation">` +
-            `<div class="chat-profile-section-title">Moderation</div>` +
+            `<div class="chat-profile-section-title">\uD83D\uDEE1\uFE0F Moderation</div>` +
             `<div class="chat-profile-mod-stats">` +
                 `<span>Lv.${mod.playerLevel}</span>` +
                 `<span>Gold: ${(mod.gold || 0).toLocaleString()}</span>` +
@@ -372,10 +390,21 @@ function showPlayerProfileModal(data) {
                     `<div class="chat-profile-mod-warn-item">${escapeHtml(w.reason)} <small>(${new Date(w.createdAt).toLocaleDateString('fr-FR')})</small></div>`
                 ).join('') : '') +
             `</div>` +
-            (mod.activeBans?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-banned">Banni</div>` : '') +
-            (mod.activeMutes?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-muted">Mute</div>` : '') +
+            (mod.activeBans?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-banned">\uD83D\uDEAB Banni</div>` : '') +
+            (mod.activeMutes?.length > 0 ? `<div class="chat-profile-mod-status chat-profile-mod-muted">\uD83D\uDD07 Mute</div>` : '') +
+            `<div class="chat-profile-mod-actions">` +
+                `<button class="chat-mod-btn chat-mod-btn-warn" data-action="warn">\u26A0\uFE0F Warn</button>` +
+                `<button class="chat-mod-btn chat-mod-btn-mute" data-action="mute">\uD83D\uDD07 Mute</button>` +
+                `<button class="chat-mod-btn chat-mod-btn-ban" data-action="ban">\uD83D\uDEAB Ban</button>` +
+                `<button class="chat-mod-btn chat-mod-btn-kick" data-action="kick">\uD83D\uDC62 Kick</button>` +
+            `</div>` +
         `</div>`;
     }
+
+    // Only show PVP button for other players
+    const pvpBtnHtml = isOwnProfile
+        ? ''
+        : `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F Challenge to PVP</button>`;
 
     content.innerHTML =
         `<button class="modal-close-btn" id="chat-profile-close">\u2715</button>` +
@@ -400,7 +429,7 @@ function showPlayerProfileModal(data) {
         `<div class="chat-profile-section-title">Equipment</div>` +
         `<div class="chat-profile-equipment">${equipmentHtml}</div>` +
         moderationHtml +
-        `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F Challenge to PVP</button>`;
+        pvpBtnHtml;
 
     modal.classList.add('active');
 
@@ -408,13 +437,53 @@ function showPlayerProfileModal(data) {
         modal.classList.remove('active');
     });
 
-    // PVP fight button
+    // PVP fight button (only for other players)
     document.getElementById('chat-profile-fight')?.addEventListener('click', () => {
         modal.classList.remove('active');
         const socket = getSocket();
         if (socket) {
             socket.emit('pvp:queue');
         }
+    });
+
+    // Moderation action buttons
+    if (data.moderation && !isOwnProfile) {
+        wireModActions(content, data.userId, modal);
+    }
+}
+
+function wireModActions(container, targetUserId, modal) {
+    container.querySelectorAll('.chat-mod-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const action = btn.dataset.action;
+            try {
+                if (action === 'warn') {
+                    const reason = prompt('Raison de l\'avertissement:');
+                    if (!reason) return;
+                    await warnUser(targetUserId, reason);
+                    alert('Avertissement envoy\u00e9.');
+                } else if (action === 'mute') {
+                    const reason = prompt('Raison du mute:');
+                    if (!reason) return;
+                    const duration = prompt('Dur\u00e9e en minutes (d\u00e9faut: 30):', '30');
+                    await muteUser(targetUserId, reason, parseInt(duration) || 30);
+                    alert('Joueur mute.');
+                } else if (action === 'ban') {
+                    const reason = prompt('Raison du ban:');
+                    if (!reason) return;
+                    const duration = prompt('Dur\u00e9e en heures (vide = permanent):');
+                    await banUser(targetUserId, reason, duration ? parseInt(duration) * 60 : undefined);
+                    alert('Joueur banni.');
+                } else if (action === 'kick') {
+                    if (!confirm('Kick ce joueur?')) return;
+                    await kickUser(targetUserId);
+                    alert('Joueur kick.');
+                }
+                modal.classList.remove('active');
+            } catch (err) {
+                alert(err.message || 'Action \u00e9chou\u00e9e.');
+            }
+        });
     });
 }
 
