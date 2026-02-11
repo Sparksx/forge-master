@@ -6,7 +6,7 @@
   },
   "deploy": {
     "startCommand": "node server/index.js",
-    "preDeployCommand": ["npx prisma db push"],
+    "preDeployCommand": ["npx prisma db push --accept-data-loss"],
     "restartPolicyType": "ON_FAILURE"
   }
 }
