@@ -3,12 +3,12 @@ import {
     LEVEL_RANGE, MAX_LEVEL, INITIAL_LEVEL_MAX, BONUS_STATS, BONUS_STAT_KEYS,
     GROWTH_EXPONENT, TIERS, FORGE_LEVELS
 } from './config.js';
-import { calculateItemStats, calculateStats } from '../shared/stats.js';
+import { calculateItemStats, calculateStats, calculatePowerScore } from '../shared/stats.js';
 import { getEquipmentByType, getHighestLevelForSlot, trackForgedLevel, setForgedItem, getForgeLevel, getTechEffect } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
 // Re-export shared functions so existing imports keep working
-export { calculateItemStats, calculateStats };
+export { calculateItemStats, calculateStats, calculatePowerScore };
 
 function rollBonuses(count) {
     // Extra Bonus tech: +1 bonus slot per level
@@ -125,14 +125,4 @@ export function forgeEquipment() {
     return item;
 }
 
-export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
-    const b = bonuses || {};
-    const effectiveHealth = totalHealth
-        * (1 + (b.healthMulti || 0) / 100)
-        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
-    const effectiveDamage = totalDamage
-        * (1 + (b.damageMulti || 0) / 100)
-        * (1 + (b.attackSpeed || 0) / 100)
-        * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
-    return Math.round(effectiveHealth + effectiveDamage);
-}
+// calculatePowerScore is now in shared/stats.js and re-exported above
