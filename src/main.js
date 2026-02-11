@@ -1,11 +1,11 @@
 import '../style.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
+import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
 import { forgeEquipment } from './forge.js';
 import { initResearch } from './research.js';
 import { initTechUI, renderTechTree, updateEssenceDisplay } from './ui/tech-ui.js';
 import {
-    updateUI, handleItemForged, showDecisionModal, showItemDetailModal,
+    updateUI, showDecisionModal, showItemDetailModal,
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
     isAutoForging, showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
@@ -24,7 +24,6 @@ import { getAccessToken } from './api.js';
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
 gameEvents.on(EVENTS.STATE_CHANGED, updateEssenceDisplay);
-gameEvents.on(EVENTS.ITEM_FORGED, handleItemForged);
 gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
 
 // Treasure Hunter: chance to find bonus gold when forging
@@ -111,6 +110,18 @@ gameEvents.on(EVENTS.ITEM_EQUIPPED, () => {
     refreshPlayerStats();
 });
 
+/** Show forged items one by one in the decision modal */
+function showForgedBatch(items) {
+    if (items.length === 0) return;
+    const [first, ...remaining] = items;
+    setForgedItem(first);
+    showDecisionModal(first, () => {
+        if (remaining.length > 0) {
+            showForgedBatch(remaining);
+        }
+    });
+}
+
 // Start the game after successful auth
 async function startGame() {
     // Load game state from server if authenticated, otherwise localStorage
@@ -128,14 +139,16 @@ async function startGame() {
     updateUI();
     initNavigation();
 
-    // Forge button: show pending item or forge new (disabled during auto-forge)
+    // Forge button: show pending item or forge new batch (disabled during auto-forge)
     document.getElementById('forge-btn').addEventListener('click', () => {
         if (isAutoForging()) return;
         const pending = getForgedItem();
         if (pending) {
             showDecisionModal(pending);
         } else {
-            forgeEquipment();
+            const items = forgeEquipment();
+            items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
+            showForgedBatch(items);
         }
     });
 

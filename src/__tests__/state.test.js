@@ -398,7 +398,7 @@ describe('state', () => {
 
             // Forge many items — items of a different type or tier should use initial range
             for (let i = 0; i < 50; i++) {
-                const item = forgeEquipment();
+                const item = forgeEquipment()[0];
                 if (item.tier !== 1 || item.type !== 'hat') {
                     // If this specific (type,tier) hasn't been forged before, it should
                     // use initial range OR use its own tracker (from previous iterations)
@@ -417,7 +417,7 @@ describe('state', () => {
             trackForgedLevel('weapon', 1, 30);
 
             for (let i = 0; i < 200; i++) {
-                const item = forgeEquipment();
+                const item = forgeEquipment()[0];
                 if (item.tier === 1 && item.type === 'hat') {
                     // Should be based on hat tier 1 tracker (80), so range [70, 90]
                     const tracked = getHighestLevelForSlot('hat', 1);
@@ -442,7 +442,7 @@ describe('state', () => {
 
             // All items of other tiers should start at initial range, not near 95
             for (let i = 0; i < 50; i++) {
-                const item = forgeEquipment();
+                const item = forgeEquipment()[0];
                 if (item.tier > 1) {
                     const tracked = getHighestLevelForSlot(item.type, item.tier);
                     if (tracked === null) {
@@ -458,7 +458,7 @@ describe('state', () => {
             // weapon tier 1 has no tracking
 
             for (let i = 0; i < 50; i++) {
-                const item = forgeEquipment();
+                const item = forgeEquipment()[0];
                 if (item.tier === 1 && item.type === 'weapon') {
                     const tracked = getHighestLevelForSlot('weapon', 1);
                     if (tracked === null) {

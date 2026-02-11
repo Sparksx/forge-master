@@ -485,23 +485,25 @@ export function getTechEffect(effectType) {
 let saveTimeout = null;
 const SAVE_DEBOUNCE = 2000; // 2 seconds
 
+function buildSaveData() {
+    const data = {
+        equipment: gameState.equipment,
+        gold: gameState.gold,
+        forgeLevel: gameState.forgeLevel,
+        forgeHighestLevel: gameState.forgeHighestLevel,
+        forgeUpgrade: gameState.forgeUpgrade || null,
+        combat: gameState.combat,
+        player: gameState.player,
+        essence: gameState.essence,
+        research: gameState.research,
+    };
+    return data;
+}
+
 export function saveGame() {
     // Always save to localStorage as fallback
     try {
-        const data = {
-            equipment: gameState.equipment,
-            gold: gameState.gold,
-            forgeLevel: gameState.forgeLevel,
-            forgeHighestLevel: gameState.forgeHighestLevel,
-            combat: gameState.combat,
-            player: gameState.player,
-            essence: gameState.essence,
-            research: gameState.research,
-        };
-        if (gameState.forgeUpgrade) {
-            data.forgeUpgrade = gameState.forgeUpgrade;
-        }
-        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        localStorage.setItem(SAVE_KEY, JSON.stringify(buildSaveData()));
     } catch (error) {
         console.error('Error saving game locally:', error);
     }
@@ -515,24 +517,29 @@ export function saveGame() {
 
 async function saveToServer() {
     try {
-        const data = {
-            equipment: gameState.equipment,
-            gold: gameState.gold,
-            forgeLevel: gameState.forgeLevel,
-            forgeHighestLevel: gameState.forgeHighestLevel,
-            forgeUpgrade: gameState.forgeUpgrade || null,
-            combat: gameState.combat,
-            player: gameState.player,
-            essence: gameState.essence,
-            research: gameState.research,
-        };
         await apiFetch('/api/game/state', {
             method: 'PUT',
-            body: data,
+            body: buildSaveData(),
         });
     } catch (error) {
         console.error('Error saving game to server:', error);
     }
+}
+
+// Flush any pending debounced save immediately (used on page hide/unload)
+function flushSaveToServer() {
+    if (saveTimeout && getAccessToken()) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+        saveToServer();
+    }
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flushSaveToServer();
+    });
+    window.addEventListener('beforeunload', flushSaveToServer);
 }
 
 function applyLoadedData(loaded) {
