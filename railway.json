@@ -2,11 +2,11 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "DATABASE_URL=postgresql://placeholder:5432/db npx prisma generate && npm run build"
+    "buildCommand": "DATABASE_URL=postgresql://placeholder:5432/db ./node_modules/.bin/prisma generate && npm run build"
   },
   "deploy": {
     "startCommand": "node server/index.js",
-    "preDeployCommand": "./node_modules/.bin/prisma db push --accept-data-loss",
+    "preDeployCommand": "./node_modules/.bin/prisma db push --accept-data-loss --skip-generate",
     "restartPolicyType": "ON_FAILURE"
   }
 }
