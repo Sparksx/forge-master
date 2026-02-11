@@ -1,4 +1,4 @@
-import { addGold, getCombatProgress } from './state.js';
+import { addGold, getCombatProgress, getShopState, setShopState } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
 // Daily login reward tiers — players can claim once per day
@@ -14,64 +14,42 @@ const MILESTONE_REWARDS = [
     { id: 'wave10', label: 'Clear Wave 10', wave: 10, subWave: 1, gold: 5000 },
 ];
 
-let dailyState = { lastClaimed: null, streak: 0 };
-let claimedMilestones = new Set();
-
-function loadShopState() {
-    try {
-        const daily = localStorage.getItem('forgemaster_daily');
-        if (daily) dailyState = { ...dailyState, ...JSON.parse(daily) };
-    } catch { /* ignore */ }
-    try {
-        const ms = localStorage.getItem('forgemaster_milestones');
-        if (ms) claimedMilestones = new Set(JSON.parse(ms));
-    } catch { /* ignore */ }
-}
-
-function saveDailyState() {
-    try { localStorage.setItem('forgemaster_daily', JSON.stringify(dailyState)); } catch { /* ignore */ }
-}
-
-function saveMilestones() {
-    try { localStorage.setItem('forgemaster_milestones', JSON.stringify([...claimedMilestones])); } catch { /* ignore */ }
-}
-
 function getToday() {
     return new Date().toISOString().slice(0, 10);
 }
 
 function canClaimDaily() {
-    return dailyState.lastClaimed !== getToday();
+    return getShopState().dailyLastClaimed !== getToday();
 }
 
 function getDailyAmount() {
-    return DAILY_REWARD_BASE + dailyState.streak * DAILY_REWARD_STREAK_BONUS;
+    return DAILY_REWARD_BASE + getShopState().dailyStreak * DAILY_REWARD_STREAK_BONUS;
 }
 
 function claimDaily() {
     if (!canClaimDaily()) return 0;
     const today = getToday();
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    dailyState.streak = (dailyState.lastClaimed === yesterday) ? dailyState.streak + 1 : 0;
-    dailyState.lastClaimed = today;
+    const shop = getShopState();
+    const newStreak = (shop.dailyLastClaimed === yesterday) ? shop.dailyStreak + 1 : 0;
+    setShopState({ dailyLastClaimed: today, dailyStreak: newStreak });
     const amount = getDailyAmount();
     addGold(amount);
-    saveDailyState();
     gameEvents.emit(EVENTS.GOLD_PURCHASED, { type: 'daily', gold: amount });
     return amount;
 }
 
 function claimMilestone(id) {
-    if (claimedMilestones.has(id)) return 0;
+    const shop = getShopState();
+    if (shop.claimedMilestones.includes(id)) return 0;
     const m = MILESTONE_REWARDS.find(r => r.id === id);
     if (!m) return 0;
     const progress = getCombatProgress();
     const reached = progress.highestWave > m.wave ||
         (progress.highestWave === m.wave && (progress.highestSubWave || 1) >= m.subWave);
     if (!reached) return 0;
-    claimedMilestones.add(id);
+    setShopState({ claimedMilestones: [...shop.claimedMilestones, id] });
     addGold(m.gold);
-    saveMilestones();
     gameEvents.emit(EVENTS.GOLD_PURCHASED, { type: 'milestone', gold: m.gold });
     return m.gold;
 }
@@ -89,6 +67,7 @@ function renderShop() {
     container.textContent = '';
 
     const progress = getCombatProgress();
+    const shop = getShopState();
 
     // Daily reward card
     const dailyCard = createElement('div', 'shop-card');
@@ -96,12 +75,12 @@ function renderShop() {
     const dailyAvailable = canClaimDaily();
     const dailyBtn = createElement('button', 'shop-card-btn', dailyAvailable ? 'Claim!' : 'Claimed');
     dailyBtn.disabled = !dailyAvailable;
-    if (dailyState.streak > 0) {
+    if (shop.dailyStreak > 0) {
         dailyCard.append(
             createElement('div', 'shop-card-icon', '🎁'),
             createElement('div', 'shop-card-name', 'Daily Reward'),
             createElement('div', 'shop-card-gold', `💰 ${getDailyAmount()}`),
-            createElement('div', 'shop-card-streak', `🔥 ${dailyState.streak} day streak`),
+            createElement('div', 'shop-card-streak', `🔥 ${shop.dailyStreak} day streak`),
             dailyBtn
         );
     } else {
@@ -122,7 +101,7 @@ function renderShop() {
 
         const reached = progress.highestWave > m.wave ||
             (progress.highestWave === m.wave && (progress.highestSubWave || 1) >= m.subWave);
-        const claimed = claimedMilestones.has(m.id);
+        const claimed = shop.claimedMilestones.includes(m.id);
 
         const btn = createElement('button', 'shop-card-btn');
         if (claimed) {
@@ -152,7 +131,6 @@ function showPurchaseFeedback(card) {
 }
 
 export function initShop() {
-    loadShopState();
     renderShop();
 
     const container = document.getElementById('shop-offers');

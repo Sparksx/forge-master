@@ -27,10 +27,23 @@ export function connectSocket() {
 
     socket.on('connect_error', (err) => {
         console.error('Socket connection error:', err.message);
+        // If the error is auth-related, update the token for the next reconnection attempt
+        const freshToken = getAccessToken();
+        if (freshToken && socket) {
+            socket.auth = { token: freshToken };
+        }
     });
 
     socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
+        // If disconnected by the server (e.g. auth expired), refresh auth for reconnect
+        if (reason === 'io server disconnect') {
+            const freshToken = getAccessToken();
+            if (freshToken && socket) {
+                socket.auth = { token: freshToken };
+                socket.connect();
+            }
+        }
     });
 
     return socket;

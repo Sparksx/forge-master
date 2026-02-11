@@ -20,6 +20,27 @@ import { renderProfileContent } from './profile-ui.js';
 let forgeTimerInterval = null;
 let decisionModalCallback = null;
 
+// Cached DOM refs (populated on first use)
+let domCache = null;
+function getDomCache() {
+    if (!domCache) {
+        domCache = {
+            headerLevel: document.getElementById('header-level-value'),
+            xpFill: document.getElementById('header-xp-fill'),
+            goldAmount: document.getElementById('gold-amount'),
+            profileBtn: document.getElementById('profile-btn'),
+            profileModal: document.getElementById('profile-modal'),
+            forgeLevel: document.getElementById('forge-level'),
+            forgeUpgradeBtn: document.getElementById('forge-upgrade-btn'),
+            forgeUpgradeModal: document.getElementById('forge-upgrade-modal'),
+            decisionModal: document.getElementById('decision-modal'),
+            forgedItemInfo: document.getElementById('forged-item-info'),
+            autoForgeModal: document.getElementById('auto-forge-modal'),
+        };
+    }
+    return domCache;
+}
+
 // --- Auto-forge state ---
 const autoForge = {
     active: false,
@@ -94,26 +115,22 @@ export function updateStats() {
 
     cachedStats = { health, damage, bonuses, power };
 
-    const headerLevel = document.getElementById('header-level-value');
-    if (headerLevel) headerLevel.textContent = getPlayerLevel();
+    const dom = getDomCache();
 
-    // Update header XP bar
-    const xpFill = document.getElementById('header-xp-fill');
-    if (xpFill) {
+    if (dom.headerLevel) dom.headerLevel.textContent = getPlayerLevel();
+
+    if (dom.xpFill) {
         const xpNeeded = getXPToNextLevel();
         const xpCurrent = getPlayerXP();
         const pct = xpNeeded > 0 ? Math.min(100, (xpCurrent / xpNeeded) * 100) : 100;
-        xpFill.style.width = `${pct}%`;
+        dom.xpFill.style.width = `${pct}%`;
     }
 
-    document.getElementById('gold-amount').textContent = formatCompact(getGold());
+    if (dom.goldAmount) dom.goldAmount.textContent = formatCompact(getGold());
 
-    // Update avatar in header
-    const profileBtn = document.getElementById('profile-btn');
-    if (profileBtn) profileBtn.textContent = getProfileEmoji();
+    if (dom.profileBtn) dom.profileBtn.textContent = getProfileEmoji();
 
-    const profileModal = document.getElementById('profile-modal');
-    if (profileModal && profileModal.classList.contains('active')) {
+    if (dom.profileModal && dom.profileModal.classList.contains('active')) {
         renderProfileContent();
     }
 }
@@ -122,46 +139,52 @@ export function getCachedStats() {
     return cachedStats;
 }
 
-export function updateEquipmentSlots() {
-    EQUIPMENT_TYPES.forEach(type => {
-        const slotElement = document.getElementById(`slot-${type}`);
-        const item = getEquipmentByType(type);
-        slotElement.textContent = '';
+function renderSingleSlot(type) {
+    const slotElement = document.getElementById(`slot-${type}`);
+    if (!slotElement) return;
+    const item = getEquipmentByType(type);
+    slotElement.textContent = '';
 
-        const slotParent = slotElement.closest('.equipment-slot');
+    const slotParent = slotElement.closest('.equipment-slot');
 
-        if (item) {
-            const tierDef = TIERS[(item.tier || 1) - 1];
-            slotParent.style.borderColor = tierDef.color;
-            slotParent.style.borderWidth = '2px';
+    if (item) {
+        const tierDef = TIERS[(item.tier || 1) - 1];
+        slotParent.style.borderColor = tierDef.color;
+        slotParent.style.borderWidth = '2px';
 
-            const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
-            levelDiv.style.color = tierDef.color;
-            slotElement.appendChild(levelDiv);
-        } else {
-            slotParent.style.borderColor = '#e0e0e0';
-            slotParent.style.borderWidth = '1px';
-            const emptySpan = createElement('span', 'empty-slot', 'Empty');
-            slotElement.appendChild(emptySpan);
-        }
-    });
+        const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
+        levelDiv.style.color = tierDef.color;
+        slotElement.appendChild(levelDiv);
+    } else {
+        slotParent.style.borderColor = '#e0e0e0';
+        slotParent.style.borderWidth = '1px';
+        const emptySpan = createElement('span', 'empty-slot', 'Empty');
+        slotElement.appendChild(emptySpan);
+    }
+}
+
+export function updateEquipmentSlots(changedSlot) {
+    if (changedSlot) {
+        renderSingleSlot(changedSlot);
+    } else {
+        EQUIPMENT_TYPES.forEach(renderSingleSlot);
+    }
 }
 
 // ===== Forge Level Button =====
 
 export function updateForgeInfo() {
+    const dom = getDomCache();
     const forgeLevel = getForgeLevel();
-    const forgeLevelEl = document.getElementById('forge-level');
-    if (forgeLevelEl) forgeLevelEl.textContent = forgeLevel;
 
-    const btn = document.getElementById('forge-upgrade-btn');
-    if (btn) {
+    if (dom.forgeLevel) dom.forgeLevel.textContent = forgeLevel;
+
+    if (dom.forgeUpgradeBtn) {
         const upgradeState = getForgeUpgradeState();
-        btn.classList.toggle('upgrading', !!upgradeState);
+        dom.forgeUpgradeBtn.classList.toggle('upgrading', !!upgradeState);
     }
 
-    const modal = document.getElementById('forge-upgrade-modal');
-    if (modal && modal.classList.contains('active')) {
+    if (dom.forgeUpgradeModal && dom.forgeUpgradeModal.classList.contains('active')) {
         renderForgeUpgradeContent();
     }
 }
@@ -325,8 +348,9 @@ export function hideForgeUpgradeModal() {
 
 export function showDecisionModal(item, onClose) {
     decisionModalCallback = onClose || null;
-    const modal = document.getElementById('decision-modal');
-    const itemInfo = document.getElementById('forged-item-info');
+    const dom = getDomCache();
+    const modal = dom.decisionModal;
+    const itemInfo = dom.forgedItemInfo;
 
     const slotType = item.type;
     let topItem = getEquipmentByType(slotType);
@@ -517,7 +541,7 @@ export function showDecisionModal(item, onClose) {
 }
 
 export function hideDecisionModal() {
-    document.getElementById('decision-modal').classList.remove('active');
+    getDomCache().decisionModal.classList.remove('active');
     if (decisionModalCallback) {
         const cb = decisionModalCallback;
         decisionModalCallback = null;
@@ -825,11 +849,11 @@ function showAutoForgeModal() {
     });
     info.appendChild(startBtn);
 
-    document.getElementById('auto-forge-modal').classList.add('active');
+    getDomCache().autoForgeModal.classList.add('active');
 }
 
 function hideAutoForgeModal() {
-    document.getElementById('auto-forge-modal').classList.remove('active');
+    getDomCache().autoForgeModal.classList.remove('active');
 }
 
 // ===== Event handler =====

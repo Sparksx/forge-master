@@ -5,6 +5,16 @@
 let accessToken = null;
 let refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('fm_refresh_token') : null;
 let onAuthLost = null; // callback when auth is completely lost
+const FETCH_TIMEOUT = 10000; // 10s timeout for API requests
+
+function withTimeout(options, timeoutMs = FETCH_TIMEOUT) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    return {
+        opts: { ...options, signal: controller.signal },
+        clear: () => clearTimeout(id),
+    };
+}
 
 export function setAuthLostCallback(cb) {
     onAuthLost = cb;
@@ -38,11 +48,13 @@ async function refreshAccessToken() {
     if (!refreshToken) return false;
 
     try {
-        const res = await fetch('/api/auth/refresh', {
+        const { opts, clear } = withTimeout({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken }),
         });
+        const res = await fetch('/api/auth/refresh', opts);
+        clear();
 
         if (!res.ok) {
             clearTokens();
@@ -63,23 +75,32 @@ async function refreshAccessToken() {
 export async function apiFetch(url, options = {}) {
     const headers = { ...options.headers };
 
+    // Serialize body once (avoid mutating the caller's options object)
+    let body = options.body;
+    if (body && typeof body === 'object' && !(body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(body);
+    }
+
     if (accessToken) {
         headers['Authorization'] = `Bearer ${accessToken}`;
     }
-    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(options.body);
-    }
 
-    let res = await fetch(url, { ...options, headers });
+    const fetchOpts = { ...options, headers, body };
+    const { opts: timedOpts, clear } = withTimeout(fetchOpts);
+    let res = await fetch(url, timedOpts);
+    clear();
 
     // If 401, try refreshing the token and retry once
     if (res.status === 401 && refreshToken) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-            res = await fetch(url, { ...options, headers });
+            fetchOpts.headers = { ...headers, Authorization: `Bearer ${accessToken}` };
+            const { opts: retryOpts, clear: clearRetry } = withTimeout(fetchOpts);
+            res = await fetch(url, retryOpts);
+            clearRetry();
         } else {
+            clearTokens();
             if (onAuthLost) onAuthLost();
             throw new Error('Session expired');
         }

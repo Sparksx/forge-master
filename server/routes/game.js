@@ -109,7 +109,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel } = req.body;
+    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState } = req.body;
 
     try {
         const data = {};
@@ -119,8 +119,18 @@ router.put('/state', requireAuth, async (req, res) => {
             }
             data.equipment = equipment;
         }
-        if (typeof gold === 'number' && gold >= 0) data.gold = Math.floor(gold);
-        if (typeof forgeLevel === 'number' && forgeLevel >= 1) data.forgeLevel = Math.floor(forgeLevel);
+        if (gold !== undefined) {
+            if (typeof gold !== 'number' || gold < 0) {
+                return res.status(400).json({ error: 'Gold must be a non-negative number' });
+            }
+            data.gold = Math.floor(gold);
+        }
+        if (forgeLevel !== undefined) {
+            if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > 30) {
+                return res.status(400).json({ error: 'Invalid forge level' });
+            }
+            data.forgeLevel = Math.floor(forgeLevel);
+        }
         if (forgeUpgrade !== undefined) {
             if (!isValidForgeUpgrade(forgeUpgrade)) {
                 return res.status(400).json({ error: 'Invalid forgeUpgrade structure' });
@@ -133,7 +143,12 @@ router.put('/state', requireAuth, async (req, res) => {
             }
             data.combat = combat;
         }
-        if (typeof essence === 'number' && essence >= 0) data.essence = Math.floor(essence);
+        if (essence !== undefined) {
+            if (typeof essence !== 'number' || essence < 0) {
+                return res.status(400).json({ error: 'Essence must be a non-negative number' });
+            }
+            data.essence = Math.floor(essence);
+        }
         if (player !== undefined) {
             if (!isValidPlayer(player)) {
                 return res.status(400).json({ error: 'Invalid player structure' });
