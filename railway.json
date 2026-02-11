@@ -5,7 +5,7 @@
     "buildCommand": "DATABASE_URL=postgresql://placeholder:5432/db ./node_modules/.bin/prisma generate && npm run build"
   },
   "deploy": {
-    "startCommand": "node server/index.js",
+    "startCommand": "npx prisma db push --accept-data-loss && node server/index.js",
     "restartPolicyType": "ON_FAILURE"
   }
 }
