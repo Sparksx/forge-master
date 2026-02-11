@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { body, validationResult } from 'express-validator';
 import {
     JWT_SECRET, JWT_REFRESH_SECRET,
-    JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY
+    JWT_ACCESS_EXPIRY, JWT_REFRESH_EXPIRY,
+    DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI,
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
@@ -36,7 +39,47 @@ function generateRefreshToken(user) {
     );
 }
 
-// POST /api/auth/register
+/** Store refresh token in DB and return both tokens as JSON */
+async function issueTokens(user, res, statusCode = 200) {
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    const decoded = jwt.decode(refreshToken);
+    await prisma.refreshToken.create({
+        data: {
+            token: refreshToken,
+            userId: user.id,
+            expiresAt: new Date(decoded.exp * 1000),
+        }
+    });
+
+    res.status(statusCode).json({
+        accessToken,
+        refreshToken,
+        user: { id: user.id, username: user.username, email: user.email, isGuest: user.isGuest },
+    });
+}
+
+/** Create default game state for a new user */
+async function createDefaultGameState(userId) {
+    await prisma.gameState.create({
+        data: {
+            userId,
+            equipment: {},
+            gold: 0,
+            forgeLevel: 1,
+            combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
+        }
+    });
+}
+
+/** Generate a random guest username like "Hero_a3f7b2" */
+function generateGuestUsername() {
+    const suffix = crypto.randomBytes(3).toString('hex');
+    return `Hero_${suffix}`;
+}
+
+// ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', authLimiter, [
     body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
@@ -63,42 +106,15 @@ router.post('/register', authLimiter, [
             data: { username, email, passwordHash }
         });
 
-        // Create default game state
-        await prisma.gameState.create({
-            data: {
-                userId: user.id,
-                equipment: {},
-                gold: 0,
-                forgeLevel: 1,
-                combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-            }
-        });
-
-        const accessToken = generateAccessToken(user);
-        const refreshToken = generateRefreshToken(user);
-
-        // Store refresh token in DB
-        const decoded = jwt.decode(refreshToken);
-        await prisma.refreshToken.create({
-            data: {
-                token: refreshToken,
-                userId: user.id,
-                expiresAt: new Date(decoded.exp * 1000),
-            }
-        });
-
-        res.status(201).json({
-            accessToken,
-            refreshToken,
-            user: { id: user.id, username: user.username, email: user.email },
-        });
+        await createDefaultGameState(user.id);
+        await issueTokens(user, res, 201);
     } catch (err) {
         console.error('Register error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// POST /api/auth/login
+// ─── POST /api/auth/login ────────────────────────────────────────
 router.post('/login', authLimiter, [
     body('login').trim().notEmpty().withMessage('Username or email required'),
     body('password').notEmpty().withMessage('Password required'),
@@ -114,7 +130,7 @@ router.post('/login', authLimiter, [
         const user = await prisma.user.findFirst({
             where: { OR: [{ username: login }, { email: login }] }
         });
-        if (!user) {
+        if (!user || !user.passwordHash) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -123,30 +139,275 @@ router.post('/login', authLimiter, [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const accessToken = generateAccessToken(user);
-        const refreshToken = generateRefreshToken(user);
-
-        const decoded = jwt.decode(refreshToken);
-        await prisma.refreshToken.create({
-            data: {
-                token: refreshToken,
-                userId: user.id,
-                expiresAt: new Date(decoded.exp * 1000),
-            }
-        });
-
-        res.json({
-            accessToken,
-            refreshToken,
-            user: { id: user.id, username: user.username, email: user.email },
-        });
+        await issueTokens(user, res);
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// POST /api/auth/refresh
+// ─── POST /api/auth/guest ────────────────────────────────────────
+router.post('/guest', authLimiter, async (req, res) => {
+    try {
+        // Generate unique guest username (retry on collision)
+        let username;
+        let attempts = 0;
+        do {
+            username = generateGuestUsername();
+            attempts++;
+        } while (
+            attempts < 10 &&
+            await prisma.user.findUnique({ where: { username } })
+        );
+
+        const user = await prisma.user.create({
+            data: { username, isGuest: true }
+        });
+
+        await createDefaultGameState(user.id);
+        await issueTokens(user, res, 201);
+    } catch (err) {
+        console.error('Guest register error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /api/auth/discord ─────────────────────────────────────
+// Client sends { code } from Discord OAuth redirect
+router.post('/discord', authLimiter, async (req, res) => {
+    const { code } = req.body;
+    if (!code) {
+        return res.status(400).json({ error: 'Authorization code required' });
+    }
+
+    if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
+        return res.status(503).json({ error: 'Discord login is not configured' });
+    }
+
+    try {
+        // Exchange code for access token
+        const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: DISCORD_CLIENT_ID,
+                client_secret: DISCORD_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: DISCORD_REDIRECT_URI,
+            }),
+        });
+
+        const tokenData = await tokenRes.json();
+        if (!tokenRes.ok || !tokenData.access_token) {
+            return res.status(401).json({ error: 'Discord authentication failed' });
+        }
+
+        // Fetch Discord user info
+        const userRes = await fetch('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        const discordUser = await userRes.json();
+        if (!userRes.ok || !discordUser.id) {
+            return res.status(401).json({ error: 'Failed to get Discord profile' });
+        }
+
+        // Find or create user
+        let user = await prisma.user.findUnique({ where: { discordId: discordUser.id } });
+
+        if (!user) {
+            // Check if username is already taken; if so, add a suffix
+            let username = discordUser.global_name || discordUser.username || `Discord_${discordUser.id.slice(-6)}`;
+            username = username.slice(0, 24); // leave room for suffix
+            const existing = await prisma.user.findUnique({ where: { username } });
+            if (existing) {
+                username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
+            }
+
+            user = await prisma.user.create({
+                data: {
+                    username,
+                    discordId: discordUser.id,
+                    email: discordUser.email || null,
+                }
+            });
+            await createDefaultGameState(user.id);
+        }
+
+        await issueTokens(user, res);
+    } catch (err) {
+        console.error('Discord auth error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /api/auth/google ──────────────────────────────────────
+// Client sends { credential } (Google ID token from GSI)
+router.post('/google', authLimiter, async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) {
+        return res.status(400).json({ error: 'Google credential required' });
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+        return res.status(503).json({ error: 'Google login is not configured' });
+    }
+
+    try {
+        // Verify the Google ID token via Google's tokeninfo endpoint
+        const verifyRes = await fetch(
+            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+        );
+        const payload = await verifyRes.json();
+
+        if (!verifyRes.ok || payload.aud !== GOOGLE_CLIENT_ID) {
+            return res.status(401).json({ error: 'Invalid Google token' });
+        }
+
+        const googleId = payload.sub;
+        const email = payload.email || null;
+
+        // Find or create user
+        let user = await prisma.user.findUnique({ where: { googleId } });
+
+        if (!user) {
+            let username = (payload.name || payload.email?.split('@')[0] || `Google_${googleId.slice(-6)}`).slice(0, 24);
+            const existing = await prisma.user.findUnique({ where: { username } });
+            if (existing) {
+                username = `${username.slice(0, 24)}_${crypto.randomBytes(2).toString('hex')}`;
+            }
+
+            user = await prisma.user.create({
+                data: {
+                    username,
+                    googleId,
+                    email,
+                }
+            });
+            await createDefaultGameState(user.id);
+        }
+
+        await issueTokens(user, res);
+    } catch (err) {
+        console.error('Google auth error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /api/auth/link-discord ─────────────────────────────────
+// Link a Discord account to the current (guest) user
+router.post('/link-discord', requireAuth, async (req, res) => {
+    const { code } = req.body;
+    if (!code) {
+        return res.status(400).json({ error: 'Authorization code required' });
+    }
+
+    if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
+        return res.status(503).json({ error: 'Discord login is not configured' });
+    }
+
+    try {
+        // Exchange code for access token
+        const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: DISCORD_CLIENT_ID,
+                client_secret: DISCORD_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: DISCORD_REDIRECT_URI,
+            }),
+        });
+
+        const tokenData = await tokenRes.json();
+        if (!tokenRes.ok || !tokenData.access_token) {
+            return res.status(401).json({ error: 'Discord authentication failed' });
+        }
+
+        const userRes = await fetch('https://discord.com/api/users/@me', {
+            headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        });
+        const discordUser = await userRes.json();
+        if (!userRes.ok || !discordUser.id) {
+            return res.status(401).json({ error: 'Failed to get Discord profile' });
+        }
+
+        // Check if this Discord account is already linked to another user
+        const existing = await prisma.user.findUnique({ where: { discordId: discordUser.id } });
+        if (existing && existing.id !== req.user.userId) {
+            return res.status(409).json({ error: 'This Discord account is already linked to another player' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: {
+                discordId: discordUser.id,
+                email: discordUser.email || undefined,
+                isGuest: false,
+            },
+        });
+
+        res.json({
+            message: 'Discord account linked',
+            user: { id: user.id, username: user.username, email: user.email, isGuest: user.isGuest },
+        });
+    } catch (err) {
+        console.error('Link Discord error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /api/auth/link-google ──────────────────────────────────
+// Link a Google account to the current (guest) user
+router.post('/link-google', requireAuth, async (req, res) => {
+    const { credential } = req.body;
+    if (!credential) {
+        return res.status(400).json({ error: 'Google credential required' });
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+        return res.status(503).json({ error: 'Google login is not configured' });
+    }
+
+    try {
+        const verifyRes = await fetch(
+            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+        );
+        const payload = await verifyRes.json();
+
+        if (!verifyRes.ok || payload.aud !== GOOGLE_CLIENT_ID) {
+            return res.status(401).json({ error: 'Invalid Google token' });
+        }
+
+        const googleId = payload.sub;
+
+        // Check if this Google account is already linked to another user
+        const existing = await prisma.user.findUnique({ where: { googleId } });
+        if (existing && existing.id !== req.user.userId) {
+            return res.status(409).json({ error: 'This Google account is already linked to another player' });
+        }
+
+        const user = await prisma.user.update({
+            where: { id: req.user.userId },
+            data: {
+                googleId,
+                email: payload.email || undefined,
+                isGuest: false,
+            },
+        });
+
+        res.json({
+            message: 'Google account linked',
+            user: { id: user.id, username: user.username, email: user.email, isGuest: user.isGuest },
+        });
+    } catch (err) {
+        console.error('Link Google error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /api/auth/refresh ─────────────────────────────────────
 router.post('/refresh', async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -194,7 +455,7 @@ router.post('/refresh', async (req, res) => {
     }
 });
 
-// POST /api/auth/logout
+// ─── POST /api/auth/logout ──────────────────────────────────────
 router.post('/logout', requireAuth, async (req, res) => {
     const { refreshToken } = req.body;
 
@@ -216,24 +477,37 @@ router.post('/logout', requireAuth, async (req, res) => {
     }
 });
 
-// GET /api/auth/me — get current user info
+// ─── GET /api/auth/me ───────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user.userId },
-            select: { id: true, username: true, email: true, profilePicture: true, pvpRating: true, pvpWins: true, pvpLosses: true }
+            select: {
+                id: true, username: true, email: true, profilePicture: true,
+                pvpRating: true, pvpWins: true, pvpLosses: true,
+                isGuest: true, googleId: true, discordId: true,
+            }
         });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        res.json({ user });
+        // Don't expose full OAuth IDs to client, just whether they're linked
+        res.json({
+            user: {
+                ...user,
+                googleId: undefined,
+                discordId: undefined,
+                hasGoogle: !!user.googleId,
+                hasDiscord: !!user.discordId,
+            }
+        });
     } catch (err) {
         console.error('Me error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// POST /api/auth/change-username — change username (costs gold, deducted client-side)
+// ─── POST /api/auth/change-username ─────────────────────────────
 router.post('/change-username', requireAuth, [
     body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
 ], async (req, res) => {
@@ -263,7 +537,7 @@ router.post('/change-username', requireAuth, [
     }
 });
 
-// PUT /api/auth/profile-picture — update avatar
+// ─── PUT /api/auth/profile-picture ──────────────────────────────
 router.put('/profile-picture', requireAuth, async (req, res) => {
     const { profilePicture } = req.body;
 
