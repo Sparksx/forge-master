@@ -15,6 +15,10 @@ import { showToast } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 import { startCombat, stopCombat, refreshPlayerStats } from './combat.js';
+import { updateSkillIndicators } from './ui/combat-ui.js';
+import { initSkillsUI } from './ui/skills-ui.js';
+import { SKILLS } from './skills-config.js';
+import { checkSkillUnlocks } from './state.js';
 import { initAuth, setAuthSuccessCallback, getCurrentUser, performLogout } from './auth.js';
 import { connectSocket } from './socket-client.js';
 import { initChat, refreshChatSocket } from './chat.js';
@@ -83,6 +87,7 @@ gameEvents.on(EVENTS.PLAYER_LEVEL_UP, ({ level, reward }) => {
         const prefix = reward.isMilestone ? '\uD83C\uDF1F' : '\u2B50';
         showToast(`${prefix} Level ${level}! +${reward.gold.toLocaleString('en-US')}g`, reward.isMilestone ? 'level-milestone' : 'level');
     }
+    checkSkillUnlocks(SKILLS);
 });
 
 // Combat events
@@ -93,6 +98,7 @@ gameEvents.on(EVENTS.COMBAT_START, (data) => {
 
 gameEvents.on(EVENTS.COMBAT_TICK, () => {
     updateCombatUI();
+    updateSkillIndicators();
 });
 
 gameEvents.on(EVENTS.COMBAT_PLAYER_HIT, ({ damage, isCrit, monsterIndex }) => {
@@ -127,14 +133,24 @@ gameEvents.on(EVENTS.COMBAT_PLAYER_DEFEATED, () => {
 
 gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, () => {
     updateWaveDisplay();
+    checkSkillUnlocks(SKILLS);
 });
 
 gameEvents.on(EVENTS.COMBAT_FOCUS_CHANGED, (data) => {
     updateMonsterFocus(data);
 });
 
-// Refresh player combat stats when equipment changes
+// Refresh player combat stats when equipment or skills change
 gameEvents.on(EVENTS.ITEM_EQUIPPED, () => {
+    refreshPlayerStats();
+});
+gameEvents.on(EVENTS.SKILL_EQUIPPED, () => {
+    refreshPlayerStats();
+});
+gameEvents.on(EVENTS.SKILL_UNEQUIPPED, () => {
+    refreshPlayerStats();
+});
+gameEvents.on(EVENTS.SKILL_LEVELED, () => {
     refreshPlayerStats();
 });
 
@@ -249,6 +265,10 @@ async function startGame() {
     initResearch();
     initTechUI();
     updateEssenceDisplay();
+
+    // Init skills
+    checkSkillUnlocks(SKILLS);
+    initSkillsUI();
 
     // Start combat system
     updateWaveDisplay();

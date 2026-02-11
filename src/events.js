@@ -53,4 +53,12 @@ export const EVENTS = {
     RESEARCH_COMPLETED: 'research:completed',
     RESEARCH_QUEUED: 'research:queued',
     ESSENCE_CHANGED: 'essence:changed',
+    // Skills
+    SKILL_UNLOCKED: 'skill:unlocked',
+    SKILL_LEVELED: 'skill:leveled',
+    SKILL_EQUIPPED: 'skill:equipped',
+    SKILL_UNEQUIPPED: 'skill:unequipped',
+    SKILL_ACTIVATED: 'skill:activated',
+    SKILL_EXPIRED: 'skill:expired',
+    SKILL_READY: 'skill:ready',
 };

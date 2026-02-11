@@ -1,6 +1,7 @@
-import { getCombatProgress } from '../state.js';
-import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
+import { getCombatProgress, getEquippedSkills, getSkillLevel } from '../state.js';
+import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex, getActiveSkillTimers, getSkillCooldowns, getShieldHP } from '../combat.js';
 import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT } from '../monsters.js';
+import { getSkillById } from '../skills-config.js';
 import { createElement, formatNumber } from './helpers.js';
 
 let renderedMonsterCount = 0;
@@ -187,4 +188,69 @@ export function triggerMonsterHitAnimation(monsterIndex) {
     if (!row) return;
     row.classList.add('attacking');
     setTimeout(() => row.classList.remove('attacking'), 300);
+}
+
+// --- Skill combat indicators ---
+
+export function updateSkillIndicators() {
+    let container = document.getElementById('skill-indicators');
+    if (!container) {
+        // Create container below player HP
+        const playerEl = document.getElementById('combatant-player');
+        if (!playerEl) return;
+        container = createElement('div', 'skill-indicators');
+        container.id = 'skill-indicators';
+        playerEl.appendChild(container);
+    }
+
+    const equipped = getEquippedSkills();
+    const timers = getActiveSkillTimers();
+    const cooldowns = getSkillCooldowns();
+    const shield = getShieldHP();
+
+    container.innerHTML = '';
+
+    for (const skillId of equipped) {
+        if (!skillId) continue;
+        const skill = getSkillById(skillId);
+        if (!skill) continue;
+        const level = getSkillLevel(skillId);
+        if (level < 1) continue;
+
+        const icon = createElement('div', 'skill-indicator');
+
+        const isActive = timers[skillId] && timers[skillId].remaining > 0;
+        const cd = cooldowns[skillId] || 0;
+
+        if (isActive) {
+            icon.classList.add('skill-indicator-active');
+            const pct = timers[skillId].remaining / timers[skillId].duration;
+            icon.style.setProperty('--skill-progress', `${(1 - pct) * 100}%`);
+        } else if (cd > 0) {
+            icon.classList.add('skill-indicator-cooldown');
+            const eff = skill.effect(level);
+            const totalCd = eff.cooldown || 1;
+            const pct = cd / totalCd;
+            icon.style.setProperty('--skill-progress', `${(1 - pct) * 100}%`);
+        } else if (skill.type === 'passive') {
+            icon.classList.add('skill-indicator-passive');
+        } else {
+            icon.classList.add('skill-indicator-ready');
+        }
+
+        icon.innerHTML = `<span class="skill-indicator-emoji">${skill.icon}</span>`;
+
+        if (isActive) {
+            icon.innerHTML += `<span class="skill-indicator-timer">${timers[skillId].remaining.toFixed(1)}s</span>`;
+        } else if (cd > 0) {
+            icon.innerHTML += `<span class="skill-indicator-timer">${cd.toFixed(1)}s</span>`;
+        }
+
+        // Shield HP display
+        if (skill.id === 'frozenShield' && shield > 0) {
+            icon.innerHTML += `<span class="skill-indicator-shield">${formatNumber(shield)}</span>`;
+        }
+
+        container.appendChild(icon);
+    }
 }

@@ -7,6 +7,7 @@ import {
     PROFILE_PICTURES
 } from './config.js';
 import { TECHS, getTechById } from './tech-config.js';
+import { getSkillById, getSkillLevelUpCost, MAX_SKILL_LEVEL, MAX_EQUIPPED_SKILLS } from './skills-config.js';
 import { gameEvents, EVENTS } from './events.js';
 import { apiFetch, getAccessToken } from './api.js';
 
@@ -118,6 +119,11 @@ const gameState = {
         active: null,    // { techId, level, startedAt, duration } or null
         queue: [],       // [{ techId, level }]
     },
+    // Skills
+    skills: {
+        unlocked: {},    // { [skillId]: level }
+        equipped: [null, null, null], // 3 slots
+    },
 };
 
 export function resetGame() {
@@ -131,6 +137,7 @@ export function resetGame() {
     gameState.player = { level: 1, xp: 0, profilePicture: 'wizard' };
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
+    gameState.skills = { unlocked: {}, equipped: [null, null, null] };
 }
 
 // --- Player level getters / setters ---
@@ -482,6 +489,140 @@ export function getTechEffect(effectType) {
     return total;
 }
 
+// --- Skills state ---
+
+export function getSkillsState() {
+    return gameState.skills;
+}
+
+export function getUnlockedSkills() {
+    return gameState.skills.unlocked;
+}
+
+export function getSkillLevel(skillId) {
+    return gameState.skills.unlocked[skillId] || 0;
+}
+
+export function getEquippedSkills() {
+    return gameState.skills.equipped;
+}
+
+export function isSkillUnlocked(skillId) {
+    return skillId in gameState.skills.unlocked;
+}
+
+export function isSkillEquipped(skillId) {
+    return gameState.skills.equipped.includes(skillId);
+}
+
+/**
+ * Check if a skill's unlock requirements are met based on current game state.
+ */
+export function canUnlockSkill(skillId) {
+    if (isSkillUnlocked(skillId)) return false;
+    const skill = getSkillById(skillId);
+    if (!skill) return false;
+    const req = skill.unlock;
+    if (req.type === 'playerLevel') {
+        return gameState.player.level >= req.level;
+    }
+    if (req.type === 'wave') {
+        const { highestWave, highestSubWave } = gameState.combat;
+        return highestWave > req.wave || (highestWave === req.wave && highestSubWave >= req.subWave);
+    }
+    return false;
+}
+
+/**
+ * Unlock a skill (sets it to level 1). Returns true on success.
+ */
+export function unlockSkill(skillId) {
+    if (!canUnlockSkill(skillId)) return false;
+    gameState.skills.unlocked[skillId] = 1;
+    saveGame();
+    gameEvents.emit(EVENTS.SKILL_UNLOCKED, { skillId });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+/**
+ * Level up a skill by spending essence. Returns true on success.
+ */
+export function levelUpSkill(skillId) {
+    const skill = getSkillById(skillId);
+    if (!skill) return false;
+    const currentLevel = getSkillLevel(skillId);
+    if (currentLevel < 1 || currentLevel >= MAX_SKILL_LEVEL) return false;
+
+    const cost = getSkillLevelUpCost(skill.tier, currentLevel);
+    if (gameState.essence < cost) return false;
+
+    gameState.essence -= cost;
+    gameState.skills.unlocked[skillId] = currentLevel + 1;
+    saveGame();
+    gameEvents.emit(EVENTS.ESSENCE_CHANGED, gameState.essence);
+    gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId, level: currentLevel + 1 });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+/**
+ * Equip a skill into the first available slot, or a specified slot.
+ * Returns true on success.
+ */
+export function equipSkill(skillId, slotIndex) {
+    if (!isSkillUnlocked(skillId)) return false;
+    if (isSkillEquipped(skillId)) return false;
+
+    if (slotIndex !== undefined) {
+        if (slotIndex < 0 || slotIndex >= MAX_EQUIPPED_SKILLS) return false;
+        gameState.skills.equipped[slotIndex] = skillId;
+    } else {
+        // Find first empty slot
+        const empty = gameState.skills.equipped.indexOf(null);
+        if (empty === -1) return false; // all slots full
+        gameState.skills.equipped[empty] = skillId;
+    }
+
+    saveGame();
+    gameEvents.emit(EVENTS.SKILL_EQUIPPED, { skillId });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+/**
+ * Unequip a skill from its slot. Returns true on success.
+ */
+export function unequipSkill(skillId) {
+    const idx = gameState.skills.equipped.indexOf(skillId);
+    if (idx === -1) return false;
+    gameState.skills.equipped[idx] = null;
+    saveGame();
+    gameEvents.emit(EVENTS.SKILL_UNEQUIPPED, { skillId });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+/**
+ * Check all provided skills and unlock any whose requirements are now met.
+ * Called from main.js when wave or player level changes.
+ * @param {Array} skillsList - The SKILLS array from skills-config.js
+ */
+export function checkSkillUnlocks(skillsList) {
+    let anyUnlocked = false;
+    for (const skill of skillsList) {
+        if (!isSkillUnlocked(skill.id) && canUnlockSkill(skill.id)) {
+            gameState.skills.unlocked[skill.id] = 1;
+            anyUnlocked = true;
+            gameEvents.emit(EVENTS.SKILL_UNLOCKED, { skillId: skill.id });
+        }
+    }
+    if (anyUnlocked) {
+        saveGame();
+        gameEvents.emit(EVENTS.STATE_CHANGED);
+    }
+}
+
 let saveTimeout = null;
 const SAVE_DEBOUNCE = 2000; // 2 seconds
 
@@ -496,6 +637,7 @@ function buildSaveData() {
         player: gameState.player,
         essence: gameState.essence,
         research: gameState.research,
+        skills: gameState.skills,
     };
     return data;
 }
@@ -641,6 +783,28 @@ function applyLoadedData(loaded) {
             gameState.research.queue = loaded.research.queue.filter(
                 q => q && q.techId && typeof q.level === 'number'
             );
+        }
+    }
+
+    // Restore skills
+    if (loaded.skills && typeof loaded.skills === 'object') {
+        if (loaded.skills.unlocked && typeof loaded.skills.unlocked === 'object') {
+            gameState.skills.unlocked = {};
+            for (const [skillId, level] of Object.entries(loaded.skills.unlocked)) {
+                const skill = getSkillById(skillId);
+                if (skill && typeof level === 'number' && level >= 1 && level <= MAX_SKILL_LEVEL) {
+                    gameState.skills.unlocked[skillId] = level;
+                }
+            }
+        }
+        if (Array.isArray(loaded.skills.equipped)) {
+            gameState.skills.equipped = [null, null, null];
+            for (let i = 0; i < MAX_EQUIPPED_SKILLS && i < loaded.skills.equipped.length; i++) {
+                const sid = loaded.skills.equipped[i];
+                if (sid && typeof sid === 'string' && gameState.skills.unlocked[sid]) {
+                    gameState.skills.equipped[i] = sid;
+                }
+            }
         }
     }
 
