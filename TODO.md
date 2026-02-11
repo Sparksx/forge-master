@@ -40,16 +40,60 @@
 - [x] **Matchmaking PvP amélioré** — Matching basé sur le rating Elo avec plage de recherche qui s'élargit progressivement (100 Elo de base + 50 par tranche de 5 secondes)
 - [x] **Vitesse d'attaque des monstres** — Chaque monstre attaque maintenant indépendamment avec sa propre vitesse via des timers individuels (`lastMonsterAttacks[]`)
 
-## 🟢 Priorité basse — Optimisations
+## 🔴 Priorité haute — Bugs & Sécurité
+
+- [ ] **Race condition sur la sauvegarde** — `saveGame()` dans `state.js` utilise un debounce simple. Des appels rapides (forge + upgrade + vente) peuvent perdre des sauvegardes intermédiaires. Remplacer par un système de queue ou un flag dirty/pending
+- [ ] **Accumulation de dégâts en combat** — `combat.js:196` remet `lastPlayerAttack = 0` au lieu de soustraire `attackSpeed`. Si le navigateur met l'onglet en arrière-plan et que plusieurs ticks s'accumulent, le joueur frappe plusieurs fois d'un coup. Utiliser `lastPlayerAttack -= attackSpeed`
+- [ ] **Body consommé sur retry API** — `api.js:77` rejoue un fetch après un refresh token, mais le body de la requête originale peut être déjà consommé. Cloner les options de requête ou reconstruire le body avant le retry
+- [ ] **Refresh token non transactionnel** — `server/routes/auth.js:440` supprime l'ancien refresh token puis crée le nouveau sans transaction. Si la création échoue, l'utilisateur est déconnecté. Envelopper dans `prisma.$transaction()`
+- [ ] **Collision username guest** — `server/routes/auth.js:169` tente 10 fois de trouver un username unique. Si toutes les tentatives échouent, `user` est undefined et crash sur `createDefaultGameState(user.id)`. Ajouter un throw explicite
+- [ ] **Race condition username Discord/Google** — Deux utilisateurs Discord avec le même username qui se connectent simultanément passent le check `findUnique`, puis les deux tentent un `create`. Utiliser le catch de la contrainte unique pour retry au lieu du check préalable
+- [ ] **Validation gold négative manquante** — `server/routes/game.js:122` fait `Math.floor(gold)` mais ne vérifie pas si gold est négatif. Un client malveillant peut sauvegarder un solde négatif
+- [ ] **Socket sans refresh token** — `socket-client.js` s'initialise avec un access token mais ne gère pas son expiration. Si le token expire, le socket est rejeté silencieusement. Ajouter un listener sur `disconnect` pour ré-authentifier
+- [ ] **Null check manquant PvP stats** — `server/socket/pvp.js:27` appelle `getPlayerStats()` qui peut retourner null, mais aucun check avant d'accéder aux propriétés. Crash serveur si le joueur n'a pas d'équipement
+- [ ] **Stalemate infini en PvP** — Si les deux joueurs choisissent "defend" chaque tour, le match continue indéfiniment. Ajouter un nombre max de tours (ex: 50) avec victoire au joueur ayant le plus de HP
+
+## 🟡 Priorité moyenne — Architecture & Performance
 
 - [ ] **Cache des éléments DOM** — `showDecisionModal()` et `updateStats()` requêtent les mêmes éléments à chaque appel. Cacher les refs à l'init
 - [ ] **Re-render ciblé** — `updateEquipmentSlots()` met à jour les 8 slots même si un seul a changé. Cibler le slot modifié
 - [ ] **Error boundaries** — Les handlers de click n'ont pas de try-catch. Un échec dans `equipItem()` laisse la modal bloquée ouverte
+- [ ] **Matchmaking O(n²)** — `server/socket/pvp.js:86` utilise une boucle imbriquée pour trouver des matchs. Pour 1000 joueurs en queue, c'est 500k comparaisons. Trier la queue par rating et chercher le voisin le plus proche
+- [ ] **Fuite mémoire monstres morts** — `combat.js` itère sur tous les monstres à chaque tick, y compris les morts (`currentHP <= 0`). Filtrer les monstres morts ou les retirer du tableau
+- [ ] **DOM non-limité dans le combat log PvP** — `pvp.js:241` ajoute un élément DOM par tour sans limite. Après 100+ tours, ralentissement du rendu. Garder seulement les 20 dernières entrées
+- [ ] **Leaderboard non-caché** — `server/socket/pvp.js:457` recalcule le power score de chaque joueur à chaque requête de leaderboard. Ajouter un cache avec TTL de 60 secondes
+- [ ] **Constantes dupliquées client/serveur** — Les seuils de matchmaking (range 100, expansion 50/5s) et le timeout de tour (15s) sont hardcodés séparément côté client (`pvp.js`) et serveur (`server/socket/pvp.js`). Centraliser dans `shared/`
+- [ ] **Timeouts sur les fetch** — `api.js` et `server/routes/auth.js` (appels Discord/Google) n'ont aucun timeout. Un serveur qui ne répond pas bloque indéfiniment. Ajouter `AbortController` avec timeout de 10s
+- [ ] **Milestones côté serveur** — Les milestones du shop (`src/shop.js`) sont stockées uniquement en localStorage. Un joueur qui vide son cache peut re-réclamer toutes les récompenses. Persister côté serveur dans le `GameState`
+
+## 🟡 Priorité moyenne — Qualité du code
+
 - [ ] **JSDoc / TypeScript** — Ajouter JSDoc sur les fonctions publiques ou migrer vers TypeScript pour un meilleur outillage
+- [ ] **Validation des probabilités de forge** — `config.js` définit les chances par tier pour chaque forge level mais rien ne vérifie que la somme fait 100%. Ajouter un test ou une assertion au démarrage
+- [ ] **Duplication des slot masteries** — `tech-config.js:109-217` définit 8 techs de maîtrise de slot avec une structure identique. Utiliser une fonction génératrice pour réduire la duplication
+- [ ] **Tests d'intégration serveur** — Le serveur n'a aucun test. Ajouter des tests pour les routes auth (register, login, refresh), game state (save/load) et les sockets (chat, PvP)
+- [ ] **Gestion XP overflow** — `state.js:174` remet l'XP à 0 au level up mais l'excédent est perdu. Si le joueur gagne 200 XP alors qu'il ne lui en manque que 50, les 150 restants disparaissent
+- [ ] **Validation profonde du game state serveur** — `server/routes/game.js` vérifie la structure mais pas les plages de valeurs (gold négatif, level > 100, wave > 10). Ajouter des bornes numériques
+- [ ] **Index manquants en base** — `User.createdAt` et `ChatMessage.senderId` ne sont pas indexés mais utilisés dans des requêtes fréquentes. Ajouter des `@@index` dans le schema Prisma
+
+## 🟡 Priorité moyenne — UX & Gameplay
+
+- [ ] **Confirmation sur actions coûteuses** — Pas de dialogue de confirmation avant de dépenser de grosses sommes d'essence ou d'or (changement de pseudo, speed-up de recherche). Ajouter une modale de confirmation
+- [ ] **Messages d'erreur explicites** — Quand une action échoue (queue pleine, essence insuffisante, tech non débloquée), aucun feedback utilisateur. Ajouter des notifications toast
+- [ ] **Indicateur de connexion serveur** — Aucun indicateur visuel quand le WebSocket se déconnecte ou que la sauvegarde serveur échoue. Ajouter un badge de statut dans le header
+- [ ] **Comparaison d'items améliorée** — La comparaison actuelle ne montre que les stats brutes. Ajouter un résumé du changement de power score total si on équipe l'item
+- [ ] **Historique de combat PvP** — Aucun historique des matchs passés (adversaire, résultat, changement Elo). Ajouter un onglet historique dans la section PvP
+- [ ] **Tutoriel / Onboarding** — Aucune aide pour les nouveaux joueurs. Ajouter un tutoriel interactif qui guide les premières forges et le premier combat
 
 ## 🟢 Priorité basse — Fonctionnalités futures
 
 - [ ] **Compétences actives et passives** — Arbre de compétences débloquable avec des points gagnés par la progression
 - [ ] **Familiers / Compagnons** — Créatures qui apportent des bonus passifs ou aident en combat
-- [ ] **Arbre technologique** — Upgrades permanents qui améliorent la forge, le combat ou les gains d'or
+- [ ] **Enchantements d'items** — Système permettant d'ajouter des bonus spéciaux aux items existants (feu, glace, vampirisme) via des matériaux obtenus en donjon
 - [ ] **Système de guildes** — Canaux de chat par guilde, boss de guilde, classement de guilde
+- [ ] **Mode Endless / Classement donjon** — Mode donjon infini avec scaling progressif et classement global des vagues atteintes
+- [ ] **Succès / Achievements** — Système de badges pour des objectifs spécifiques (première Mythic, 100 PvP wins, donjon wave 10 sans équipement, etc.)
+- [ ] **Échange d'items entre joueurs** — Marketplace ou trade direct entre joueurs connectés, avec commission d'or
+- [ ] **Système de saisons PvP** — Reset Elo périodique avec récompenses de fin de saison basées sur le rank atteint
+- [ ] **Thèmes visuels** — Mode sombre/clair, thèmes de couleur personnalisables, animations de craft améliorées
+- [ ] **Sons et musique** — Effets sonores pour le craft, le combat et les notifications, musique d'ambiance par zone de donjon
