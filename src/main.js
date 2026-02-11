@@ -21,6 +21,34 @@ import { initChat, refreshChatSocket } from './chat.js';
 import { initPvp, refreshPvpSocket } from './pvp.js';
 import { getAccessToken } from './api.js';
 
+// PWA: Register service worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// PWA: Capture install prompt for later use
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallButton();
+});
+
+function showInstallButton() {
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.classList.remove('hidden');
+}
+
+function handleInstallClick() {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+        deferredInstallPrompt = null;
+        const btn = document.getElementById('pwa-install-btn');
+        if (btn) btn.classList.add('hidden');
+    });
+}
+
 // Wire events: state changes trigger UI updates
 gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
 gameEvents.on(EVENTS.STATE_CHANGED, updateEssenceDisplay);
@@ -167,6 +195,9 @@ async function startGame() {
     document.getElementById('auto-action-btn').addEventListener('click', () => {
         handleAutoForgeClick();
     });
+
+    // PWA install button
+    document.getElementById('pwa-install-btn').addEventListener('click', handleInstallClick);
 
     // Profile
     document.getElementById('profile-btn').addEventListener('click', () => {
