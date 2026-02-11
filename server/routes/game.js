@@ -48,6 +48,28 @@ function isValidForgeUpgrade(forgeUpgrade) {
     return true;
 }
 
+function isValidPlayer(player) {
+    if (typeof player !== 'object' || Array.isArray(player) || player === null) return false;
+    if (typeof player.level !== 'number' || player.level < 1 || player.level > 100) return false;
+    if (typeof player.xp !== 'number' || player.xp < 0) return false;
+    return true;
+}
+
+function isValidResearch(research) {
+    if (typeof research !== 'object' || Array.isArray(research) || research === null) return false;
+    if (research.completed && typeof research.completed !== 'object') return false;
+    if (research.active !== null && research.active !== undefined) {
+        if (typeof research.active !== 'object') return false;
+    }
+    if (research.queue !== undefined && !Array.isArray(research.queue)) return false;
+    return true;
+}
+
+function isValidForgeHighestLevel(forgeHighestLevel) {
+    if (typeof forgeHighestLevel !== 'object' || Array.isArray(forgeHighestLevel) || forgeHighestLevel === null) return false;
+    return true;
+}
+
 // GET /api/game/state — load player's game state
 router.get('/state', requireAuth, async (req, res) => {
     try {
@@ -74,6 +96,10 @@ router.get('/state', requireAuth, async (req, res) => {
             forgeLevel: state.forgeLevel,
             forgeUpgrade: state.forgeUpgrade,
             combat: state.combat,
+            essence: state.essence,
+            player: state.player,
+            research: state.research,
+            forgeHighestLevel: state.forgeHighestLevel,
         });
     } catch (err) {
         console.error('Load state error:', err);
@@ -83,7 +109,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, forgeLevel, forgeUpgrade, combat } = req.body;
+    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel } = req.body;
 
     try {
         const data = {};
@@ -107,6 +133,25 @@ router.put('/state', requireAuth, async (req, res) => {
             }
             data.combat = combat;
         }
+        if (typeof essence === 'number' && essence >= 0) data.essence = Math.floor(essence);
+        if (player !== undefined) {
+            if (!isValidPlayer(player)) {
+                return res.status(400).json({ error: 'Invalid player structure' });
+            }
+            data.player = player;
+        }
+        if (research !== undefined) {
+            if (!isValidResearch(research)) {
+                return res.status(400).json({ error: 'Invalid research structure' });
+            }
+            data.research = research;
+        }
+        if (forgeHighestLevel !== undefined) {
+            if (!isValidForgeHighestLevel(forgeHighestLevel)) {
+                return res.status(400).json({ error: 'Invalid forgeHighestLevel structure' });
+            }
+            data.forgeHighestLevel = forgeHighestLevel;
+        }
 
         const state = await prisma.gameState.upsert({
             where: { userId: req.user.userId },
@@ -118,6 +163,10 @@ router.put('/state', requireAuth, async (req, res) => {
                 forgeLevel: forgeLevel || 1,
                 forgeUpgrade: forgeUpgrade || null,
                 combat: combat || { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
+                essence: typeof essence === 'number' ? Math.floor(essence) : 0,
+                player: player || { level: 1, xp: 0, profilePicture: 'wizard' },
+                research: research || { completed: {}, active: null, queue: [] },
+                forgeHighestLevel: forgeHighestLevel || {},
             }
         });
 
