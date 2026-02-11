@@ -17,7 +17,7 @@
     "dev": "vite",
     "dev:server": "node server/index.js",
     "build": "vite build",
-    "start": "prisma db push && node server/index.js",
+    "start": "prisma db push --accept-data-loss && node server/index.js",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
