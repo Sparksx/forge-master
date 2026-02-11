@@ -71,11 +71,36 @@
                 <h1>PvP Arena</h1>
                 <div class="pvp-error" id="pvp-error" role="alert" aria-live="polite"></div>
 
-                <!-- Idle: Find Match -->
+                <!-- Idle: Lobby with player card + leaderboard -->
                 <div class="pvp-section" id="pvp-idle-section">
-                    <div class="pvp-idle-content">
-                        <p>Challenge other players in real-time combat!</p>
+                    <div class="pvp-lobby">
+                        <div class="pvp-player-card" id="pvp-player-card">
+                            <div class="pvp-player-card-rank">
+                                <span class="pvp-rank-icon" id="pvp-rank-icon"></span>
+                                <span class="pvp-rank-name" id="pvp-rank-name"></span>
+                            </div>
+                            <div class="pvp-player-card-stats">
+                                <div class="pvp-stat">
+                                    <span class="pvp-stat-label">ELO</span>
+                                    <span class="pvp-stat-value" id="pvp-my-elo">1000</span>
+                                </div>
+                                <div class="pvp-stat">
+                                    <span class="pvp-stat-label">Power</span>
+                                    <span class="pvp-stat-value" id="pvp-my-power">0</span>
+                                </div>
+                                <div class="pvp-stat">
+                                    <span class="pvp-stat-label">W / L</span>
+                                    <span class="pvp-stat-value" id="pvp-my-record">0 / 0</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <button class="pvp-btn pvp-queue-btn" id="pvp-queue-btn">Find Match</button>
+
+                        <div class="pvp-leaderboard" id="pvp-leaderboard">
+                            <h3 class="pvp-leaderboard-title">Leaderboard</h3>
+                            <div class="pvp-leaderboard-list" id="pvp-leaderboard-list"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -84,6 +109,7 @@
                     <div class="pvp-queue-content">
                         <div class="pvp-spinner" role="status" aria-label="Searching for opponent"></div>
                         <p>Searching for opponent...</p>
+                        <p class="pvp-queue-power-range" id="pvp-queue-power-range"></p>
                         <button class="pvp-btn pvp-cancel-btn" id="pvp-cancel-btn">Cancel</button>
                     </div>
                 </div>
@@ -101,7 +127,10 @@
                         <div class="pvp-vs" aria-hidden="true">VS</div>
                         <div class="pvp-fighter pvp-opponent">
                             <div class="pvp-fighter-label" id="pvp-opponent-name">Opponent</div>
-                            <div class="pvp-fighter-rating" id="pvp-opponent-rating"></div>
+                            <div class="pvp-fighter-info">
+                                <span class="pvp-fighter-rating" id="pvp-opponent-rating"></span>
+                                <span class="pvp-fighter-power" id="pvp-opponent-power"></span>
+                            </div>
                             <div class="hp-bar-container" role="progressbar" aria-label="Opponent health" aria-valuemin="0" aria-valuemax="100">
                                 <div class="hp-bar hp-bar-monster" id="pvp-opponent-hp"></div>
                                 <span class="hp-text" id="pvp-opponent-hp-text"></span>

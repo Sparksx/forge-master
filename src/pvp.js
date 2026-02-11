@@ -1,12 +1,25 @@
 /**
- * PvP UI — matchmaking queue, real-time combat, and results.
+ * PvP UI — lobby with player card & leaderboard, matchmaking queue,
+ * real-time combat, and power-weighted results.
  */
 
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { shareCombatInChat } from './chat.js';
+import { calculateStats, calculatePowerScore } from './forge.js';
+import { getEquipment } from './state.js';
 
 let pvpState = 'idle'; // idle | queued | matched | fighting | ended
+let myPower = 0;
+
+function getEloRank(rating) {
+    if (rating >= 2000) return { name: 'Master', icon: '\uD83D\uDC51' };
+    if (rating >= 1700) return { name: 'Diamond', icon: '\uD83D\uDC8E' };
+    if (rating >= 1400) return { name: 'Platinum', icon: '\u2B50' };
+    if (rating >= 1200) return { name: 'Gold', icon: '\uD83E\uDD47' };
+    if (rating >= 1000) return { name: 'Silver', icon: '\uD83E\uDD48' };
+    return { name: 'Bronze', icon: '\uD83E\uDD49' };
+}
 
 export function initPvp() {
     const queueBtn = document.getElementById('pvp-queue-btn');
@@ -26,24 +39,29 @@ export function initPvp() {
     });
 
     setupSocketListeners();
+    refreshPlayerCard();
 }
 
 function setupSocketListeners() {
     const socket = getSocket();
     if (!socket) return;
 
-    socket.on('pvp:queued', () => {
+    socket.on('pvp:queued', (data) => {
         pvpState = 'queued';
+        if (data && data.power) myPower = data.power;
         showSection('pvp-queue-section');
+        startQueuePowerRange();
     });
 
     socket.on('pvp:cancelled', () => {
         pvpState = 'idle';
         showSection('pvp-idle-section');
+        stopQueuePowerRange();
     });
 
     socket.on('pvp:matched', (data) => {
         pvpState = 'matched';
+        stopQueuePowerRange();
         showSection('pvp-fight-section');
         updateMatchInfo(data);
     });
@@ -66,6 +84,10 @@ function setupSocketListeners() {
     socket.on('pvp:error', (data) => {
         const errorEl = document.getElementById('pvp-error');
         if (errorEl) errorEl.textContent = data.message || 'PvP error';
+    });
+
+    socket.on('pvp:leaderboard', (data) => {
+        renderLeaderboard(data);
     });
 }
 
@@ -96,11 +118,108 @@ function showSection(id) {
     });
 }
 
+// --- Player Card ---
+
+export function refreshPlayerCard() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const equipment = getEquipment();
+    const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
+    const power = calculatePowerScore(totalHealth, totalDamage, bonuses);
+    myPower = power;
+
+    const rating = user.pvpRating || 1000;
+    const rank = getEloRank(rating);
+
+    const rankIcon = document.getElementById('pvp-rank-icon');
+    const rankName = document.getElementById('pvp-rank-name');
+    const eloEl = document.getElementById('pvp-my-elo');
+    const powerEl = document.getElementById('pvp-my-power');
+    const recordEl = document.getElementById('pvp-my-record');
+
+    if (rankIcon) rankIcon.textContent = rank.icon;
+    if (rankName) rankName.textContent = rank.name;
+    if (eloEl) eloEl.textContent = rating.toLocaleString();
+    if (powerEl) powerEl.textContent = power.toLocaleString();
+    if (recordEl) recordEl.textContent = `${user.pvpWins || 0} / ${user.pvpLosses || 0}`;
+
+    // Also request leaderboard
+    const socket = getSocket();
+    if (socket) socket.emit('pvp:leaderboard');
+}
+
+// --- Leaderboard ---
+
+function renderLeaderboard(players) {
+    const list = document.getElementById('pvp-leaderboard-list');
+    if (!list) return;
+
+    if (!players || players.length === 0) {
+        list.innerHTML = '<div class="pvp-leaderboard-empty">No ranked players yet</div>';
+        return;
+    }
+
+    const user = getCurrentUser();
+    list.innerHTML = players.map((p, i) => {
+        const rank = getEloRank(p.rating);
+        const isMe = user && p.id === user.id;
+        return `<div class="pvp-lb-row${isMe ? ' pvp-lb-me' : ''}">
+            <span class="pvp-lb-pos">#${i + 1}</span>
+            <span class="pvp-lb-name">${rank.icon} ${escapeHtml(p.username)}</span>
+            <span class="pvp-lb-elo">${p.rating}</span>
+            <span class="pvp-lb-power">${p.power.toLocaleString()}</span>
+            <span class="pvp-lb-record">${p.wins}W ${p.losses}L</span>
+        </div>`;
+    }).join('');
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// --- Queue power range display ---
+
+let queueRangeInterval = null;
+let queueStartTime = 0;
+
+function startQueuePowerRange() {
+    queueStartTime = Date.now();
+    updateQueuePowerRange();
+    queueRangeInterval = setInterval(updateQueuePowerRange, 1000);
+}
+
+function stopQueuePowerRange() {
+    if (queueRangeInterval) {
+        clearInterval(queueRangeInterval);
+        queueRangeInterval = null;
+    }
+}
+
+function updateQueuePowerRange() {
+    const el = document.getElementById('pvp-queue-power-range');
+    if (!el || !myPower) return;
+
+    const elapsed = Date.now() - queueStartTime;
+    const expansions = Math.floor(elapsed / 5000);
+    const rangePct = 0.20 + expansions * 0.10;
+    const low = Math.round(myPower * (1 - rangePct));
+    const high = Math.round(myPower * (1 + rangePct));
+
+    el.textContent = `Power range: ${Math.max(0, low).toLocaleString()} - ${high.toLocaleString()}${expansions > 0 ? ' (expanding...)' : ''}`;
+}
+
+// --- Match Info ---
+
 function updateMatchInfo(data) {
     const opponentName = document.getElementById('pvp-opponent-name');
     const opponentRating = document.getElementById('pvp-opponent-rating');
+    const opponentPower = document.getElementById('pvp-opponent-power');
     if (opponentName) opponentName.textContent = data.opponent.username;
-    if (opponentRating) opponentRating.textContent = `Rating: ${data.opponent.rating}`;
+    if (opponentRating) opponentRating.textContent = `${getEloRank(data.opponent.rating).icon} ${data.opponent.rating}`;
+    if (opponentPower) opponentPower.textContent = `Power: ${data.opponent.power.toLocaleString()}`;
 
     // Init HP bars
     updateHP('pvp-your-hp', data.opponent.maxHP, data.opponent.maxHP, 'pvp-your-hp-text');
@@ -118,7 +237,7 @@ function updateCombatUI(data) {
         line.className = 'pvp-log-entry';
         const yourAction = data.you.action;
         const theirAction = data.opponent.action;
-        line.textContent = `Turn ${data.turn}: You ${yourAction} (${data.opponent.damage} dmg taken) — Opponent ${theirAction} (${data.you.damage} dmg taken)`;
+        line.textContent = `Turn ${data.turn}: You ${yourAction} (${data.opponent.damage} dmg taken) \u2014 Opponent ${theirAction} (${data.you.damage} dmg taken)`;
         log.appendChild(line);
         log.scrollTop = log.scrollHeight;
     }
@@ -181,6 +300,13 @@ function showResult(data) {
         ratingChange.className = `pvp-rating-change ${change >= 0 ? 'positive' : 'negative'}`;
     }
 
+    // Update local user pvp stats for the player card
+    if (user) {
+        user.pvpRating = (user.pvpRating || 1000) + (data.you.ratingChange || 0);
+        if (won) user.pvpWins = (user.pvpWins || 0) + 1;
+        else if (!isDraw) user.pvpLosses = (user.pvpLosses || 0) + 1;
+    }
+
     // Add share button
     const resultSection = document.getElementById('pvp-result-section');
     let shareBtn = document.getElementById('pvp-share-btn');
@@ -215,6 +341,10 @@ function resetPvpUI() {
     if (shareBtn) shareBtn.remove();
 
     if (turnTimerInterval) clearInterval(turnTimerInterval);
+    stopQueuePowerRange();
+
+    // Refresh player card with updated stats
+    refreshPlayerCard();
 }
 
 export function refreshPvpSocket() {

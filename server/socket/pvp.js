@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';
-import { computeStatsFromEquipment } from '../../shared/stats.js';
+import { computeStatsFromEquipment, calculatePowerScore, calculateStats } from '../../shared/stats.js';
 import { storeCombatLog } from './chat.js';
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
@@ -9,7 +9,14 @@ const queue = new Map();
 const matches = new Map();
 
 const TURN_TIMEOUT = 15000; // 15s per turn
-const K_FACTOR = 32; // Elo K-factor
+const K_FACTOR = 32; // Elo K-factor base
+
+// Matchmaking: power-based primary, elo secondary
+const BASE_POWER_RANGE = 0.20;       // ±20% power
+const POWER_RANGE_EXPANSION = 0.10;  // +10% per interval
+const BASE_ELO_RANGE = 200;
+const ELO_RANGE_EXPANSION = 100;
+const RANGE_INTERVAL = 5000; // ms
 
 export function registerPvpHandlers(io, socket) {
     socket.on('pvp:queue', async () => {
@@ -31,7 +38,7 @@ export function registerPvpHandlers(io, socket) {
             queuedAt: Date.now(),
         });
 
-        socket.emit('pvp:queued', {});
+        socket.emit('pvp:queued', { power: stats.power });
         tryMatch(io);
     });
 
@@ -50,6 +57,11 @@ export function registerPvpHandlers(io, socket) {
         handleAction(io, match, socket.user.userId, type);
     });
 
+    socket.on('pvp:leaderboard', async () => {
+        const leaderboard = await getLeaderboard();
+        socket.emit('pvp:leaderboard', leaderboard);
+    });
+
     socket.on('disconnect', () => {
         queue.delete(socket.id);
 
@@ -62,41 +74,46 @@ export function registerPvpHandlers(io, socket) {
     });
 }
 
-// Elo range starts at 100 and widens by 50 every 5 seconds of waiting
-const BASE_ELO_RANGE = 100;
-const ELO_RANGE_EXPANSION = 50;
-const ELO_RANGE_INTERVAL = 5000; // ms
-
 function tryMatch(io) {
     if (queue.size < 2) return;
 
     const entries = Array.from(queue.values());
     const now = Date.now();
 
-    // Find the best Elo-compatible pair
+    // Find the best power-compatible pair
     let bestPair = null;
-    let bestDiff = Infinity;
+    let bestScore = Infinity;
 
     for (let i = 0; i < entries.length; i++) {
         for (let j = i + 1; j < entries.length; j++) {
             const a = entries[i];
             const b = entries[j];
-            const diff = Math.abs(a.stats.rating - b.stats.rating);
 
-            // Calculate allowed range based on how long each player has been waiting
+            const avgPower = (a.stats.power + b.stats.power) / 2 || 1;
+            const powerDiffPct = Math.abs(a.stats.power - b.stats.power) / avgPower;
+            const eloDiff = Math.abs(a.stats.rating - b.stats.rating);
+
+            // Calculate allowed ranges based on how long each player has been waiting
             const waitA = now - (a.queuedAt || now);
             const waitB = now - (b.queuedAt || now);
             const maxWait = Math.max(waitA, waitB);
-            const allowedRange = BASE_ELO_RANGE + Math.floor(maxWait / ELO_RANGE_INTERVAL) * ELO_RANGE_EXPANSION;
+            const expansions = Math.floor(maxWait / RANGE_INTERVAL);
 
-            if (diff <= allowedRange && diff < bestDiff) {
-                bestDiff = diff;
-                bestPair = [a, b];
+            const allowedPowerRange = BASE_POWER_RANGE + expansions * POWER_RANGE_EXPANSION;
+            const allowedEloRange = BASE_ELO_RANGE + expansions * ELO_RANGE_EXPANSION;
+
+            if (powerDiffPct <= allowedPowerRange && eloDiff <= allowedEloRange) {
+                // Composite score: prioritize power proximity, then elo
+                const score = powerDiffPct * 200 + eloDiff;
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestPair = [a, b];
+                }
             }
         }
     }
 
-    if (!bestPair) return; // No compatible pair yet, range will widen over time
+    if (!bestPair) return; // No compatible pair yet, ranges will widen over time
 
     const [p1, p2] = bestPair;
     queue.delete(p1.socket.id);
@@ -117,6 +134,7 @@ function tryMatch(io) {
             critChance: p1.stats.critChance,
             critMultiplier: p1.stats.critMultiplier,
             rating: p1.stats.rating,
+            power: p1.stats.power,
             action: null,
         },
         player2: {
@@ -130,6 +148,7 @@ function tryMatch(io) {
             critChance: p2.stats.critChance,
             critMultiplier: p2.stats.critMultiplier,
             rating: p2.stats.rating,
+            power: p2.stats.power,
             action: null,
         },
         turn: 1,
@@ -144,11 +163,13 @@ function tryMatch(io) {
     // Notify both players
     p1.socket.emit('pvp:matched', {
         matchId,
-        opponent: { username: p2.username, maxHP: p2.stats.maxHP, damage: p2.stats.damage, rating: p2.stats.rating },
+        opponent: { username: p2.username, maxHP: p2.stats.maxHP, damage: p2.stats.damage, rating: p2.stats.rating, power: p2.stats.power },
+        you: { power: p1.stats.power, rating: p1.stats.rating },
     });
     p2.socket.emit('pvp:matched', {
         matchId,
-        opponent: { username: p1.username, maxHP: p1.stats.maxHP, damage: p1.stats.damage, rating: p1.stats.rating },
+        opponent: { username: p1.username, maxHP: p1.stats.maxHP, damage: p1.stats.damage, rating: p1.stats.rating, power: p1.stats.power },
+        you: { power: p2.stats.power, rating: p2.stats.rating },
     });
 
     // Start turn timer
@@ -285,24 +306,52 @@ function calculateDamage(attacker, defender, attackerAction, defenderAction) {
     return { damage, isCrit };
 }
 
+/**
+ * Power-weighted Elo calculation.
+ * The K-factor is modulated by the power ratio between players:
+ * - Beating a weaker opponent (lower power) yields less Elo
+ * - Beating a stronger opponent (higher power) yields more Elo
+ * - At equal power, standard Elo applies
+ */
+function computeEloChanges(winnerRating, loserRating, winnerPower, loserPower) {
+    const expectedWinner = 1 / (1 + Math.pow(10, (loserRating - winnerRating) / 400));
+    const expectedLoser = 1 - expectedWinner;
+
+    // Power ratio modifier: dampened with ^0.5 to avoid extreme swings
+    const winnerPowerRatio = Math.max(0.25, Math.min(4, loserPower / winnerPower));
+    const loserPowerRatio = Math.max(0.25, Math.min(4, winnerPower / loserPower));
+
+    const winnerK = K_FACTOR * Math.pow(winnerPowerRatio, 0.5);
+    const loserK = K_FACTOR / Math.pow(loserPowerRatio, 0.5);
+
+    const winnerChange = Math.max(1, Math.round(winnerK * (1 - expectedWinner)));
+    const loserChange = Math.min(-1, Math.round(loserK * (0 - expectedLoser)));
+
+    return { winnerChange, loserChange };
+}
+
 async function endMatch(io, match, winnerId, reason) {
     if (match.turnTimer) clearTimeout(match.turnTimer);
 
     const p1 = match.player1;
     const p2 = match.player2;
 
-    // Calculate Elo changes
+    // Calculate Elo changes with power weighting
     let p1Change = 0;
     let p2Change = 0;
 
     if (winnerId) {
-        const expected1 = 1 / (1 + Math.pow(10, (p2.rating - p1.rating) / 400));
-        const expected2 = 1 - expected1;
-        const s1 = winnerId === p1.userId ? 1 : 0;
-        const s2 = winnerId === p2.userId ? 1 : 0;
+        const isP1Winner = winnerId === p1.userId;
+        const winner = isP1Winner ? p1 : p2;
+        const loser = isP1Winner ? p2 : p1;
 
-        p1Change = Math.round(K_FACTOR * (s1 - expected1));
-        p2Change = Math.round(K_FACTOR * (s2 - expected2));
+        const { winnerChange, loserChange } = computeEloChanges(
+            winner.rating, loser.rating,
+            winner.power, loser.power,
+        );
+
+        p1Change = isP1Winner ? winnerChange : loserChange;
+        p2Change = isP1Winner ? loserChange : winnerChange;
     }
 
     // Update database
@@ -346,8 +395,8 @@ async function endMatch(io, match, winnerId, reason) {
         combatId,
         winnerId,
         reason,
-        player1: { userId: p1.userId, username: p1.username, ratingChange: p1Change },
-        player2: { userId: p2.userId, username: p2.username, ratingChange: p2Change },
+        player1: { userId: p1.userId, username: p1.username, ratingChange: p1Change, power: p1.power },
+        player2: { userId: p2.userId, username: p2.username, ratingChange: p2Change, power: p2.power },
     };
 
     p1.socket.emit('pvp:end', { ...endData, you: endData.player1, opponent: endData.player2 });
@@ -363,12 +412,14 @@ async function getPlayerStats(userId) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { pvpRating: true, profilePicture: true, gameState: true }
+            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true }
         });
         if (!user || !user.gameState) return null;
 
         const equipment = user.gameState.equipment || {};
         const { maxHP, damage, critChance, critMultiplier } = computeStatsFromEquipment(equipment);
+        const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
+        const power = calculatePowerScore(totalHealth, totalDamage, bonuses);
 
         return {
             maxHP: Math.max(100, maxHP),
@@ -376,6 +427,9 @@ async function getPlayerStats(userId) {
             critChance,
             critMultiplier,
             rating: user.pvpRating,
+            wins: user.pvpWins,
+            losses: user.pvpLosses,
+            power: Math.max(1, power),
             profilePicture: user.profilePicture,
         };
     } catch (err) {
@@ -384,4 +438,39 @@ async function getPlayerStats(userId) {
     }
 }
 
-// computeStatsFromEquipment is now imported from shared/stats.js
+async function getLeaderboard() {
+    try {
+        const players = await prisma.user.findMany({
+            where: { pvpWins: { gt: 0 } },
+            orderBy: { pvpRating: 'desc' },
+            take: 10,
+            select: {
+                id: true,
+                username: true,
+                pvpRating: true,
+                pvpWins: true,
+                pvpLosses: true,
+                gameState: { select: { equipment: true } },
+            },
+        });
+
+        return players.map(p => {
+            let power = 0;
+            if (p.gameState) {
+                const { totalHealth, totalDamage, bonuses } = calculateStats(p.gameState.equipment || {});
+                power = calculatePowerScore(totalHealth, totalDamage, bonuses);
+            }
+            return {
+                id: p.id,
+                username: p.username,
+                rating: p.pvpRating,
+                wins: p.pvpWins,
+                losses: p.pvpLosses,
+                power,
+            };
+        });
+    } catch (err) {
+        console.error('Leaderboard error:', err);
+        return [];
+    }
+}

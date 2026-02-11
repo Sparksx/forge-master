@@ -2284,7 +2284,7 @@ h1 {
     padding: 16px 0;
 }
 
-.pvp-idle-content,
+.pvp-lobby,
 .pvp-queue-content,
 .pvp-result-content {
     display: flex;
@@ -2444,6 +2444,158 @@ h1 {
     text-align: center;
     min-height: 1.2em;
     font-size: 0.9em;
+}
+
+/* Player Card */
+.pvp-player-card {
+    width: 100%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(240, 192, 64, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.pvp-player-card-rank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pvp-rank-icon {
+    font-size: 1.8em;
+}
+
+.pvp-rank-name {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #f0c040;
+}
+
+.pvp-player-card-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 12px;
+}
+
+.pvp-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.pvp-stat-label {
+    font-size: 0.75em;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pvp-stat-value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #ddd;
+}
+
+/* Leaderboard */
+.pvp-leaderboard {
+    width: 100%;
+    max-width: 500px;
+}
+
+.pvp-leaderboard-title {
+    font-size: 1em;
+    color: #f0c040;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.pvp-leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pvp-leaderboard-empty {
+    text-align: center;
+    color: #666;
+    padding: 16px;
+    font-size: 0.9em;
+}
+
+.pvp-lb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
+.pvp-lb-row:first-child {
+    background: rgba(240, 192, 64, 0.08);
+}
+
+.pvp-lb-me {
+    border: 1px solid rgba(240, 192, 64, 0.3);
+}
+
+.pvp-lb-pos {
+    width: 30px;
+    font-weight: bold;
+    color: #888;
+}
+
+.pvp-lb-name {
+    flex: 1;
+    color: #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pvp-lb-elo {
+    width: 48px;
+    text-align: right;
+    font-weight: bold;
+    color: #f0c040;
+}
+
+.pvp-lb-power {
+    width: 60px;
+    text-align: right;
+    color: #aaa;
+    font-size: 0.85em;
+}
+
+.pvp-lb-record {
+    width: 55px;
+    text-align: right;
+    color: #777;
+    font-size: 0.8em;
+}
+
+/* Queue power range */
+.pvp-queue-power-range {
+    font-size: 0.85em;
+    color: #aaa;
+}
+
+/* Fighter info row (rating + power) */
+.pvp-fighter-info {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.pvp-fighter-power {
+    font-size: 0.85em;
+    color: #aaa;
 }
 
 /* =============================================

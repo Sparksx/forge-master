@@ -65,6 +65,22 @@ export function calculateStats(equipment) {
  * Compute effective combat stats from an equipment map.
  * Used by both client combat and server PvP to derive maxHP, damage, etc.
  */
+/**
+ * Calculate a composite power score from total health, damage and bonuses.
+ * Used by client UI and server matchmaking / ELO.
+ */
+export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
+    const b = bonuses || {};
+    const effectiveHealth = totalHealth
+        * (1 + (b.healthMulti || 0) / 100)
+        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
+    const effectiveDamage = totalDamage
+        * (1 + (b.damageMulti || 0) / 100)
+        * (1 + (b.attackSpeed || 0) / 100)
+        * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
+    return Math.round(effectiveHealth + effectiveDamage);
+}
+
 export function computeStatsFromEquipment(equipment) {
     let totalHealth = 0;
     let totalDamage = 0;
