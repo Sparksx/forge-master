@@ -1,3 +1,5 @@
+import { isTabUnlocked } from './feature-unlock.js';
+
 const TAB_NAMES = ['pvp', 'dungeon', 'home', 'upgrade', 'shop'];
 
 export function initNavigation() {
@@ -7,7 +9,7 @@ export function initNavigation() {
         if (!tab) return;
 
         const tabName = tab.dataset.tab;
-        if (tabName) switchTab(tabName);
+        if (tabName && isTabUnlocked(tabName)) switchTab(tabName);
     });
 
     // Sub-tab navigation within Upgrade
@@ -24,6 +26,7 @@ export function initNavigation() {
 
 export function switchTab(tabName) {
     if (!TAB_NAMES.includes(tabName)) return;
+    if (!isTabUnlocked(tabName)) return;
 
     document.querySelectorAll('.nav-tab').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
