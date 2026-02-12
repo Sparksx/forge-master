@@ -483,13 +483,13 @@
 }
 
 .skill-hud-btn.skill-hud-cooldown {
-    border-color: #555;
+    border-color: var(--bg-surface);
     opacity: 0.7;
     cursor: default;
 }
 
 .skill-hud-btn.skill-hud-passive {
-    border-color: #555;
+    border-color: var(--bg-surface);
     cursor: default;
     opacity: 0.85;
 }

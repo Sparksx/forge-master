@@ -116,7 +116,7 @@
 }
 
 .chat-system-text {
-    color: #ffd700;
+    color: var(--gold-light);
     font-weight: 600;
     font-size: 0.85em;
 }
@@ -554,21 +554,22 @@
 
 .admin-broadcast h3 {
     font-size: 0.95em;
-    color: #ffd700;
+    color: var(--gold);
+    font-family: var(--font-display);
 }
 
 .admin-broadcast textarea {
     padding: 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    color: var(--text-primary);
     border-radius: 6px;
     resize: vertical;
     font-size: 0.85em;
 }
 
 .admin-broadcast textarea::placeholder {
-    color: #666;
+    color: var(--text-muted);
 }
 
 /* ─── Admin Mode Toggle ────────────────────────────────────────── */
@@ -576,18 +577,19 @@
 .admin-mode-section {
     margin-top: 16px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .admin-mode-section h4 {
     font-size: 0.9em;
-    color: #ffd700;
+    color: var(--gold);
     margin-bottom: 4px;
+    font-family: var(--font-display);
 }
 
 .admin-mode-desc {
     font-size: 0.75em;
-    color: #888;
+    color: var(--text-muted);
     margin-bottom: 8px;
 }
 
@@ -605,7 +607,7 @@
 .admin-toggle-slider {
     width: 40px;
     height: 22px;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--bg-surface);
     border-radius: 11px;
     position: relative;
     transition: background 0.3s;
@@ -616,7 +618,7 @@
     position: absolute;
     width: 18px;
     height: 18px;
-    background: #fff;
+    background: var(--text-primary);
     border-radius: 50%;
     top: 2px;
     left: 2px;
@@ -633,27 +635,28 @@
 
 .admin-toggle-label {
     font-size: 0.85em;
-    color: #ccc;
+    color: var(--text-primary);
 }
 
 /* ─── Self Section ─────────────────────────────────────────────── */
 
 .admin-self-section h3 {
     font-size: 0.95em;
-    color: #fff;
+    color: var(--gold);
     margin-bottom: 10px;
+    font-family: var(--font-display);
 }
 
 .admin-info {
     font-size: 0.8em;
-    color: #888;
+    color: var(--text-muted);
 }
 
 /* ─── Loading, Error, Empty states ─────────────────────────────── */
 
 .admin-loading {
     text-align: center;
-    color: #888;
+    color: var(--text-muted);
     font-size: 0.85em;
     padding: 16px;
 }
@@ -667,7 +670,7 @@
 
 .admin-empty {
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     font-size: 0.8em;
     padding: 8px;
 }
