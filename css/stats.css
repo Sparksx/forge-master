@@ -5,9 +5,9 @@
 .stats-panel {
     margin-bottom: 12px;
     padding: clamp(8px, 1.5vw, 12px);
-    background: #e8e8e8;
+    background: var(--bg-card);
     border-radius: 8px;
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--border-subtle);
     flex-shrink: 0;
 }
 
@@ -18,19 +18,21 @@
     gap: 8px;
     margin-bottom: 6px;
     padding-bottom: 6px;
-    border-bottom: 1px solid #d0d0d0;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .power-label {
     font-size: clamp(0.8em, 1.2vw, 1em);
     font-weight: 700;
-    color: #555;
+    color: var(--text-secondary);
+    font-family: var(--font-display);
 }
 
 .power-value {
     font-size: clamp(1.4em, 2.5vw, 2em);
     font-weight: 900;
-    color: #333;
+    color: var(--gold);
+    font-family: var(--font-display);
 }
 
 .stats-row {
@@ -47,7 +49,7 @@
     gap: clamp(8px, 2vw, 16px);
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px solid #d0d0d0;
+    border-top: 1px solid var(--border-subtle);
 }
 
 .stats-row-bonus:empty {
@@ -64,21 +66,21 @@
 .stat-label {
     font-size: clamp(0.75em, 1.1vw, 0.95em);
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
 }
 
 .stat-value {
     font-size: clamp(1.1em, 1.8vw, 1.6em);
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .bonus-stat {
     font-size: clamp(0.7em, 1vw, 0.85em);
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
     padding: 2px 6px;
-    background: #f5f5f5;
+    background: var(--bg-surface);
     border-radius: 4px;
     white-space: nowrap;
 }

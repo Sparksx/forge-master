@@ -1,5 +1,5 @@
 /* =============================================
-   FORGE & UPGRADE MECHANICS
+   FORGE & UPGRADE MECHANICS — Workshop Theme
    ============================================= */
 
 /* Forge Level Button (merged level + upgrade) */
@@ -13,8 +13,9 @@
 .forge-btn-level {
     font-weight: 800;
     font-size: 1.2em;
-    color: #333;
+    color: var(--gold);
     line-height: 1;
+    font-family: var(--font-display);
 }
 
 .forge-level-btn.upgrading {
@@ -22,20 +23,20 @@
 }
 
 @keyframes upgradePulse {
-    0%, 100% { background: #e8e8e8; }
-    50% { background: #d4e8ff; }
+    0%, 100% { background: var(--bg-card); }
+    50% { background: rgba(240, 192, 64, 0.15); }
 }
 
 /* Auto-forge active state */
 .action-icon-btn.auto-active {
-    background: #c8e6c9;
+    background: rgba(76, 175, 80, 0.2);
     border-color: #4caf50;
     animation: autoForgePulse 1.5s ease-in-out infinite;
 }
 
 @keyframes autoForgePulse {
-    0%, 100% { background: #c8e6c9; }
-    50% { background: #a5d6a7; }
+    0%, 100% { background: rgba(76, 175, 80, 0.2); }
+    50% { background: rgba(76, 175, 80, 0.35); }
 }
 
 /* Forge Upgrade Modal */
@@ -43,17 +44,18 @@
     text-align: center;
     font-size: clamp(1em, 1.5vw, 1.2em);
     font-weight: 800;
-    color: #333;
+    color: var(--gold);
     margin-bottom: 12px;
+    font-family: var(--font-display);
 }
 
 /* Side-by-side chances comparison */
 .forge-chances-compare {
-    background: #f5f5f5;
+    background: var(--bg-card);
     border-radius: 8px;
     padding: clamp(8px, 1.2vw, 12px);
     margin-bottom: 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-subtle);
 }
 
 .forge-compare-row {
@@ -63,11 +65,11 @@
 }
 
 .forge-compare-header {
-    border-bottom: 1px solid #d0d0d0;
+    border-bottom: 1px solid var(--border-subtle);
     margin-bottom: 4px;
     padding-bottom: 6px;
     font-size: clamp(0.7em, 1vw, 0.8em);
-    color: #888;
+    color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
 }
@@ -87,7 +89,7 @@
 .forge-compare-cur,
 .forge-compare-next {
     flex: 1;
-    color: #555;
+    color: var(--text-secondary);
 }
 
 .forge-compare-arrow {
@@ -104,7 +106,7 @@
 .forge-progress-bar {
     width: 100%;
     height: 8px;
-    background: #e0e0e0;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -112,16 +114,17 @@
 
 .forge-progress-fill {
     height: 100%;
-    background: #4a4a4a;
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
     border-radius: 4px;
     transition: width 1s linear;
     width: 0%;
+    box-shadow: 0 0 8px rgba(240, 192, 64, 0.3);
 }
 
 .forge-timer-text {
     font-size: clamp(0.9em, 1.3vw, 1.1em);
     font-weight: 700;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 8px;
 }
 
@@ -131,24 +134,28 @@
     padding: 10px;
     font-size: clamp(0.9em, 1.3vw, 1.1em);
     font-weight: 700;
-    background: #d4a017;
-    color: white;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: #1a1a2e;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(240, 192, 64, 0.3);
 }
 
 .btn-speed-up:hover:not(:disabled) {
-    background: #b8860b;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(240, 192, 64, 0.4);
 }
 
 .btn-speed-up:disabled,
 .btn-speed-up.btn-disabled {
-    background: #b0b0b0;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
 }
 
 /* Upgrade button */
@@ -159,24 +166,27 @@
     padding: 10px;
     font-size: clamp(0.9em, 1.3vw, 1.1em);
     font-weight: 700;
-    background: #4a4a4a;
-    color: white;
-    border: none;
+    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    color: var(--text-primary);
+    border: 1px solid var(--border-medium);
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 .btn-upgrade-forge:hover:not(:disabled) {
-    background: #333;
+    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(100, 100, 200, 0.3);
 }
 
 .btn-upgrade-forge:disabled,
 .btn-upgrade-forge.btn-disabled {
-    background: #b0b0b0;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
     transform: none;
+    border-color: var(--border-subtle);
 }
 
 .forge-section-max {
@@ -185,6 +195,7 @@
     color: #ff8000;
     font-weight: 700;
     font-size: clamp(0.9em, 1.3vw, 1.1em);
+    text-shadow: 0 1px 4px rgba(255, 128, 0, 0.3);
 }
 
 /* Tier name in item cards */
@@ -208,17 +219,21 @@
     padding: clamp(10px, 1.5vw, 16px);
     font-size: clamp(1em, 1.8vw, 1.4em);
     font-weight: bold;
-    background: #4a4a4a;
-    color: white;
+    background: linear-gradient(135deg, #c8960c, #f0c040);
+    color: #1a1a2e;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    font-family: var(--font-display);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 12px rgba(240, 192, 64, 0.3);
 }
 
 .forge-btn:hover {
-    background: #333;
+    background: linear-gradient(135deg, #f0c040, #ffd54f);
     transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(240, 192, 64, 0.5);
 }
 
 .forge-btn:active {
@@ -240,20 +255,20 @@
 
 @keyframes forgeWorking {
     0%, 100% {
-        background: #4a4a4a;
-        box-shadow: 0 0 0 rgba(255, 140, 0, 0);
+        background: linear-gradient(135deg, #c8960c, #f0c040);
+        box-shadow: 0 0 8px rgba(255, 140, 0, 0.2);
     }
     25% {
-        background: #d4a017;
-        box-shadow: 0 0 12px rgba(255, 140, 0, 0.4);
+        background: linear-gradient(135deg, #ff8c00, #ffc107);
+        box-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
     }
     50% {
-        background: #ff6600;
-        box-shadow: 0 0 18px rgba(255, 102, 0, 0.5);
+        background: linear-gradient(135deg, #ff6600, #ff9800);
+        box-shadow: 0 0 30px rgba(255, 102, 0, 0.6);
     }
     75% {
-        background: #d4a017;
-        box-shadow: 0 0 12px rgba(255, 140, 0, 0.4);
+        background: linear-gradient(135deg, #ff8c00, #ffc107);
+        box-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
     }
 }
 
@@ -265,20 +280,22 @@
 .action-icon-btn {
     width: 48px;
     font-size: 1.3em;
-    background: #e8e8e8;
-    border: 1px solid #d0d0d0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s, transform 0.2s, border-color 0.2s, box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
 }
 
 .action-icon-btn:hover {
-    background: #d0d0d0;
+    background: var(--bg-card-hover);
+    border-color: var(--border-medium);
     transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .action-icon-btn:active {
@@ -291,7 +308,7 @@
 
 .auto-forge-desc {
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-size: clamp(0.85em, 1.2vw, 0.95em);
     margin-bottom: 12px;
     font-style: italic;
@@ -309,14 +326,15 @@
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    background: #f5f5f5;
+    background: var(--bg-card);
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.2s;
+    border: 1px solid var(--border-subtle);
 }
 
 .auto-forge-tier-row:hover {
-    background: #ebebeb;
+    background: var(--bg-card-hover);
 }
 
 .auto-forge-tier-disabled {
@@ -327,7 +345,7 @@
 .auto-forge-checkbox {
     width: 18px;
     height: 18px;
-    accent-color: #4a4a4a;
+    accent-color: var(--gold);
     cursor: pointer;
 }
 
@@ -342,17 +360,19 @@
     padding: 12px;
     font-size: clamp(1em, 1.5vw, 1.2em);
     font-weight: 700;
-    background: #4caf50;
+    background: linear-gradient(135deg, #2e7d32, #4caf50);
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
 .btn-start-auto:hover {
-    background: #388e3c;
+    background: linear-gradient(135deg, #388e3c, #66bb6a);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
 /* =============================================
@@ -366,12 +386,12 @@
     gap: 8px;
     padding: 8px 0;
     margin-top: 4px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-subtle);
     cursor: pointer;
 }
 
 .auto-forge-study-label {
-    color: #7e57c2;
+    color: var(--accent-purple);
     font-weight: 600;
     font-size: clamp(0.85em, 1.2vw, 1em);
 }
@@ -381,15 +401,15 @@
 .auto-forge-filter-section {
     margin: 12px 0;
     padding: 10px 12px;
-    background: #f0f4ff;
-    border: 1px solid #c5d4f7;
+    background: rgba(63, 81, 181, 0.1);
+    border: 1px solid rgba(63, 81, 181, 0.2);
     border-radius: 8px;
 }
 
 .auto-forge-filter-title {
     font-weight: 700;
     font-size: clamp(0.9em, 1.3vw, 1.05em);
-    color: #3f51b5;
+    color: #7b8fff;
     margin-bottom: 8px;
 }
 
@@ -403,28 +423,30 @@
 
 .auto-forge-filter-label {
     font-size: clamp(0.85em, 1.2vw, 0.95em);
-    color: #444;
+    color: var(--text-secondary);
     font-weight: 600;
 }
 
 .auto-forge-filter-input {
     width: 80px;
     padding: 4px 8px;
-    border: 1px solid #bbb;
+    border: 1px solid var(--border-medium);
     border-radius: 4px;
     font-size: 0.9em;
     text-align: right;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .auto-forge-filter-input:focus {
     outline: none;
-    border-color: #3f51b5;
-    box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.15);
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.15);
 }
 
 .auto-forge-filter-subtitle {
     font-size: clamp(0.8em, 1.1vw, 0.9em);
-    color: #555;
+    color: var(--text-secondary);
     font-weight: 600;
     margin-top: 8px;
     margin-bottom: 4px;
@@ -441,54 +463,54 @@
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    background: #e8edf8;
+    background: rgba(63, 81, 181, 0.1);
     border-radius: 4px;
     cursor: pointer;
     font-size: clamp(0.8em, 1.1vw, 0.9em);
 }
 
 .auto-forge-slot-row:hover {
-    background: #dde3f3;
+    background: rgba(63, 81, 181, 0.18);
 }
 
 .auto-forge-slot-checkbox {
     width: 16px;
     height: 16px;
-    accent-color: #3f51b5;
+    accent-color: #7b8fff;
     cursor: pointer;
 }
 
 .auto-forge-slot-name {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .auto-forge-equip-row {
     padding: 8px 10px;
     margin: 8px 0;
-    background: #e8f5e9;
-    border: 1px solid #a5d6a7;
+    background: rgba(76, 175, 80, 0.12);
+    border: 1px solid rgba(76, 175, 80, 0.25);
     border-radius: 6px;
     font-size: clamp(0.8em, 1.1vw, 0.88em);
-    color: #2e7d32;
+    color: var(--accent-green);
     font-weight: 600;
     text-align: center;
 }
 
 /* Speed-up button (shared) */
 .btn-speed-up {
-    background: linear-gradient(135deg, #f0c040, #ff8c00);
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
     color: #1a1a2e;
     font-weight: 700;
 }
 
 .btn-speed-up:hover:not(:disabled) {
-    background: linear-gradient(135deg, #ffcf33, #ffa000);
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
 }
 
 .btn-speed-up.btn-disabled {
-    background: #ccc;
-    color: #888;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
     transform: none !important;
 }

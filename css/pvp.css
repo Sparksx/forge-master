@@ -34,12 +34,12 @@
 }
 
 .pvp-cancel-btn {
-    background: #555;
-    color: #ddd;
+    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    color: var(--text-primary);
 }
 
 .pvp-cancel-btn:hover {
-    background: #666;
+    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
 }
 
 .pvp-spinner {
@@ -72,12 +72,13 @@
     font-weight: bold;
     font-size: 1.1em;
     margin-bottom: 8px;
-    color: #f0c040;
+    color: var(--gold);
+    font-family: var(--font-display);
 }
 
 .pvp-fighter-rating {
     font-size: 0.85em;
-    color: #aaa;
+    color: var(--text-secondary);
     margin-bottom: 8px;
 }
 
@@ -91,8 +92,9 @@
     text-align: center;
     font-size: 1.4em;
     font-weight: bold;
-    color: #f0c040;
+    color: var(--gold);
     padding: 8px;
+    font-family: var(--font-display);
 }
 
 .pvp-actions {
@@ -104,10 +106,10 @@
 
 .pvp-action-btn {
     padding: 12px 24px;
-    border: 2px solid rgba(240, 192, 64, 0.3);
+    border: 2px solid var(--border-medium);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.05);
-    color: #ddd;
+    color: var(--text-primary);
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
@@ -137,7 +139,7 @@
     overflow-y: auto;
     padding: 8px 16px;
     font-size: 0.85em;
-    color: #999;
+    color: var(--text-muted);
 }
 
 .pvp-log-entry {
@@ -147,6 +149,7 @@
 
 .pvp-result-title {
     font-size: 2em;
+    font-family: var(--font-display);
 }
 
 .pvp-result-title.win { color: #4ade80; }
@@ -172,8 +175,8 @@
 .pvp-player-card {
     width: 100%;
     max-width: 400px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(240, 192, 64, 0.2);
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
     border-radius: 12px;
     padding: 20px;
 }
@@ -193,7 +196,8 @@
 .pvp-rank-name {
     font-size: 1.3em;
     font-weight: bold;
-    color: #f0c040;
+    color: var(--gold);
+    font-family: var(--font-display);
 }
 
 .pvp-player-card-stats {
@@ -211,7 +215,7 @@
 
 .pvp-stat-label {
     font-size: 0.75em;
-    color: #888;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -219,7 +223,7 @@
 .pvp-stat-value {
     font-size: 1.1em;
     font-weight: bold;
-    color: #ddd;
+    color: var(--text-primary);
 }
 
 /* Leaderboard */
@@ -230,9 +234,10 @@
 
 .pvp-leaderboard-title {
     font-size: 1em;
-    color: #f0c040;
+    color: var(--gold);
     margin-bottom: 10px;
     text-align: center;
+    font-family: var(--font-display);
 }
 
 .pvp-leaderboard-list {
@@ -243,7 +248,7 @@
 
 .pvp-leaderboard-empty {
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     padding: 16px;
     font-size: 0.9em;
 }
@@ -269,12 +274,12 @@
 .pvp-lb-pos {
     width: 30px;
     font-weight: bold;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .pvp-lb-name {
     flex: 1;
-    color: #ddd;
+    color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -284,27 +289,27 @@
     width: 48px;
     text-align: right;
     font-weight: bold;
-    color: #f0c040;
+    color: var(--gold);
 }
 
 .pvp-lb-power {
     width: 60px;
     text-align: right;
-    color: #aaa;
+    color: var(--text-secondary);
     font-size: 0.85em;
 }
 
 .pvp-lb-record {
     width: 55px;
     text-align: right;
-    color: #777;
+    color: var(--text-muted);
     font-size: 0.8em;
 }
 
 /* Queue power range */
 .pvp-queue-power-range {
     font-size: 0.85em;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 /* Fighter info row (rating + power) */
@@ -317,7 +322,7 @@
 
 .pvp-fighter-power {
     font-size: 0.85em;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 /* =============================================
@@ -326,8 +331,8 @@
 
 .pvp-share-btn {
     margin-top: 10px;
-    background: #1a73e8;
-    color: #fff;
+    background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+    color: var(--text-primary);
     border: none;
     border-radius: 8px;
     padding: 8px 16px;
@@ -336,10 +341,10 @@
 }
 
 .pvp-share-btn:hover {
-    background: #1557b0;
+    background: linear-gradient(135deg, #8a5aee, #3ab2e6);
 }
 
 .pvp-share-btn:disabled {
-    background: #4caf50;
+    background: var(--accent-green);
     cursor: default;
 }

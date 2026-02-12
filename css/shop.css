@@ -1,10 +1,10 @@
 /* =============================================
-   SHOP
+   SHOP — Dark Fantasy Style
    ============================================= */
 
 .shop-subtitle {
     text-align: center;
-    color: #888;
+    color: var(--text-secondary);
     font-size: clamp(0.85em, 1.3vw, 1em);
     margin-bottom: 16px;
 }
@@ -22,16 +22,17 @@
     align-items: center;
     gap: 12px;
     padding: clamp(10px, 1.5vw, 16px);
-    background: #fafafa;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .shop-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    border-color: var(--border-medium);
 }
 
 .shop-card:active {
@@ -43,55 +44,58 @@
 }
 
 @keyframes purchaseFlash {
-    0% { background: #c8e6c9; }
-    100% { background: #fafafa; }
+    0% { background: rgba(76, 175, 80, 0.2); }
+    100% { background: var(--bg-card); }
 }
 
 .shop-card-icon {
     font-size: clamp(1.6em, 3vw, 2.2em);
     line-height: 1;
     flex-shrink: 0;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
 .shop-card-name {
     flex: 1;
     font-weight: 700;
-    color: #333;
+    color: var(--text-primary);
     font-size: clamp(0.9em, 1.4vw, 1.1em);
 }
 
 .shop-card-gold {
     font-weight: 600;
-    color: #555;
+    color: var(--gold);
     font-size: clamp(0.85em, 1.3vw, 1em);
     white-space: nowrap;
 }
 
 .shop-card-btn {
     padding: 8px 16px;
-    background: #4a4a4a;
-    color: white;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: #1a1a2e;
     border: none;
     border-radius: 6px;
     font-weight: bold;
     font-size: clamp(0.85em, 1.2vw, 1em);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
     white-space: nowrap;
 }
 
 .shop-card-btn:hover {
-    background: #333;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    box-shadow: 0 2px 8px rgba(240, 192, 64, 0.3);
 }
 
 .shop-card-btn:disabled {
-    background: #bbb;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
 }
 
 .shop-card-streak {
     font-size: clamp(0.75em, 1.1vw, 0.9em);
-    color: #e65100;
+    color: #ff8c00;
     font-weight: 600;
 }
 
@@ -106,16 +110,18 @@
 .shop-section-title {
     font-size: clamp(1.1em, 1.6vw, 1.3em);
     font-weight: 800;
-    color: #00bcd4;
+    color: var(--accent-cyan);
     margin-top: 16px;
     margin-bottom: 4px;
     padding-bottom: 6px;
-    border-bottom: 2px solid #00bcd4;
+    border-bottom: 2px solid rgba(79, 195, 247, 0.3);
+    font-family: var(--font-display);
+    text-shadow: 0 1px 4px rgba(79, 195, 247, 0.2);
 }
 
 .shop-card-diamond {
-    border-color: #b2ebf2;
-    background: linear-gradient(135deg, #fafafa 0%, #e0f7fa 100%);
+    border-color: rgba(79, 195, 247, 0.2);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(79, 195, 247, 0.05) 100%);
 }
 
 .shop-card-diamond.purchased {
@@ -123,13 +129,13 @@
 }
 
 @keyframes diamondFlash {
-    0% { background: #80deea; }
-    100% { background: linear-gradient(135deg, #fafafa 0%, #e0f7fa 100%); }
+    0% { background: rgba(79, 195, 247, 0.2); }
+    100% { background: linear-gradient(135deg, var(--bg-card) 0%, rgba(79, 195, 247, 0.05) 100%); }
 }
 
 .shop-card-cost {
     font-weight: 700;
-    color: #00838f;
+    color: var(--accent-cyan);
     font-size: clamp(0.85em, 1.3vw, 1em);
     white-space: nowrap;
 }
@@ -139,8 +145,8 @@
    ============================================= */
 
 .shop-card-buy {
-    border-color: #ce93d8;
-    background: linear-gradient(135deg, #fafafa 0%, #f3e5f5 100%);
+    border-color: rgba(156, 106, 255, 0.2);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(156, 106, 255, 0.05) 100%);
 }
 
 .shop-card-buy.purchased {
@@ -148,20 +154,20 @@
 }
 
 @keyframes buyFlash {
-    0% { background: #ce93d8; }
-    100% { background: linear-gradient(135deg, #fafafa 0%, #f3e5f5 100%); }
+    0% { background: rgba(156, 106, 255, 0.2); }
+    100% { background: linear-gradient(135deg, var(--bg-card) 0%, rgba(156, 106, 255, 0.05) 100%); }
 }
 
 .shop-card-diamonds {
     font-weight: 700;
-    color: #7b1fa2;
+    color: var(--accent-purple);
     font-size: clamp(0.85em, 1.3vw, 1em);
     white-space: nowrap;
 }
 
 .shop-card-bonus {
     font-size: clamp(0.7em, 1vw, 0.85em);
-    color: #388e3c;
+    color: var(--accent-green);
     font-weight: 700;
     white-space: nowrap;
 }
@@ -169,7 +175,7 @@
 .shop-card-tag {
     font-size: clamp(0.65em, 0.9vw, 0.75em);
     color: #fff;
-    background: #7b1fa2;
+    background: linear-gradient(135deg, #7b1fa2, #9c27b0);
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
@@ -177,10 +183,10 @@
 }
 
 .shop-card-btn-buy {
-    background: #7b1fa2;
+    background: linear-gradient(135deg, #7b1fa2, #9c27b0);
     font-size: clamp(0.9em, 1.3vw, 1.05em);
 }
 
 .shop-card-btn-buy:hover {
-    background: #6a1b9a;
+    background: linear-gradient(135deg, #9c27b0, #ab47bc);
 }

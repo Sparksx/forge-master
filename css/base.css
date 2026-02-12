@@ -1,6 +1,41 @@
 /* =============================================
-   BASE / GLOBAL STYLES
+   BASE / GLOBAL STYLES — Dark Fantasy Theme
    ============================================= */
+
+:root {
+    /* Core palette */
+    --bg-dark: #0d0f1a;
+    --bg-panel: #151829;
+    --bg-card: #1c2038;
+    --bg-card-hover: #242847;
+    --bg-surface: #252a45;
+
+    /* Borders */
+    --border-subtle: rgba(255, 215, 0, 0.1);
+    --border-medium: rgba(255, 215, 0, 0.2);
+    --border-strong: rgba(255, 215, 0, 0.35);
+
+    /* Gold accents */
+    --gold: #f0c040;
+    --gold-light: #ffd54f;
+    --gold-dark: #c8960c;
+    --gold-glow: rgba(240, 192, 64, 0.25);
+
+    /* Text */
+    --text-primary: #e8e0d0;
+    --text-secondary: #a09888;
+    --text-muted: #706858;
+
+    /* Game accents */
+    --accent-purple: #9c6aff;
+    --accent-cyan: #4fc3f7;
+    --accent-green: #66bb6a;
+    --accent-red: #ef5350;
+
+    /* Fonts */
+    --font-display: 'Cinzel', 'Georgia', serif;
+    --font-body: 'Inter', 'Segoe UI', sans-serif;
+}
 
 * {
     margin: 0;
@@ -23,7 +58,7 @@
 
 /* Focus visible for keyboard navigation */
 :focus-visible {
-    outline: 2px solid #4a90d9;
+    outline: 2px solid var(--gold);
     outline-offset: 2px;
 }
 
@@ -61,14 +96,19 @@ html, body {
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #999;
+    color: var(--text-muted);
     font-size: clamp(1em, 2vw, 1.4em);
     font-style: italic;
+    font-family: var(--font-display);
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
+    font-family: var(--font-body);
+    background: var(--bg-dark);
+    background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(100, 60, 180, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(240, 192, 64, 0.04) 0%, transparent 50%);
+    color: var(--text-primary);
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -78,12 +118,15 @@ body {
 }
 
 .container {
-    background: white;
-    border-radius: 8px;
+    background: var(--bg-panel);
+    border-radius: 12px;
     padding: 20px;
     max-width: 1000px;
     width: 100%;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 215, 0, 0.05);
+    border: 1px solid var(--border-subtle);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -91,9 +134,11 @@ body {
 
 h1 {
     text-align: center;
-    color: #333;
+    color: var(--gold);
     margin-bottom: 12px;
     font-size: clamp(1.4em, 3vw, 2.2em);
+    font-family: var(--font-display);
+    text-shadow: 0 2px 8px rgba(240, 192, 64, 0.3);
     flex-shrink: 0;
 }
 
