@@ -477,11 +477,12 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
 // ─── GET /api/admin/stats ────────────────────────────────────────
 router.get('/stats', requireRole('admin'), async (req, res) => {
     try {
-        const [totalUsers, totalGuests, totalGold, totalEssence] = await Promise.all([
+        const [totalUsers, totalGuests, totalGold, totalEssence, totalDiamonds] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { isGuest: true } }),
             prisma.gameState.aggregate({ _sum: { gold: true } }),
             prisma.gameState.aggregate({ _sum: { essence: true } }),
+            prisma.gameState.aggregate({ _sum: { diamonds: true } }),
         ]);
 
         res.json({
@@ -490,6 +491,7 @@ router.get('/stats', requireRole('admin'), async (req, res) => {
             registeredUsers: totalUsers - totalGuests,
             totalGoldInCirculation: totalGold._sum.gold || 0,
             totalEssenceInCirculation: totalEssence._sum.essence || 0,
+            totalDiamondsInCirculation: totalDiamonds._sum.diamonds || 0,
         });
     } catch (err) {
         console.error('Stats error:', err);
