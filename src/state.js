@@ -17,11 +17,11 @@ function createEmptyEquipment() {
     return equipment;
 }
 
-function isValidItem(item) {
+function isValidItem(item, maxLevel = MAX_LEVEL) {
     if (!item || typeof item !== 'object') return false;
     if (typeof item.type !== 'string' || !EQUIPMENT_TYPES.includes(item.type)) return false;
     if (typeof item.level !== 'number' || !Number.isInteger(item.level)) return false;
-    if (item.level < 1 || item.level > MAX_LEVEL) return false;
+    if (item.level < 1 || item.level > maxLevel) return false;
     if (typeof item.stats !== 'number') return false;
     if (typeof item.statType !== 'string') return false;
     if (item.statType !== 'health' && item.statType !== 'damage') return false;
@@ -637,11 +637,45 @@ if (typeof document !== 'undefined') {
 function applyLoadedData(loaded) {
     if (typeof loaded !== 'object' || loaded === null) return;
 
+    // ── Restore research state FIRST so tech effects (mastery bonuses) are
+    //    available when validating equipment levels below.
+    if (loaded.research && typeof loaded.research === 'object') {
+        if (loaded.research.completed && typeof loaded.research.completed === 'object') {
+            gameState.research.completed = {};
+            for (const [techId, level] of Object.entries(loaded.research.completed)) {
+                const tech = getTechById(techId);
+                if (tech && typeof level === 'number' && level >= 1 && level <= tech.maxLevel) {
+                    gameState.research.completed[techId] = level;
+                }
+            }
+        }
+        if (loaded.research.active && typeof loaded.research.active === 'object') {
+            const { techId, level, startedAt, duration } = loaded.research.active;
+            if (techId && typeof startedAt === 'number' && typeof duration === 'number') {
+                const elapsed = (Date.now() - startedAt) / 1000;
+                if (elapsed >= duration) {
+                    // Research completed while offline
+                    gameState.research.completed[techId] = level;
+                    gameState.research.active = null;
+                } else {
+                    gameState.research.active = { techId, level, startedAt, duration };
+                }
+            }
+        }
+        if (Array.isArray(loaded.research.queue)) {
+            gameState.research.queue = loaded.research.queue.filter(
+                q => q && q.techId && typeof q.level === 'number'
+            );
+        }
+    }
+
     // Support both old format (flat equipment) and new format ({equipment, gold})
     const equipmentData = loaded.equipment || loaded;
 
     EQUIPMENT_TYPES.forEach(type => {
-        if (isValidItem(equipmentData[type])) {
+        // Compute effective max level for this slot using mastery tech bonuses
+        const effectiveMaxLevel = MAX_LEVEL + getTechEffect(`${type}Mastery`);
+        if (isValidItem(equipmentData[type], effectiveMaxLevel)) {
             let item = migrateItem(equipmentData[type]);
             item = recalculateStats(item);
             gameState.equipment[type] = item;
@@ -660,9 +694,10 @@ function applyLoadedData(loaded) {
     if (loaded.forgeHighestLevel && typeof loaded.forgeHighestLevel === 'object') {
         EQUIPMENT_TYPES.forEach(type => {
             if (loaded.forgeHighestLevel[type] && typeof loaded.forgeHighestLevel[type] === 'object') {
+                const slotMaxLevel = MAX_LEVEL + getTechEffect(`${type}Mastery`);
                 gameState.forgeHighestLevel[type] = {};
                 for (const [tier, level] of Object.entries(loaded.forgeHighestLevel[type])) {
-                    if (typeof level === 'number' && level >= 1 && level <= MAX_LEVEL) {
+                    if (typeof level === 'number' && level >= 1 && level <= slotMaxLevel) {
                         gameState.forgeHighestLevel[type][tier] = Math.floor(level);
                     }
                 }
@@ -710,36 +745,8 @@ function applyLoadedData(loaded) {
         gameState.essence = Math.floor(loaded.essence);
     }
 
-    // Restore research state
-    if (loaded.research && typeof loaded.research === 'object') {
-        if (loaded.research.completed && typeof loaded.research.completed === 'object') {
-            gameState.research.completed = {};
-            for (const [techId, level] of Object.entries(loaded.research.completed)) {
-                const tech = getTechById(techId);
-                if (tech && typeof level === 'number' && level >= 1 && level <= tech.maxLevel) {
-                    gameState.research.completed[techId] = level;
-                }
-            }
-        }
-        if (loaded.research.active && typeof loaded.research.active === 'object') {
-            const { techId, level, startedAt, duration } = loaded.research.active;
-            if (techId && typeof startedAt === 'number' && typeof duration === 'number') {
-                const elapsed = (Date.now() - startedAt) / 1000;
-                if (elapsed >= duration) {
-                    // Research completed while offline
-                    gameState.research.completed[techId] = level;
-                    gameState.research.active = null;
-                } else {
-                    gameState.research.active = { techId, level, startedAt, duration };
-                }
-            }
-        }
-        if (Array.isArray(loaded.research.queue)) {
-            gameState.research.queue = loaded.research.queue.filter(
-                q => q && q.techId && typeof q.level === 'number'
-            );
-        }
-    }
+    // NOTE: Research state is restored at the top of applyLoadedData() so that
+    // tech effects (mastery bonuses) are available when validating equipment levels.
 
     // Restore skills state
     if (loaded.skills && typeof loaded.skills === 'object') {
