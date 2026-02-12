@@ -147,22 +147,6 @@ describe('economy tech effects', () => {
         });
     });
 
-    describe('doubleHarvest', () => {
-        it('returns 0 at level 0', () => {
-            expect(getTechEffect('doubleHarvest')).toBe(0);
-        });
-
-        it('gives 5% at level 1 (max level)', () => {
-            // Double harvest requires essenceResonance L2 and treasureHunter L2
-            completeResearch('goldRush', 10);
-            completeResearch('essenceStudy', 5);
-            completeResearch('essenceResonance', 2);
-            completeResearch('treasureHunter', 2);
-            completeResearch('doubleHarvest', 1);
-            expect(getTechEffect('doubleHarvest')).toBe(5);
-        });
-    });
-
     describe('automation techs', () => {
         it('smartFilter returns level count', () => {
             completeResearch('smartFilter', 1);
@@ -176,11 +160,6 @@ describe('economy tech effects', () => {
             completeResearch('smartFilter', 2);
             completeResearch('autoEquip', 1);
             expect(getTechEffect('autoEquip')).toBe(1);
-        });
-
-        it('autoStudy returns 1 when researched', () => {
-            completeResearch('autoStudy', 1);
-            expect(getTechEffect('autoStudy')).toBe(1);
         });
 
         it('researchQueue returns queue size', () => {
@@ -250,13 +229,11 @@ describe('economy tech effects', () => {
             completeResearch('essenceStudy', 25);
             completeResearch('treasureHunter', 3);
             completeResearch('essenceResonance', 3);
-            completeResearch('doubleHarvest', 1);
 
             expect(getTechEffect('goldRush')).toBe(50);
             expect(getTechEffect('essenceStudy')).toBe(50);
             expect(getTechEffect('treasureHunter')).toBe(15);
             expect(getTechEffect('essenceResonance')).toBe(30);
-            expect(getTechEffect('doubleHarvest')).toBe(5);
         });
     });
 });

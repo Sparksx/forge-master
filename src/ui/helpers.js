@@ -100,3 +100,133 @@ export function showToast(message, type = 'forge', duration = 1500) {
         toast.addEventListener('animationend', () => toast.remove());
     }, duration);
 }
+
+// ===== Gold Drip Animation =====
+
+const goldAnim = {
+    displayed: 0,
+    target: 0,
+    pending: 0,
+    pendingEl: null,
+    timer: null,
+};
+
+function ensureGoldPendingEl() {
+    if (goldAnim.pendingEl) return goldAnim.pendingEl;
+    const display = document.getElementById('gold-display');
+    if (!display) return null;
+    const el = createElement('span', 'currency-pending gold-pending');
+    el.id = 'gold-pending';
+    display.appendChild(el);
+    goldAnim.pendingEl = el;
+    return el;
+}
+
+/**
+ * Animate gold display toward the actual gold amount.
+ * Call this instead of directly setting the gold text.
+ * @param {number} actual - The real gold amount (getGold())
+ */
+export function animateGoldToward(actual) {
+    const amountEl = document.getElementById('gold-amount');
+    if (!amountEl) return;
+
+    if (actual > goldAnim.target) {
+        // Gold gained
+        const diff = actual - goldAnim.target;
+        goldAnim.pending += diff;
+        goldAnim.target = actual;
+        startGoldDrain(amountEl);
+    } else if (actual < goldAnim.displayed) {
+        // Gold spent — snap immediately
+        goldAnim.target = actual;
+        goldAnim.displayed = actual;
+        goldAnim.pending = Math.max(0, goldAnim.target - goldAnim.displayed);
+        amountEl.textContent = formatCompact(actual);
+        updatePendingDisplay(goldAnim, ensureGoldPendingEl());
+    } else {
+        goldAnim.target = actual;
+    }
+}
+
+function startGoldDrain(amountEl) {
+    const pendingEl = ensureGoldPendingEl();
+    if (!pendingEl) return;
+    updatePendingDisplay(goldAnim, pendingEl);
+
+    if (goldAnim.timer) return; // already running
+    goldAnim.timer = setInterval(() => {
+        if (goldAnim.pending <= 0) {
+            clearInterval(goldAnim.timer);
+            goldAnim.timer = null;
+            if (pendingEl) pendingEl.classList.remove('active');
+            return;
+        }
+        // Transfer rate: finish in ~1s regardless of amount
+        const rate = Math.max(1, Math.ceil(goldAnim.pending / 20));
+        const transfer = Math.min(rate, goldAnim.pending);
+        goldAnim.pending -= transfer;
+        goldAnim.displayed += transfer;
+        amountEl.textContent = formatCompact(goldAnim.displayed);
+        updatePendingDisplay(goldAnim, pendingEl);
+    }, 50);
+}
+
+/** Initialize the gold animation displayed value (on game load) */
+export function initGoldAnimation(currentGold) {
+    goldAnim.displayed = currentGold;
+    goldAnim.target = currentGold;
+    goldAnim.pending = 0;
+}
+
+// ===== Essence Gain Animation =====
+
+const essenceAnim = {
+    pending: 0,
+    pendingEl: null,
+    fadeTimer: null,
+};
+
+function ensureEssencePendingEl() {
+    if (essenceAnim.pendingEl) return essenceAnim.pendingEl;
+    const display = document.getElementById('essence-display');
+    if (!display) return null;
+    const el = createElement('span', 'currency-pending essence-pending');
+    el.id = 'essence-pending';
+    display.appendChild(el);
+    essenceAnim.pendingEl = el;
+    return el;
+}
+
+/**
+ * Show essence gain animation (accumulates, then fades).
+ * @param {number} amount - Essence gained
+ */
+export function showEssenceGain(amount) {
+    if (amount <= 0) return;
+    essenceAnim.pending += amount;
+    const el = ensureEssencePendingEl();
+    if (!el) return;
+
+    el.textContent = `+${formatCompact(essenceAnim.pending)}`;
+    el.classList.add('active');
+
+    // Reset fade timer
+    if (essenceAnim.fadeTimer) clearTimeout(essenceAnim.fadeTimer);
+    essenceAnim.fadeTimer = setTimeout(() => {
+        el.classList.remove('active');
+        essenceAnim.pending = 0;
+    }, 1500);
+}
+
+// ===== Shared pending display helper =====
+
+function updatePendingDisplay(anim, el) {
+    if (!el) return;
+    if (anim.pending > 0) {
+        el.textContent = `+${formatCompact(anim.pending)}`;
+        el.classList.add('active');
+    } else {
+        el.classList.remove('active');
+    }
+}

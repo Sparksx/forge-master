@@ -23,8 +23,8 @@ describe('tech-config', () => {
     });
 
     describe('TECHS definitions', () => {
-        it('has 30 technologies', () => {
-            expect(TECHS).toHaveLength(30);
+        it('has 28 technologies', () => {
+            expect(TECHS).toHaveLength(28);
         });
 
         it('all tech ids are unique', () => {
@@ -121,12 +121,12 @@ describe('tech-config', () => {
             expect(TECHS.filter(t => t.branch === 'combat')).toHaveLength(5);
         });
 
-        it('economy branch has 5 techs', () => {
-            expect(TECHS.filter(t => t.branch === 'economy')).toHaveLength(5);
+        it('economy branch has 4 techs', () => {
+            expect(TECHS.filter(t => t.branch === 'economy')).toHaveLength(4);
         });
 
-        it('automation branch has 4 techs', () => {
-            expect(TECHS.filter(t => t.branch === 'automation')).toHaveLength(4);
+        it('automation branch has 3 techs', () => {
+            expect(TECHS.filter(t => t.branch === 'automation')).toHaveLength(3);
         });
     });
 
@@ -225,11 +225,5 @@ describe('tech-config', () => {
             expect(tech.maxLevel).toBe(3);
         });
 
-        it('doubleHarvest has two prerequisites', () => {
-            const tech = getTechById('doubleHarvest');
-            expect(tech.requires).toHaveLength(2);
-            expect(tech.requires[0].tech).toBe('essenceResonance');
-            expect(tech.requires[1].tech).toBe('treasureHunter');
-        });
     });
 });

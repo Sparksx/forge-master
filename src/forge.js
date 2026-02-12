@@ -134,4 +134,11 @@ export function forgeEquipment() {
     return items;
 }
 
+/** Essence gained when forging an item (small amount, scales with tier) */
+export function getForgeEssenceReward(item) {
+    const base = item.tier || 1;
+    const studyBonus = getTechEffect('essenceStudy'); // +2% per level
+    return Math.max(1, Math.floor(base * (1 + studyBonus / 100)));
+}
+
 // calculatePowerScore is now in shared/stats.js and re-exported above

@@ -357,11 +357,11 @@ export const TECHS = [
     },
     {
         id: 'essenceStudy',
-        name: 'Étude Efficace',
+        name: 'Essence de Forge',
         icon: '🔮',
         branch: 'economy',
         maxLevel: 25,
-        description: '+2% essence obtenue en étudiant',
+        description: '+2% essence obtenue en forgeant',
         baseCost: 15,
         costScale: 1.15,
         baseTime: 45,        // 45s
@@ -397,21 +397,6 @@ export const TECHS = [
         requires: [{ tech: 'essenceStudy', level: 5 }],
         effect: { type: 'essenceResonance', perLevel: 10 },
     },
-    {
-        id: 'doubleHarvest',
-        name: 'Double Récolte',
-        icon: '🎰',
-        branch: 'economy',
-        maxLevel: 1,
-        description: '5% chance: recevoir or ET essence',
-        baseCost: 10000,
-        costScale: 1,
-        baseTime: 10800,     // 3h
-        timeScale: 1,
-        requires: [{ tech: 'essenceResonance', level: 2 }, { tech: 'treasureHunter', level: 2 }],
-        effect: { type: 'doubleHarvest', perLevel: 5 },
-    },
-
     // ─── AUTOMATION ──────────────────────────────────────
     {
         id: 'smartFilter',
@@ -454,20 +439,6 @@ export const TECHS = [
         timeScale: 4,
         requires: [{ tech: 'smartFilter', level: 1 }, { tech: 'essenceStudy', level: 3 }],
         effect: { type: 'researchQueue', perLevel: 1 },
-    },
-    {
-        id: 'autoStudy',
-        name: 'Auto-Étude',
-        icon: '📚',
-        branch: 'automation',
-        maxLevel: 1,
-        description: 'L\'auto-forge peut auto-étudier pour l\'essence',
-        baseCost: 800,
-        costScale: 1,
-        baseTime: 900,       // 15 min
-        timeScale: 1,
-        requires: [{ tech: 'essenceStudy', level: 3 }],
-        effect: { type: 'autoStudy', perLevel: 1 },
     },
 ];
 
