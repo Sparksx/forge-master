@@ -94,13 +94,13 @@ export const FORGE_LEVELS = [
     { level: 21, cost: 1000000,   time: 432000,  chances: [30,     20,     20,     18.5,   11,     0.5,    0     ] },
     { level: 22, cost: 1400000,   time: 518400,  chances: [26,     19,     20,     20,     14,     1,      0     ] },
     { level: 23, cost: 2000000,   time: 604800,  chances: [22,     17.5,   19.5,   21.5,   17.5,   2,      0     ] },
-    { level: 24, cost: 2800000,   time: 691200,  chances: [18,     16,     19,     23,     21,     3,      0     ] },
-    { level: 25, cost: 4000000,   time: 777600,  chances: [14.5,   14.5,   18,     24,     24.5,   4,      0.5   ] },
-    { level: 26, cost: 5500000,   time: 864000,  chances: [11,     13,     17,     24.5,   28.5,   5.5,    0.5   ] },
-    { level: 27, cost: 7500000,   time: 1036800, chances: [8,      11,     15.5,   24.5,   33,     7,      1     ] },
-    { level: 28, cost: 10000000,  time: 1209600, chances: [5,      9,      14,     24,     38,     8.5,    1.5   ] },
-    { level: 29, cost: 14000000,  time: 1382400, chances: [2.5,    6.5,    12,     22.5,   44,     10.5,   2     ] },
-    { level: 30, cost: 20000000,  time: 1728000, chances: [0,      4,      10,     21,     49,     13,     3     ] },
+    { level: 24, cost: 2800000,   time: 604800,  chances: [18,     16,     19,     23,     21,     3,      0     ] },
+    { level: 25, cost: 4000000,   time: 604800,  chances: [14.5,   14.5,   18,     24,     24.5,   4,      0.5   ] },
+    { level: 26, cost: 5500000,   time: 604800,  chances: [11,     13,     17,     24.5,   28.5,   5.5,    0.5   ] },
+    { level: 27, cost: 7500000,   time: 604800,  chances: [8,      11,     15.5,   24.5,   33,     7,      1     ] },
+    { level: 28, cost: 10000000,  time: 604800,  chances: [5,      9,      14,     24,     38,     8.5,    1.5   ] },
+    { level: 29, cost: 14000000,  time: 604800,  chances: [2.5,    6.5,    12,     22.5,   44,     10.5,   2     ] },
+    { level: 30, cost: 20000000,  time: 604800,  chances: [0,      4,      10,     21,     49,     13,     3     ] },
 ];
 
 export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;

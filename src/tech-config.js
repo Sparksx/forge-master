@@ -318,10 +318,10 @@ export const TECHS = [
         branch: 'combat',
         maxLevel: 5,
         description: '+2 vagues max (au-delà de 10)',
-        baseCost: 600,
-        costScale: 3,
-        baseTime: 1800,      // 30 min
-        timeScale: 2.5,
+        baseCost: 400,
+        costScale: 2,
+        baseTime: 1200,      // 20 min
+        timeScale: 2,
         requires: [{ tech: 'vitality', level: 3 }, { tech: 'strength', level: 3 }],
         effect: { type: 'waveBreaker', perLevel: 2 },
     },

@@ -765,4 +765,123 @@ TROP FACILE                        EQUILIBRE                      TROP DIFFICILE
 
 ---
 
+## 12. Corrections appliquees
+
+Les corrections suivantes ont ete implementees dans le code pour adresser les problemes identifies :
+
+### Fix 1 : Skills T1-T2 — Reduction des max levels + buff per-level
+
+**Fichier** : `src/skills-config.js`
+
+**Avant** : T1 max 10 (1,023 copies), T2 max 8 (255 copies)
+**Apres** : T1 max 5 (31 copies), T2 max 5 (31 copies)
+
+Les valeurs per-level ont ete augmentees pour compenser la perte de niveaux et preserver ~80% de l'effet max :
+
+| Skill | Avant | Apres | Effet max avant | Effet max apres |
+|-------|-------|-------|----------------|----------------|
+| Tough Skin (T1 passif) | +5%/niv, max 10 | +8%/niv, max 5 | +50% HP | +40% HP |
+| Sharp Blade (T1 passif) | +5%/niv, max 10 | +8%/niv, max 5 | +50% DMG | +40% DMG |
+| Shield Wall (T1 actif) | 20% base +2%/niv | 25% base +4%/niv | 38% DR | 41% DR |
+| Power Strike (T1 actif) | +10%/niv | +15%/niv | +140% dmg | +110% dmg |
+| Quick Reflexes (T2 passif) | +3%/niv, max 8 | +4%/niv, max 5 | +24% atk spd | +20% atk spd |
+| Lucky Strike (T2 passif) | +2%/niv, max 8 | +3%/niv, max 5 | +16% crit | +15% crit |
+| Battle Cry (T2 actif) | +5%/niv, max 8 | +8%/niv, max 5 | +65% burst | +62% burst |
+| Healing Surge (T2 actif) | +3%/niv, max 8 | +5%/niv, max 5 | +41% heal | +40% heal |
+
+**Impact grind** : Le nombre de copies passe de 1,023 a 31 pour T1 et de 255 a 31 pour T2.
+Le nombre de forges moyen pour maxer un skill T1 a wave 10 passe de **~13,640 a ~413 forges**.
+
+### Fix 2 : Forge — Plafonnement des timers a 7 jours
+
+**Fichier** : `src/config.js`
+
+Les niveaux 24-30 ont ete plafonnes a 604,800 secondes (7 jours) :
+
+| Niveau | Avant | Apres |
+|--------|-------|-------|
+| 24 | 8 jours | **7 jours** |
+| 25 | 9 jours | **7 jours** |
+| 26 | 10 jours | **7 jours** |
+| 27 | 12 jours | **7 jours** |
+| 28 | 14 jours | **7 jours** |
+| 29 | 16 jours | **7 jours** |
+| 30 | 20 jours | **7 jours** |
+
+**Temps total forge** : 2,919h (121.7j) -> **1,960h (81.7j)** — reduction de 33%.
+**Cout speed-up total** : 175,180 -> **117,180 diamants** — reduction de 33%.
+
+### Fix 3 : waveBreaker — Reduction des couts
+
+**Fichier** : `src/tech-config.js`
+
+| Parametre | Avant | Apres |
+|-----------|-------|-------|
+| baseCost | 600 | 400 |
+| costScale | 3 | 2 |
+| baseTime | 1800s (30 min) | 1200s (20 min) |
+| timeScale | 2.5 | 2 |
+
+**Couts par niveau** :
+
+| Niveau | Cout avant | Cout apres | Temps avant | Temps apres |
+|--------|-----------|-----------|-------------|-------------|
+| 1 | 600 | 400 | 30 min | 20 min |
+| 2 | 1,800 | 800 | 75 min | 40 min |
+| 3 | 5,400 | 1,600 | 3.1h | 1.3h |
+| 4 | 16,200 | 3,200 | 7.8h | 2.7h |
+| 5 | 48,600 | 6,400 | 19.5h | 5.3h |
+| **Total** | **72,600** | **12,400** | **32.2h** | **10h** |
+
+Reduction de **83% du cout** et **69% du temps**.
+
+### Fix 4 : Milestones etendues pour les vagues 11-20
+
+**Fichier** : `src/shop.js`
+
+5 nouveaux milestones ajoutees avec des recompenses multi-ressources :
+
+| Milestone | Gold | Essence | Shards |
+|-----------|------|---------|--------|
+| Wave 12 | 10,000 | 500 | - |
+| Wave 14 | 25,000 | 1,000 | 50 |
+| Wave 16 | 50,000 | 2,500 | 100 |
+| Wave 18 | 100,000 | 5,000 | 150 |
+| Wave 20 | 250,000 | 10,000 | 250 |
+| **Total** | **435,000** | **19,000** | **550** |
+
+Ces recompenses justifient l'investissement dans waveBreaker et donnent un objectif concret au contenu etendu.
+
+### Fix 5 : Daily rewards evolutives
+
+**Fichier** : `src/shop.js`
+
+**Avant** : `daily = 50 + streak x 25` (gold seulement)
+**Apres** : `daily = 50 + forgeLevel x 50 + streak x 25` (gold) + `forgeLevel x 3` (essence)
+
+| Forge Level | Gold avant (streak 7) | Gold apres (streak 7) | Essence |
+|-------------|----------------------|----------------------|---------|
+| 1 | 225 | 275 | 3 |
+| 10 | 225 | 725 | 30 |
+| 15 | 225 | 975 | 45 |
+| 20 | 225 | 1,225 | 60 |
+| 30 | 225 | 1,725 | 90 |
+
+Les dailies restent un bonus secondaire mais deviennent **significatives** a mesure que le joueur progresse.
+
+### Impact global des corrections
+
+| Metrique | Avant | Apres | Amelioration |
+|----------|-------|-------|-------------|
+| Temps total forge | 121.7 jours | 81.7 jours | -33% |
+| Copies pour max T1 skill | 1,023 | 31 | **-97%** |
+| Copies pour max T2 skill | 255 | 31 | **-88%** |
+| Cout waveBreaker | 72,600 ess | 12,400 ess | **-83%** |
+| Milestones vagues 11-20 | 0 gold | 435,000 gold + 19,000 ess + 550 shards | nouveau |
+| Daily gold (forge 15, streak 7) | 225 | 975 | **x4.3** |
+
+**Score d'equilibre estime apres corrections : 7.8/10** (contre 6.2/10 avant)
+
+---
+
 *Rapport genere par analyse statique du code source. Les estimations de temps de farm sont basees sur un gameplay optimal avec auto-forge actif.*
