@@ -102,6 +102,20 @@ export function updateCombatInfo(data) {
     if (!data) return;
     renderMonsters(data);
     updateWaveDisplay();
+
+    // Trigger entrance animations
+    const playerEl = document.getElementById('combatant-player');
+    const monstersEl = document.getElementById('monsters-side');
+    if (playerEl) {
+        playerEl.classList.remove('combat-enter');
+        void playerEl.offsetWidth; // force reflow
+        playerEl.classList.add('combat-enter');
+    }
+    if (monstersEl) {
+        monstersEl.classList.remove('combat-enter');
+        void monstersEl.offsetWidth;
+        monstersEl.classList.add('combat-enter');
+    }
 }
 
 export function updateWaveDisplay() {
@@ -152,6 +166,15 @@ export function showCombatResult(text, type) {
     el.className = `combat-result combat-result-${type} combat-result-show`;
 
     setTimeout(() => { el.classList.remove('combat-result-show'); }, 1200);
+}
+
+export function showDeathAnimation() {
+    const playerEl = document.getElementById('combatant-player');
+    if (!playerEl) return;
+    playerEl.classList.add('death-animation');
+    setTimeout(() => {
+        playerEl.classList.remove('death-animation');
+    }, 1500);
 }
 
 export function triggerAttackAnimation(side) {

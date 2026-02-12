@@ -555,7 +555,10 @@ function onMonsterDefeated() {
         return;
     }
 
-    // All monsters dead — award skill shards
+    // All monsters dead — notify sub-wave cleared
+    gameEvents.emit(EVENTS.COMBAT_SUBWAVE_CLEARED);
+
+    // Award skill shards
     const { currentWave, currentSubWave } = getCombatProgress();
     let shardsEarned = SKILL_SHARD_PER_SUBWAVE;
     if (currentSubWave === SUB_WAVE_COUNT) {

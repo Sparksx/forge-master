@@ -52,45 +52,45 @@
 /* ── Light Theme Override ── */
 [data-theme="light"] {
     /* Core palette */
-    --bg-dark: #e8e4dc;
-    --bg-panel: #f5f2ec;
+    --bg-dark: #e0dcd4;
+    --bg-panel: #f2efe8;
     --bg-card: #ffffff;
-    --bg-card-hover: #f0ece4;
-    --bg-surface: #ede9e0;
+    --bg-card-hover: #ece8e0;
+    --bg-surface: #e8e4da;
 
-    /* Borders */
-    --border-subtle: rgba(139, 109, 56, 0.15);
-    --border-medium: rgba(139, 109, 56, 0.25);
-    --border-strong: rgba(139, 109, 56, 0.4);
+    /* Borders (stronger for better contrast) */
+    --border-subtle: rgba(100, 80, 40, 0.2);
+    --border-medium: rgba(100, 80, 40, 0.35);
+    --border-strong: rgba(100, 80, 40, 0.5);
 
     /* Gold accents (darker for contrast on light bg) */
-    --gold: #a07818;
-    --gold-light: #c89820;
-    --gold-dark: #7a5c10;
-    --gold-glow: rgba(160, 120, 24, 0.2);
+    --gold: #8a6814;
+    --gold-light: #b88c1c;
+    --gold-dark: #6a5010;
+    --gold-glow: rgba(138, 104, 20, 0.2);
 
-    /* Text */
-    --text-primary: #2c2416;
-    --text-secondary: #6b5d4d;
-    --text-muted: #9c8e7c;
+    /* Text (stronger contrast) */
+    --text-primary: #1a1408;
+    --text-secondary: #504430;
+    --text-muted: #80725e;
 
     /* Game accents (adjusted for light bg) */
-    --accent-purple: #7c4dff;
-    --accent-cyan: #0288d1;
-    --accent-green: #2e7d32;
-    --accent-red: #c62828;
+    --accent-purple: #6a3ec8;
+    --accent-cyan: #0277bd;
+    --accent-green: #1b5e20;
+    --accent-red: #b71c1c;
 
     /* Theme-adaptive helpers */
     --text-on-gold: #ffffff;
-    --overlay-soft: rgba(0, 0, 0, 0.06);
-    --overlay-border: rgba(0, 0, 0, 0.08);
-    --shadow-strong: rgba(0, 0, 0, 0.15);
-    --btn-secondary-from: #6b70a8;
-    --btn-secondary-to: #7b80c0;
-    --btn-secondary-hover-from: #7b80c0;
-    --btn-secondary-hover-to: #8b90d0;
-    --bg-header: linear-gradient(180deg, #f5f2ec 0%, #ede9e0 100%);
-    --bg-nav: linear-gradient(0deg, #f0ece4 0%, #f5f2ec 100%);
+    --overlay-soft: rgba(0, 0, 0, 0.08);
+    --overlay-border: rgba(0, 0, 0, 0.12);
+    --shadow-strong: rgba(0, 0, 0, 0.18);
+    --btn-secondary-from: #5a5f98;
+    --btn-secondary-to: #6a6fb0;
+    --btn-secondary-hover-from: #6a6fb0;
+    --btn-secondary-hover-to: #7a7fc8;
+    --bg-header: linear-gradient(180deg, #f2efe8 0%, #e8e4da 100%);
+    --bg-nav: linear-gradient(0deg, #ece8e0 0%, #f2efe8 100%);
 }
 
 * {
@@ -301,6 +301,16 @@ h1 {
 
 [data-theme="light"] .combat-result {
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .combat-result-victory {
+    color: #b8860b;
+    text-shadow: 0 0 12px rgba(184, 134, 11, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .combat-result-defeat {
+    color: #b71c1c;
+    text-shadow: 0 0 12px rgba(183, 28, 28, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Forge ── */

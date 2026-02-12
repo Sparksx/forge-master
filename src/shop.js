@@ -201,43 +201,6 @@ function renderShop() {
     dailyCard.appendChild(dailyBtn);
     container.appendChild(dailyCard);
 
-    // Milestone cards
-    MILESTONE_REWARDS.forEach(m => {
-        const card = createElement('div', 'shop-card');
-        card.dataset.action = 'milestone';
-        card.dataset.milestone = m.id;
-
-        const reached = progress.highestWave > m.wave ||
-            (progress.highestWave === m.wave && (progress.highestSubWave || 1) >= m.subWave);
-        const claimed = shop.claimedMilestones.includes(m.id);
-
-        const btn = createElement('button', 'shop-card-btn');
-        if (claimed) {
-            btn.textContent = 'Claimed';
-            btn.disabled = true;
-        } else if (reached) {
-            btn.textContent = 'Claim!';
-        } else {
-            btn.textContent = 'Locked';
-            btn.disabled = true;
-            card.classList.add('shop-card-locked');
-        }
-
-        card.append(
-            createElement('div', 'shop-card-icon', '\uD83C\uDFC6'),
-            createElement('div', 'shop-card-name', m.label),
-            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${m.gold.toLocaleString('en-US')}`),
-        );
-        if (m.essence) {
-            card.appendChild(createElement('div', 'shop-card-essence', `\uD83D\uDD2E ${m.essence.toLocaleString('en-US')}`));
-        }
-        if (m.shards) {
-            card.appendChild(createElement('div', 'shop-card-shards', `\u2728 ${m.shards} shards`));
-        }
-        card.appendChild(btn);
-        container.appendChild(card);
-    });
-
     // --- Diamond Shop Section (spend diamonds) ---
     const diamondTitle = createElement('div', 'shop-section-title', '\uD83D\uDC8E Diamond Shop');
     container.appendChild(diamondTitle);
@@ -292,6 +255,83 @@ function handlePaymentReturn() {
     }
 }
 
+export function renderMilestones() {
+    const container = document.getElementById('achievements-list');
+    if (!container) return;
+    container.textContent = '';
+
+    // Close button
+    const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
+    closeBtn.addEventListener('click', () => {
+        document.getElementById('achievements-modal').classList.remove('active');
+    });
+    container.appendChild(closeBtn);
+
+    const progress = getCombatProgress();
+    const shop = getShopState();
+
+    MILESTONE_REWARDS.forEach(m => {
+        const card = createElement('div', 'shop-card');
+        card.dataset.action = 'milestone';
+        card.dataset.milestone = m.id;
+
+        const reached = progress.highestWave > m.wave ||
+            (progress.highestWave === m.wave && (progress.highestSubWave || 1) >= m.subWave);
+        const claimed = shop.claimedMilestones.includes(m.id);
+
+        const btn = createElement('button', 'shop-card-btn');
+        if (claimed) {
+            btn.textContent = 'Claimed';
+            btn.disabled = true;
+        } else if (reached) {
+            btn.textContent = 'Claim!';
+        } else {
+            btn.textContent = 'Locked';
+            btn.disabled = true;
+            card.classList.add('shop-card-locked');
+        }
+
+        card.append(
+            createElement('div', 'shop-card-icon', '\uD83C\uDFC6'),
+            createElement('div', 'shop-card-name', m.label),
+            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${m.gold.toLocaleString('en-US')}`),
+        );
+        if (m.essence) {
+            card.appendChild(createElement('div', 'shop-card-essence', `\uD83D\uDD2E ${m.essence.toLocaleString('en-US')}`));
+        }
+        if (m.shards) {
+            card.appendChild(createElement('div', 'shop-card-shards', `\u2728 ${m.shards} shards`));
+        }
+        card.appendChild(btn);
+        container.appendChild(card);
+    });
+}
+
+export function initMilestones() {
+    const container = document.getElementById('achievements-list');
+    if (!container) return;
+
+    renderMilestones();
+
+    container.addEventListener('click', (e) => {
+        const card = e.target.closest('.shop-card');
+        if (!card) return;
+        const btn = card.querySelector('.shop-card-btn');
+        if (!btn || btn.disabled) return;
+
+        if (card.dataset.action === 'milestone') {
+            const success = claimMilestone(card.dataset.milestone) > 0;
+            if (success) {
+                card.classList.add('purchased');
+                setTimeout(() => card.classList.remove('purchased'), 600);
+                renderMilestones();
+            }
+        }
+    });
+
+    gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, renderMilestones);
+}
+
 export function initShop() {
     // Check for Stripe return params
     handlePaymentReturn();
@@ -315,8 +355,6 @@ export function initShop() {
         let success = false;
         if (card.dataset.action === 'daily') {
             success = claimDaily() > 0;
-        } else if (card.dataset.action === 'milestone') {
-            success = claimMilestone(card.dataset.milestone) > 0;
         } else if (card.dataset.action === 'diamond') {
             success = buyDiamondOffer(card.dataset.offer);
         }
@@ -326,8 +364,6 @@ export function initShop() {
         }
     });
 
-    // Re-render shop when combat progress changes (milestone may become claimable)
-    gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, renderShop);
     // Re-render when diamonds change (update affordability)
     gameEvents.on(EVENTS.DIAMONDS_CHANGED, renderShop);
 }

@@ -198,7 +198,7 @@ const essenceAnim = {
 
 function ensureEssencePendingEl() {
     if (essenceAnim.pendingEl) return essenceAnim.pendingEl;
-    const display = document.getElementById('essence-display');
+    const display = document.getElementById('tech-essence-display');
     if (!display) return null;
     const el = createElement('span', 'currency-pending essence-pending');
     el.id = 'essence-pending';

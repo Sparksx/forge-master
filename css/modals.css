@@ -400,6 +400,8 @@
 }
 
 .decision-btn-sell {
+    display: block;
+    width: 100%;
     background: var(--bg-surface);
     color: var(--text-secondary);
     border: 1px solid var(--border-subtle);

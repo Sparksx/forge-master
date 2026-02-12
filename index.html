@@ -91,18 +91,15 @@
                         <div class="header-xp-fill" id="header-xp-fill"></div>
                     </div>
                 </div>
-                <div class="essence-display" id="essence-display" aria-label="Essence amount">
-                    <span class="essence-icon" aria-hidden="true">🔮</span>
-                    <span class="essence-value" id="essence-amount">0</span>
-                </div>
-                <div class="diamond-display" id="diamond-display" aria-label="Diamond amount">
-                    <span class="diamond-icon" aria-hidden="true">💎</span>
-                    <span class="diamond-value" id="diamond-amount">0</span>
-                </div>
                 <div class="gold-display" id="gold-display" aria-label="Gold amount">
                     <span class="gold-icon" aria-hidden="true">💰</span>
                     <span class="gold-value" id="gold-amount">0</span>
                     <button class="gold-add-btn" id="gold-add-btn" aria-label="Go to shop">+</button>
+                </div>
+                <div class="diamond-display" id="diamond-display" aria-label="Diamond amount">
+                    <span class="diamond-icon" aria-hidden="true">💎</span>
+                    <span class="diamond-value" id="diamond-amount">0</span>
+                    <button class="diamond-add-btn" id="diamond-add-btn" aria-label="Buy diamonds">+</button>
                 </div>
             </div>
         </header>
@@ -351,6 +348,13 @@
                 </div>
                 <div class="sub-tab-content" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
                     <div class="tech-tree-container">
+                        <!-- Essence display -->
+                        <div class="tech-essence-display" id="tech-essence-display" aria-label="Essence amount">
+                            <span class="essence-icon" aria-hidden="true">🔮</span>
+                            <span class="tech-essence-label">Essence:</span>
+                            <span class="essence-value" id="essence-amount">0</span>
+                        </div>
+
                         <!-- Active research banner -->
                         <div class="tech-research-active" id="tech-research-active"></div>
 
@@ -397,6 +401,17 @@
                 <span class="nav-label">Shop</span>
             </button>
         </nav>
+
+        <!-- Achievements FAB (floating button on home) -->
+        <button class="achievements-fab" id="achievements-fab" aria-label="Open achievements" title="Achievements">🏆</button>
+
+        <!-- Achievements Modal -->
+        <div class="modal" id="achievements-modal" role="dialog" aria-label="Achievements" aria-modal="true">
+            <div class="modal-content">
+                <h2>🏆 Milestones</h2>
+                <div id="achievements-list" class="shop-offers" role="list" aria-label="Milestone achievements"></div>
+            </div>
+        </div>
 
         <!-- Full-page Chat Overlay -->
         <div class="chat-fullpage" id="chat-panel" role="dialog" aria-label="Chat" aria-modal="true">
