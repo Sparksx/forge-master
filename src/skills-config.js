@@ -7,23 +7,24 @@
 import { TIERS } from './config.js';
 
 // Max skill levels per tier
-export const SKILL_MAX_LEVELS = { 1: 10, 2: 8, 3: 6, 4: 5, 5: 4, 6: 3 };
+export const SKILL_MAX_LEVELS = { 1: 10, 2: 8, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2 };
 
 // Max equipped skills at once
 export const MAX_EQUIPPED_SKILLS = 3;
 
 // Unlock requirements per tier
 export const SKILL_UNLOCK_REQS = [
-    { tier: 1, wave: 1,  essenceCost: 50,    goldCost: 100 },
-    { tier: 2, wave: 3,  essenceCost: 200,   goldCost: 500 },
-    { tier: 3, wave: 5,  essenceCost: 800,   goldCost: 2000 },
-    { tier: 4, wave: 7,  essenceCost: 3000,  goldCost: 8000 },
-    { tier: 5, wave: 9,  essenceCost: 10000, goldCost: 30000 },
-    { tier: 6, wave: 10, essenceCost: 50000, goldCost: 100000 },
+    { tier: 1, wave: 1,  essenceCost: 50,     goldCost: 100 },
+    { tier: 2, wave: 3,  essenceCost: 200,    goldCost: 500 },
+    { tier: 3, wave: 5,  essenceCost: 800,    goldCost: 2000 },
+    { tier: 4, wave: 7,  essenceCost: 3000,   goldCost: 8000 },
+    { tier: 5, wave: 9,  essenceCost: 10000,  goldCost: 30000 },
+    { tier: 6, wave: 10, essenceCost: 50000,  goldCost: 100000 },
+    { tier: 7, wave: 10, essenceCost: 200000, goldCost: 500000 },
 ];
 
 // Level-up cost: baseCost * LEVEL_COST_SCALE^(level-1), essence only
-export const SKILL_LEVEL_BASE_COST = { 1: 30, 2: 120, 3: 500, 4: 2000, 5: 8000, 6: 40000 };
+export const SKILL_LEVEL_BASE_COST = { 1: 30, 2: 120, 3: 500, 4: 2000, 5: 8000, 6: 40000, 7: 150000 };
 export const SKILL_LEVEL_COST_SCALE = 1.5;
 
 // ── Skill definitions ──────────────────────────────────────
