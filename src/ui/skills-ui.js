@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-// Skills UI — Skill Forge, collection, detail modal
+// Skills UI — Skill Forge, collection grid, detail modal
 // ══════════════════════════════════════════════════════════
 
 import {
@@ -12,32 +12,26 @@ import {
 import { TIERS } from '../config.js';
 import {
     getSkillLevel, isSkillEquipped, canForgeSkill, forgeSkill,
-    equipSkill, unequipSkill,
+    equipSkill, unequipSkill, canUpgradeSkill, upgradeSkill, upgradeAllSkills,
     canActivateSkill, getCooldownRemaining,
 } from '../skills.js';
 import {
     getSkillsState, getEquippedSkills, getCombatProgress,
     getSkillShards, getSkillCopies,
 } from '../state.js';
-import { createElement, formatNumber, formatCompact, formatTime } from './helpers.js';
+import { createElement, formatNumber, formatCompact } from './helpers.js';
 import { showToast } from './helpers.js';
 import { gameEvents, EVENTS } from '../events.js';
 
-let activeFilter = 'all'; // 'all', 'passive', 'active'
-let activeTierFilter = 0; // 0 = all, 1-6 = specific tier
 let forging = false;
 
 export function initSkillsUI() {
     renderSkillsTab();
 
-    // Re-render on state changes
     gameEvents.on(EVENTS.STATE_CHANGED, renderSkillsTab);
-    gameEvents.on(EVENTS.SKILL_FORGED, ({ skill, isNew, didLevelUp, tier }) => {
-        const tierDef = TIERS[tier - 1];
+    gameEvents.on(EVENTS.SKILL_FORGED, ({ skill, isNew }) => {
         if (isNew) {
             showToast(`${skill.icon} ${skill.name} obtenu!`, 'study');
-        } else if (didLevelUp) {
-            showToast(`${skill.icon} ${skill.name} monte de niveau!`, 'study');
         } else {
             showToast(`${skill.icon} ${skill.name} +1 copie`, 'info');
         }
@@ -50,60 +44,62 @@ export function renderSkillsTab() {
     if (!container) return;
     container.textContent = '';
 
-    // Shard counter + Forge button
-    const forgeSection = buildForgeSection();
-    container.appendChild(forgeSection);
+    // Forge section (shards + button + tier chances + upgrade all)
+    container.appendChild(buildForgeSection());
 
     // Equipped skills bar
-    const equippedSection = buildEquippedSection();
-    container.appendChild(equippedSection);
+    container.appendChild(buildEquippedSection());
 
-    // Filters
-    const filterRow = buildFilterRow();
-    container.appendChild(filterRow);
-
-    // Skills collection grid
-    const grid = buildSkillsGrid();
-    container.appendChild(grid);
+    // Unlocked skills grid (sorted by tier)
+    container.appendChild(buildSkillsGrid());
 }
 
-// ── Skill Forge Section ─────────────────────────────────────
+// ── Forge Section ───────────────────────────────────────────
 
 function buildForgeSection() {
     const section = createElement('div', 'skills-forge-section');
 
     // Shard display
     const shardRow = createElement('div', 'skills-shard-row');
-    const shardIcon = createElement('span', 'skills-shard-icon', '\uD83D\uDD2E');
+    const shardIcon = createElement('span', 'skills-shard-icon', '\u2B23');
     const shardCount = createElement('span', 'skills-shard-count', `${formatNumber(getSkillShards())} Fragments`);
     const costHint = createElement('span', 'skills-shard-cost', `(${SKILL_FORGE_COST} par forge)`);
     shardRow.append(shardIcon, shardCount, costHint);
     section.appendChild(shardRow);
 
-    // Tier chances preview
-    const chanceRow = buildTierChancesPreview();
-    section.appendChild(chanceRow);
+    // Tier chances
+    section.appendChild(buildTierChancesPreview());
 
     // Forge button
     const canDo = canForgeSkill() && !forging;
     const forgeBtn = createElement('button', `btn skills-forge-btn${canDo ? '' : ' btn-disabled'}`,
-        forging ? '\u2728 Forge...' : `\u2728 Forger un Skill (${SKILL_FORGE_COST} \uD83D\uDD2E)`);
+        forging ? '\u2728 Forge...' : `\u2728 Forger un Skill (${SKILL_FORGE_COST} \u2B23)`);
     forgeBtn.disabled = !canDo;
     forgeBtn.addEventListener('click', () => {
         if (forging || !canForgeSkill()) return;
         forging = true;
         forgeBtn.classList.add('forging');
         forgeBtn.textContent = '\u2728 Forge...';
-
         setTimeout(() => {
             forging = false;
             const result = forgeSkill();
-            if (result) {
-                showForgeResult(result);
-            }
+            if (result) showForgeResult(result);
         }, 1200);
     });
     section.appendChild(forgeBtn);
+
+    // Upgrade All button
+    const hasUpgradable = SKILLS.some(s => canUpgradeSkill(s.id));
+    if (hasUpgradable) {
+        const upgradeAllBtn = createElement('button', 'btn skills-upgrade-all-btn', '\u2B06 Am\u00e9liorer tout');
+        upgradeAllBtn.addEventListener('click', () => {
+            const count = upgradeAllSkills();
+            if (count > 0) {
+                showToast(`\u2B06 ${count} skill(s) am\u00e9lior\u00e9(s)!`, 'study');
+            }
+        });
+        section.appendChild(upgradeAllBtn);
+    }
 
     return section;
 }
@@ -131,10 +127,9 @@ function buildTierChancesPreview() {
 }
 
 function showForgeResult(result) {
-    const { skill, tier, copies, level, isNew, didLevelUp } = result;
+    const { skill, tier, copies, level, isNew } = result;
     const tierDef = TIERS[tier - 1];
 
-    // Create or re-use forge result modal
     let modal = document.getElementById('skill-forge-result-modal');
     if (!modal) {
         modal = createElement('div', 'modal');
@@ -146,7 +141,6 @@ function showForgeResult(result) {
         content.id = 'skill-forge-result-content';
         modal.appendChild(content);
         document.getElementById('game-container').appendChild(modal);
-
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.classList.remove('active');
         });
@@ -155,12 +149,11 @@ function showForgeResult(result) {
     const content = document.getElementById('skill-forge-result-content');
     content.textContent = '';
 
-    // Close button
     const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
     closeBtn.addEventListener('click', () => modal.classList.remove('active'));
     content.appendChild(closeBtn);
 
-    // Result header
+    // Header
     const header = createElement('div', 'skill-forge-result-header');
     const icon = createElement('div', 'skill-forge-result-icon', skill.icon);
     icon.style.borderColor = tierDef.color;
@@ -170,7 +163,6 @@ function showForgeResult(result) {
     const name = createElement('div', 'skill-forge-result-name', skill.name);
     name.style.color = tierDef.color;
     titleCol.appendChild(name);
-
     const tierLabel = createElement('div', 'skill-forge-result-tier', tierDef.name);
     tierLabel.style.color = tierDef.color;
     titleCol.appendChild(tierLabel);
@@ -179,34 +171,27 @@ function showForgeResult(result) {
 
     // Status tag
     if (isNew) {
-        const tag = createElement('div', 'skill-forge-result-tag skill-forge-new', 'NOUVEAU!');
-        content.appendChild(tag);
-    } else if (didLevelUp) {
-        const tag = createElement('div', 'skill-forge-result-tag skill-forge-levelup', `NIVEAU ${level}!`);
-        content.appendChild(tag);
+        content.appendChild(createElement('div', 'skill-forge-result-tag skill-forge-new', 'NOUVEAU!'));
     } else {
         const maxLevel = getSkillMaxLevel(skill);
         const nextLevelCopies = level < maxLevel ? getTotalCopiesForLevel(level + 1) : null;
-        const tag = createElement('div', 'skill-forge-result-tag skill-forge-copy',
-            nextLevelCopies !== null
-                ? `Copie ${copies} / ${nextLevelCopies}`
-                : `MAX (${copies} copies)`);
-        content.appendChild(tag);
+        const tagText = nextLevelCopies !== null
+            ? `Copie ${copies} / ${nextLevelCopies}`
+            : `MAX (${copies} copies)`;
+        content.appendChild(createElement('div', 'skill-forge-result-tag skill-forge-copy', tagText));
     }
 
     // Description
-    const desc = createElement('div', 'skill-forge-result-desc', skill.description);
-    content.appendChild(desc);
+    content.appendChild(createElement('div', 'skill-forge-result-desc', skill.description));
 
-    // Forge again button
+    // Forge again
     const canDoAgain = canForgeSkill();
     const againBtn = createElement('button', `btn skills-forge-btn${canDoAgain ? '' : ' btn-disabled'}`,
-        `\u2728 Forger encore (${SKILL_FORGE_COST} \uD83D\uDD2E)`);
+        `\u2728 Forger encore (${SKILL_FORGE_COST} \u2B23)`);
     againBtn.disabled = !canDoAgain;
     againBtn.addEventListener('click', () => {
         if (!canForgeSkill()) return;
         modal.classList.remove('active');
-        // Small delay to re-trigger forge
         setTimeout(() => {
             forging = true;
             setTimeout(() => {
@@ -221,12 +206,11 @@ function showForgeResult(result) {
     modal.classList.add('active');
 }
 
-// ── Equipped Skills Section ─────────────────────────────────
+// ── Equipped Skills ─────────────────────────────────────────
 
 function buildEquippedSection() {
     const section = createElement('div', 'skills-equipped-section');
-    const title = createElement('div', 'skills-equipped-title', 'Skills Equip\u00e9s');
-    section.appendChild(title);
+    section.appendChild(createElement('div', 'skills-equipped-title', 'Skills \u00C9quip\u00e9s'));
 
     const slotsRow = createElement('div', 'skills-equipped-slots');
     const equipped = getEquippedSkills();
@@ -241,15 +225,12 @@ function buildEquippedSection() {
                 slotDiv.classList.add('skills-equipped-slot-filled');
 
                 const icon = createElement('span', 'skills-equipped-icon', skill.icon);
-                const name = createElement('span', 'skills-equipped-name', skill.name);
-                name.style.color = tier.color;
+                const nameEl = createElement('span', 'skills-equipped-name', skill.name);
+                nameEl.style.color = tier.color;
+                const lvl = createElement('span', 'skills-equipped-level', `Niv.${getSkillLevel(skill.id)}`);
+                const typeIcon = createElement('span', 'skills-equipped-type', skill.type === 'passive' ? '\uD83D\uDEE1\uFE0F' : '\u2694\uFE0F');
 
-                const level = getSkillLevel(skill.id);
-                const lvl = createElement('span', 'skills-equipped-level', `Niv.${level}`);
-
-                const typeTag = createElement('span', `skills-type-tag skills-type-${skill.type}`, skill.type === 'passive' ? 'P' : 'A');
-
-                slotDiv.append(icon, name, lvl, typeTag);
+                slotDiv.append(icon, nameEl, lvl, typeIcon);
                 slotDiv.addEventListener('click', () => showSkillDetailModal(skill.id));
             }
         } else {
@@ -263,148 +244,77 @@ function buildEquippedSection() {
     return section;
 }
 
-// ── Filter Row ──────────────────────────────────────────────
-
-function buildFilterRow() {
-    const row = createElement('div', 'skills-filter-row');
-
-    // Type filter
-    const typeFilters = createElement('div', 'skills-type-filters');
-    const types = [
-        { key: 'all', label: 'Tous' },
-        { key: 'passive', label: 'Passifs' },
-        { key: 'active', label: 'Actifs' },
-    ];
-    types.forEach(({ key, label }) => {
-        const btn = createElement('button', `skills-filter-btn${activeFilter === key ? ' active' : ''}`, label);
-        btn.addEventListener('click', () => {
-            activeFilter = key;
-            renderSkillsTab();
-        });
-        typeFilters.appendChild(btn);
-    });
-    row.appendChild(typeFilters);
-
-    // Tier filter
-    const tierFilters = createElement('div', 'skills-tier-filters');
-    const allBtn = createElement('button', `skills-tier-btn${activeTierFilter === 0 ? ' active' : ''}`, 'All');
-    allBtn.addEventListener('click', () => {
-        activeTierFilter = 0;
-        renderSkillsTab();
-    });
-    tierFilters.appendChild(allBtn);
-
-    TIERS.forEach((tier, idx) => {
-        const btn = createElement('button', `skills-tier-btn${activeTierFilter === idx + 1 ? ' active' : ''}`);
-        btn.style.color = tier.color;
-        btn.textContent = tier.name.charAt(0);
-        btn.title = tier.name;
-        btn.addEventListener('click', () => {
-            activeTierFilter = idx + 1;
-            renderSkillsTab();
-        });
-        tierFilters.appendChild(btn);
-    });
-    row.appendChild(tierFilters);
-
-    return row;
-}
-
-// ── Skills Grid ─────────────────────────────────────────────
+// ── Skills Grid (unlocked only, sorted by tier) ─────────────
 
 function buildSkillsGrid() {
+    const wrapper = createElement('div', 'skills-grid-wrapper');
+    const state = getSkillsState();
+
+    // Only show unlocked skills
+    const unlockedSkills = SKILLS.filter(s => (state.unlocked[s.id] || 0) > 0);
+
+    if (unlockedSkills.length === 0) {
+        const empty = createElement('div', 'skills-grid-empty', 'Aucun skill obtenu. Forgez pour en obtenir!');
+        wrapper.appendChild(empty);
+        return wrapper;
+    }
+
+    // Sort by tier (ascending) then passive before active
+    unlockedSkills.sort((a, b) => a.tier - b.tier || (a.type === 'passive' ? -1 : 1));
+
     const grid = createElement('div', 'skills-grid');
 
-    let filteredSkills = [...SKILLS];
-    if (activeFilter !== 'all') {
-        filteredSkills = filteredSkills.filter(s => s.type === activeFilter);
-    }
-    if (activeTierFilter > 0) {
-        filteredSkills = filteredSkills.filter(s => s.tier === activeTierFilter);
-    }
-
-    // Sort by tier then type
-    filteredSkills.sort((a, b) => a.tier - b.tier || (a.type === 'passive' ? -1 : 1));
-
-    filteredSkills.forEach(skill => {
-        const card = buildSkillCard(skill);
-        grid.appendChild(card);
+    unlockedSkills.forEach(skill => {
+        grid.appendChild(buildSkillCard(skill));
     });
 
-    return grid;
+    wrapper.appendChild(grid);
+    return wrapper;
 }
 
 function buildSkillCard(skill) {
-    const state = getSkillsState();
-    const level = state.unlocked[skill.id] || 0;
+    const level = getSkillLevel(skill.id);
     const copies = getSkillCopies(skill.id);
-    const isUnlocked = level > 0;
     const isEquipped = isSkillEquipped(skill.id);
     const maxLevel = getSkillMaxLevel(skill);
     const tier = getSkillTier(skill);
+    const canUp = canUpgradeSkill(skill.id);
 
     let cardClass = 'skill-card';
-    if (!isUnlocked) cardClass += ' skill-locked';
     if (isEquipped) cardClass += ' skill-equipped';
+    if (canUp) cardClass += ' skill-upgradable';
 
     const card = createElement('div', cardClass);
-    card.style.borderColor = isUnlocked ? tier.color : '#333';
+    card.style.borderColor = tier.color;
 
-    // Icon
-    const iconDiv = createElement('div', 'skill-card-icon', skill.icon);
-    card.appendChild(iconDiv);
+    // Type icon (shield/sword)
+    const typeIcon = createElement('div', 'skill-card-type-icon', skill.type === 'passive' ? '\uD83D\uDEE1\uFE0F' : '\u2694\uFE0F');
+    card.appendChild(typeIcon);
 
-    // Info column
-    const info = createElement('div', 'skill-card-info');
+    // Name
+    const nameEl = createElement('div', 'skill-card-name', skill.name);
+    nameEl.style.color = tier.color;
+    card.appendChild(nameEl);
 
-    const nameRow = createElement('div', 'skill-card-name-row');
-    const name = createElement('span', 'skill-card-name', skill.name);
-    name.style.color = isUnlocked ? tier.color : '#666';
-    nameRow.appendChild(name);
+    // Level + copies
+    const levelRow = createElement('div', 'skill-card-level-row');
+    const lvlText = createElement('span', 'skill-card-level', `Niv.${level}`);
+    levelRow.appendChild(lvlText);
 
-    const typeTag = createElement('span', `skills-type-tag skills-type-${skill.type}`, skill.type === 'passive' ? 'Passif' : 'Actif');
-    nameRow.appendChild(typeTag);
-    info.appendChild(nameRow);
-
-    const tierLabel = createElement('div', 'skill-card-tier', tier.name);
-    tierLabel.style.color = tier.color;
-    info.appendChild(tierLabel);
-
-    if (isUnlocked) {
-        const levelText = createElement('div', 'skill-card-level', `Niv. ${level}/${maxLevel}`);
-        info.appendChild(levelText);
-
-        // Copies progress to next level
-        if (level < maxLevel) {
-            const nextTotalCopies = getTotalCopiesForLevel(level + 1);
-            const currentTotalForLevel = getTotalCopiesForLevel(level);
-            const copiesIntoLevel = copies - currentTotalForLevel;
-            const copiesNeeded = getSkillCopiesForLevel(level + 1);
-            const progressBar = createElement('div', 'skill-level-bar');
-            const progressFill = createElement('div', 'skill-level-fill');
-            progressFill.style.width = `${(copiesIntoLevel / copiesNeeded) * 100}%`;
-            progressFill.style.backgroundColor = tier.color;
-            progressBar.appendChild(progressFill);
-            info.appendChild(progressBar);
-
-            const copiesText = createElement('div', 'skill-card-copies', `${copiesIntoLevel}/${copiesNeeded} copies`);
-            info.appendChild(copiesText);
-        } else {
-            const maxTag = createElement('div', 'skill-card-copies', 'MAX');
-            info.appendChild(maxTag);
-        }
-    } else if (copies > 0) {
-        // Has copies but not yet level 1 (shouldn't happen with 1-copy unlock, but defensive)
-        const copiesText = createElement('div', 'skill-card-copies', `${copies}/1 copie`);
-        info.appendChild(copiesText);
+    if (level < maxLevel) {
+        const currentTotal = getTotalCopiesForLevel(level);
+        const copiesInto = copies - currentTotal;
+        const copiesNeeded = getSkillCopiesForLevel(level + 1);
+        const copiesEl = createElement('span', 'skill-card-copies', `${copiesInto}/${copiesNeeded}`);
+        if (canUp) copiesEl.classList.add('skill-card-copies-ready');
+        levelRow.appendChild(copiesEl);
     } else {
-        const lockText = createElement('div', 'skill-card-locked-text', '\uD83D\uDD12 Non obtenu');
-        info.appendChild(lockText);
+        levelRow.appendChild(createElement('span', 'skill-card-copies skill-card-copies-max', 'MAX'));
     }
 
-    card.appendChild(info);
+    card.appendChild(levelRow);
 
-    // Click handler -> detail modal
+    // Click -> detail
     card.addEventListener('click', () => showSkillDetailModal(skill.id));
 
     return card;
@@ -416,7 +326,6 @@ function showSkillDetailModal(skillId) {
     const skill = getSkillById(skillId);
     if (!skill) return;
 
-    // Use a generic modal approach — create/re-use a skill modal
     let modal = document.getElementById('skill-detail-modal');
     if (!modal) {
         modal = createElement('div', 'modal');
@@ -428,7 +337,6 @@ function showSkillDetailModal(skillId) {
         content.id = 'skill-detail-content';
         modal.appendChild(content);
         document.getElementById('game-container').appendChild(modal);
-
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.classList.remove('active');
         });
@@ -437,15 +345,14 @@ function showSkillDetailModal(skillId) {
     const content = document.getElementById('skill-detail-content');
     content.textContent = '';
 
-    const state = getSkillsState();
-    const level = state.unlocked[skill.id] || 0;
+    const level = getSkillLevel(skill.id);
     const copies = getSkillCopies(skill.id);
     const isUnlocked = level > 0;
     const equipped = isSkillEquipped(skill.id);
     const maxLevel = getSkillMaxLevel(skill);
     const tier = getSkillTier(skill);
 
-    // Close button
+    // Close
     const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
     closeBtn.addEventListener('click', () => modal.classList.remove('active'));
     content.appendChild(closeBtn);
@@ -464,37 +371,34 @@ function showSkillDetailModal(skillId) {
     const tierDot = createElement('span', 'skill-detail-tier-dot');
     tierDot.style.backgroundColor = tier.color;
     tierRow.appendChild(tierDot);
-    tierRow.appendChild(createElement('span', '', `${tier.name} \u2014 ${skill.type === 'passive' ? 'Passif' : 'Actif'}`));
+    const typeLabel = skill.type === 'passive' ? '\uD83D\uDEE1\uFE0F Passif' : '\u2694\uFE0F Actif';
+    tierRow.appendChild(createElement('span', '', `${tier.name} \u2014 ${typeLabel}`));
     titleCol.appendChild(tierRow);
     header.appendChild(titleCol);
     content.appendChild(header);
 
     // Description
-    const desc = createElement('div', 'skill-detail-desc', skill.description);
-    content.appendChild(desc);
+    content.appendChild(createElement('div', 'skill-detail-desc', skill.description));
 
     if (isUnlocked) {
-        // Level info
         const levelSection = createElement('div', 'skill-detail-level-section');
 
-        const levelLabel = createElement('div', 'skill-detail-level-label', `Niveau ${level} / ${maxLevel}`);
-        levelSection.appendChild(levelLabel);
+        levelSection.appendChild(createElement('div', 'skill-detail-level-label', `Niveau ${level} / ${maxLevel}`));
 
         // Copies progress bar
         if (level < maxLevel) {
-            const currentTotalForLevel = getTotalCopiesForLevel(level);
-            const copiesIntoLevel = copies - currentTotalForLevel;
+            const currentTotal = getTotalCopiesForLevel(level);
+            const copiesInto = copies - currentTotal;
             const copiesNeeded = getSkillCopiesForLevel(level + 1);
 
             const progressBar = createElement('div', 'skill-detail-progress-bar');
             const progressFill = createElement('div', 'skill-detail-progress-fill');
-            progressFill.style.width = `${(copiesIntoLevel / copiesNeeded) * 100}%`;
+            progressFill.style.width = `${(copiesInto / copiesNeeded) * 100}%`;
             progressFill.style.backgroundColor = tier.color;
             progressBar.appendChild(progressFill);
             levelSection.appendChild(progressBar);
 
-            const copiesLabel = createElement('div', 'skill-detail-copies', `Copies: ${copiesIntoLevel} / ${copiesNeeded} pour le prochain niveau`);
-            levelSection.appendChild(copiesLabel);
+            levelSection.appendChild(createElement('div', 'skill-detail-copies', `Copies: ${copiesInto} / ${copiesNeeded} pour le prochain niveau`));
         } else {
             const progressBar = createElement('div', 'skill-detail-progress-bar');
             const progressFill = createElement('div', 'skill-detail-progress-fill');
@@ -502,40 +406,47 @@ function showSkillDetailModal(skillId) {
             progressFill.style.backgroundColor = tier.color;
             progressBar.appendChild(progressFill);
             levelSection.appendChild(progressBar);
-
-            const maxLabel = createElement('div', 'skill-detail-copies', `Niveau maximum atteint (${copies} copies)`);
-            levelSection.appendChild(maxLabel);
+            levelSection.appendChild(createElement('div', 'skill-detail-copies', `Niveau maximum atteint (${copies} copies)`));
         }
 
-        // Current effect
+        // Effect
         const effectText = createElement('div', 'skill-detail-effect');
         effectText.innerHTML = `<strong>Effet actuel:</strong> ${formatEffectDescription(skill, level)}`;
         levelSection.appendChild(effectText);
 
-        // Next level preview
         if (level < maxLevel) {
             const nextText = createElement('div', 'skill-detail-next');
             nextText.innerHTML = `<strong>Prochain niveau:</strong> ${formatEffectDescription(skill, level + 1)}`;
             levelSection.appendChild(nextText);
         }
 
-        // Active skill: show cooldown & duration
+        // Active skill timing
         if (skill.type === 'active') {
             const cd = getSkillCooldown(skill, level);
             const dur = getSkillDuration(skill, level);
             const timingRow = createElement('div', 'skill-detail-timing');
-            if (dur > 0) {
-                timingRow.innerHTML = `\u23F1\uFE0F Dur\u00e9e: ${dur}s &nbsp; \uD83D\uDD04 Recharge: ${cd}s`;
-            } else {
-                timingRow.innerHTML = `\u26A1 Instantan\u00e9 &nbsp; \uD83D\uDD04 Recharge: ${cd}s`;
-            }
+            timingRow.innerHTML = dur > 0
+                ? `\u23F1\uFE0F Dur\u00e9e: ${dur}s &nbsp; \uD83D\uDD04 Recharge: ${cd}s`
+                : `\u26A1 Instantan\u00e9 &nbsp; \uD83D\uDD04 Recharge: ${cd}s`;
             levelSection.appendChild(timingRow);
         }
 
         content.appendChild(levelSection);
 
-        // Action buttons
+        // Actions
         const actions = createElement('div', 'skill-detail-actions');
+
+        // Upgrade button
+        if (canUpgradeSkill(skill.id)) {
+            const upgradeBtn = createElement('button', 'btn skill-btn-upgrade', '\u2B06 Am\u00e9liorer');
+            upgradeBtn.addEventListener('click', () => {
+                if (upgradeSkill(skill.id)) {
+                    showToast(`\u2B06 ${skill.name} Niv.${getSkillLevel(skill.id)}`, 'study');
+                    showSkillDetailModal(skill.id);
+                }
+            });
+            actions.appendChild(upgradeBtn);
+        }
 
         // Equip / Unequip
         if (equipped) {
@@ -560,28 +471,6 @@ function showSkillDetailModal(skillId) {
         }
 
         content.appendChild(actions);
-    } else {
-        // Not yet unlocked - show preview
-        const lockSection = createElement('div', 'skill-detail-lock-section');
-
-        const reqTitle = createElement('div', 'skill-detail-req-title', '\uD83D\uDD12 Pas encore obtenu');
-        lockSection.appendChild(reqTitle);
-
-        const hint = createElement('div', 'skill-detail-forge-hint', 'Forgez des skills pour obtenir cette comp\u00e9tence al\u00e9atoirement!');
-        lockSection.appendChild(hint);
-
-        // Copies progress (if any copies collected)
-        if (copies > 0) {
-            const copiesLabel = createElement('div', 'skill-detail-copies', `Copies: ${copies} / 1`);
-            lockSection.appendChild(copiesLabel);
-        }
-
-        // Effect preview at level 1
-        const previewText = createElement('div', 'skill-detail-preview');
-        previewText.innerHTML = `<strong>Effet (Niv.1):</strong> ${formatEffectDescription(skill, 1)}`;
-        lockSection.appendChild(previewText);
-
-        content.appendChild(lockSection);
     }
 
     modal.classList.add('active');

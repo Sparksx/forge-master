@@ -12,6 +12,7 @@ import {
 import {
     getCombatProgress, getPlayerLevel, saveGame,
     getSkillShards, spendSkillShards, addSkillCopy, getSkillCopies,
+    canUpgradeSkillFromCopies, upgradeSkillFromCopies,
 } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
@@ -80,26 +81,54 @@ export function forgeSkill() {
     const oldLevel = getSkillLevel(skill.id);
     addSkillCopy(skill.id);
     const newCopies = getSkillCopies(skill.id);
-    const maxLevel = getSkillMaxLevel(skill);
-    const newLevel = getSkillLevelFromCopies(newCopies, maxLevel);
+    const newLevel = getSkillLevel(skill.id);
     const isNew = oldLevel === 0 && newLevel >= 1;
-    const didLevelUp = newLevel > oldLevel && !isNew;
 
     saveGame();
 
-    const result = { skillId: skill.id, skill, tier, copies: newCopies, level: newLevel, isNew, didLevelUp };
+    const result = { skillId: skill.id, skill, tier, copies: newCopies, level: newLevel, isNew };
 
     gameEvents.emit(EVENTS.SKILL_FORGED, result);
 
     if (isNew) {
         gameEvents.emit(EVENTS.SKILL_UNLOCKED, { skillId: skill.id, skill });
     }
-    if (didLevelUp) {
-        gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId: skill.id, level: newLevel });
-    }
 
     gameEvents.emit(EVENTS.STATE_CHANGED);
     return result;
+}
+
+// ── Manual Upgrade ──────────────────────────────────────────
+
+/** Check if a skill can be upgraded (enough copies) */
+export function canUpgradeSkill(skillId) {
+    return canUpgradeSkillFromCopies(skillId);
+}
+
+/** Manually upgrade a skill to the next level */
+export function upgradeSkill(skillId) {
+    const newLevel = upgradeSkillFromCopies(skillId);
+    if (!newLevel) return false;
+    gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId, level: newLevel });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+/** Upgrade all skills that have enough copies */
+export function upgradeAllSkills() {
+    let upgraded = 0;
+    for (const skill of SKILLS) {
+        while (canUpgradeSkillFromCopies(skill.id)) {
+            const newLevel = upgradeSkillFromCopies(skill.id);
+            if (!newLevel) break;
+            gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId: skill.id, level: newLevel });
+            upgraded++;
+        }
+    }
+    if (upgraded > 0) {
+        gameEvents.emit(EVENTS.STATE_CHANGED);
+    }
+    return upgraded;
 }
 
 // ── Equip / Unequip ────────────────────────────────────────
