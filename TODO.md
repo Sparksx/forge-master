@@ -93,6 +93,7 @@
 - [ ] **Système de guildes** — Canaux de chat par guilde, boss de guilde, classement de guilde
 - [ ] **Mode Endless / Classement donjon** — Mode donjon infini avec scaling progressif et classement global des vagues atteintes
 - [ ] **Succès / Achievements** — Système de badges pour des objectifs spécifiques (première Mythic, 100 PvP wins, donjon wave 10 sans équipement, etc.)
+- [ ] **Système de feedback joueur** — Permettre aux joueurs d'envoyer des retours, suggestions et rapports de bugs directement depuis le jeu (formulaire intégré avec catégories : bug, suggestion, autre)
 - [ ] **Échange d'items entre joueurs** — Marketplace ou trade direct entre joueurs connectés, avec commission d'or
 - [ ] **Système de saisons PvP** — Reset Elo périodique avec récompenses de fin de saison basées sur le rank atteint
 - [ ] **Thèmes visuels** — Mode sombre/clair, thèmes de couleur personnalisables, animations de craft améliorées

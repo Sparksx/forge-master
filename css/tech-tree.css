@@ -11,6 +11,31 @@
     padding-bottom: 8px;
 }
 
+/* ── Essence Display in Tech Page ──────────── */
+
+.tech-essence-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.tech-essence-label {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.tech-essence-display .essence-value {
+    font-size: 1.1em;
+    font-weight: 800;
+    color: var(--accent-purple);
+}
+
 /* ── Active Research Banner ─────────────────── */
 
 .tech-research-active {

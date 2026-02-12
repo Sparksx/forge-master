@@ -178,6 +178,28 @@
     text-shadow: 0 1px 4px rgba(79, 195, 247, 0.3);
 }
 
+.diamond-add-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-card);
+    color: var(--accent-cyan);
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.diamond-add-btn:hover {
+    background: var(--bg-card-hover);
+    box-shadow: 0 0 6px rgba(79, 195, 247, 0.3);
+}
+
 /* =============================================
    ESSENCE HEADER DISPLAY
    ============================================= */

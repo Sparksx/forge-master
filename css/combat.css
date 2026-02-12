@@ -390,3 +390,60 @@
     80% { opacity: 1; }
     100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
+
+/* Combat entrance animations */
+@keyframes slideInFromLeft {
+    from { transform: translateX(-80px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInFromRight {
+    from { transform: translateX(80px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.combatant-player.combat-enter {
+    animation: slideInFromLeft 0.5s ease-out;
+}
+
+.monsters-side.combat-enter {
+    animation: slideInFromRight 0.5s ease-out;
+}
+
+/* Death animation on combat loss */
+@keyframes deathFade {
+    0% { opacity: 1; transform: scale(1); }
+    30% { transform: scale(1.05); }
+    100% { opacity: 0; transform: scale(0.8) translateY(20px); filter: saturate(0); }
+}
+
+.combatant-player.death-animation .combatant-emoji {
+    animation: deathFade 1s ease-in forwards;
+    color: #ef5350;
+}
+
+/* Achievements FAB button */
+.achievements-fab {
+    position: fixed;
+    bottom: 76px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border-medium);
+    background: var(--bg-card);
+    font-size: 1.3em;
+    cursor: pointer;
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px var(--shadow-strong);
+    transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.achievements-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px var(--shadow-strong);
+}

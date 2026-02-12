@@ -14,7 +14,7 @@ export {
 export {
     renderMonsters, updateMonsterFocus,
     updateCombatUI, updateCombatInfo, updateWaveDisplay,
-    showDamageNumber, showCombatResult,
+    showDamageNumber, showCombatResult, showDeathAnimation,
     triggerAttackAnimation, triggerHitAnimation, triggerMonsterHitAnimation,
     renderSkillHUD, updateSkillHUD,
 } from './ui/combat-ui.js';

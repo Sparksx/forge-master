@@ -26,7 +26,7 @@ import {
     updateUI, showDecisionModal, showItemDetailModal,
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
     isAutoForging, showForgeToast, updateCombatUI, updateCombatInfo,
-    showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
+    showDamageNumber, showCombatResult, showDeathAnimation, triggerAttackAnimation, triggerHitAnimation,
     triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus,
     renderSkillHUD, updateSkillHUD,
 } from './ui.js';
@@ -34,7 +34,7 @@ import { initSkillsUI } from './ui/skills-ui.js';
 import { applyTheme } from './ui/profile-ui.js';
 import { showToast, initGoldAnimation, showEssenceGain } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
-import { initShop } from './shop.js';
+import { initShop, initMilestones, renderMilestones } from './shop.js';
 import { startCombat, stopCombat, refreshPlayerStats } from './combat.js';
 import { initAuth, setAuthSuccessCallback, getCurrentUser, performLogout } from './auth.js';
 import { connectSocket } from './socket-client.js';
@@ -141,7 +141,6 @@ gameEvents.on(EVENTS.COMBAT_PLAYER_LIFESTEAL, ({ amount }) => {
 });
 
 gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, ({ monster }) => {
-    showCombatResult('Victory!', 'victory');
     // Award XP based on monster's wave/sub-wave, boosted by battleXP tech
     const stage = ((monster?.wave || 1) - 1) * 10 + (monster?.subWave || 1);
     const baseXP = 5 + Math.floor(stage * 2.5);
@@ -150,8 +149,13 @@ gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, ({ monster }) => {
     addXP(xp);
 });
 
+gameEvents.on(EVENTS.COMBAT_SUBWAVE_CLEARED, () => {
+    showCombatResult('Victory!', 'victory');
+});
+
 gameEvents.on(EVENTS.COMBAT_PLAYER_DEFEATED, () => {
     showCombatResult('Defeated', 'defeat');
+    showDeathAnimation();
 });
 
 gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, () => {
@@ -253,8 +257,25 @@ async function startGame() {
     // Gold "+" button -> navigate to shop
     document.getElementById('gold-add-btn').addEventListener('click', () => switchTab('shop'));
 
+    // Diamond "+" button -> navigate to shop
+    document.getElementById('diamond-add-btn').addEventListener('click', () => switchTab('shop'));
+
     // Shop
     initShop();
+
+    // Achievements/Milestones modal
+    initMilestones();
+    const achievementsModal = document.getElementById('achievements-modal');
+    const achievementsFab = document.getElementById('achievements-fab');
+    achievementsFab.addEventListener('click', () => {
+        renderMilestones();
+        achievementsModal.classList.add('active');
+    });
+    achievementsModal.addEventListener('click', (e) => {
+        if (e.target === achievementsModal) {
+            achievementsModal.classList.remove('active');
+        }
+    });
 
     // Forge upgrade icon button -> open forge upgrade modal
     document.getElementById('forge-upgrade-btn').addEventListener('click', () => {

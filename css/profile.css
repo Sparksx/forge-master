@@ -91,7 +91,7 @@
     border: none;
     border-radius: 8px;
     background: linear-gradient(135deg, var(--accent-red), #c62828);
-    color: var(--text-primary);
+    color: #ffffff;
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;

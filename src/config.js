@@ -115,8 +115,8 @@ export const LEVEL_REWARD_GOLD_PER_LEVEL = 25;
 export const LEVEL_MILESTONE_INTERVAL = 10;
 export const LEVEL_MILESTONE_MULTIPLIER = 10;
 
-// --- Username change ---
-export const USERNAME_CHANGE_COST = 5000;
+// --- Username change (cost in diamonds) ---
+export const USERNAME_CHANGE_COST = 50;
 
 // --- Profile pictures (emoji avatars) ---
 export const PROFILE_PICTURES = [
