@@ -60,8 +60,9 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         const stripe = getStripe();
         const totalDiamonds = pack.diamonds + pack.bonus;
 
-        // Build success/cancel URLs
-        const baseUrl = CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173';
+        // Build success/cancel URLs from the request origin (works in both dev and prod)
+        const origin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
+        const baseUrl = origin.replace(/\/+$/, '');
         const successUrl = `${baseUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${baseUrl}?payment=cancelled`;
 
