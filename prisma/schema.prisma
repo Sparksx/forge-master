@@ -22,6 +22,7 @@ model User {
   pvpRating      Int       @default(1000)
   pvpWins        Int       @default(0)
   pvpLosses      Int       @default(0)
+  settings       Json      @default("{}")
 
   gameState      GameState?
   sentMessages   ChatMessage[] @relation("sender")

@@ -31,6 +31,7 @@ import {
     renderSkillHUD, updateSkillHUD,
 } from './ui.js';
 import { initSkillsUI } from './ui/skills-ui.js';
+import { applyTheme } from './ui/profile-ui.js';
 import { showToast, initGoldAnimation, showEssenceGain } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
@@ -201,6 +202,10 @@ async function startGame() {
         const user = getCurrentUser();
         if (user && user.profilePicture) {
             setProfilePicture(user.profilePicture);
+        }
+        // Apply saved theme preference
+        if (user?.settings?.theme) {
+            applyTheme(user.settings.theme);
         }
     } else {
         loadGame();

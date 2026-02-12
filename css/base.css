@@ -37,6 +37,38 @@
     --font-body: 'Inter', 'Segoe UI', sans-serif;
 }
 
+/* ── Light Theme Override ── */
+[data-theme="light"] {
+    /* Core palette */
+    --bg-dark: #e8e4dc;
+    --bg-panel: #f5f2ec;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f0ece4;
+    --bg-surface: #ede9e0;
+
+    /* Borders */
+    --border-subtle: rgba(139, 109, 56, 0.15);
+    --border-medium: rgba(139, 109, 56, 0.25);
+    --border-strong: rgba(139, 109, 56, 0.4);
+
+    /* Gold accents (darker for contrast on light bg) */
+    --gold: #a07818;
+    --gold-light: #c89820;
+    --gold-dark: #7a5c10;
+    --gold-glow: rgba(160, 120, 24, 0.2);
+
+    /* Text */
+    --text-primary: #2c2416;
+    --text-secondary: #6b5d4d;
+    --text-muted: #9c8e7c;
+
+    /* Game accents (adjusted for light bg) */
+    --accent-purple: #7c4dff;
+    --accent-cyan: #0288d1;
+    --accent-green: #2e7d32;
+    --accent-red: #c62828;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -140,6 +172,12 @@ h1 {
     font-family: var(--font-display);
     text-shadow: 0 2px 8px rgba(240, 192, 64, 0.3);
     flex-shrink: 0;
+}
+
+[data-theme="light"] body {
+    background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(160, 120, 24, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(100, 60, 180, 0.04) 0%, transparent 50%);
 }
 
 .hidden {
