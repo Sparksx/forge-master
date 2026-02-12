@@ -2,7 +2,7 @@
 // Keeps all existing imports from main.js working unchanged.
 
 export {
-    showForgeToast, showSellToast,
+    showForgeToast,
     updateStats, getCachedStats, updateEquipmentSlots,
     updateForgeInfo, showForgeUpgradeModal, hideForgeUpgradeModal,
     showDecisionModal, hideDecisionModal,

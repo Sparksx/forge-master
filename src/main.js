@@ -18,20 +18,20 @@ import '../css/tech-tree.css';
 import '../css/skills.css';
 import '../css/admin.css';
 import { gameEvents, EVENTS } from './events.js';
-import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
-import { forgeEquipment } from './forge.js';
+import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture, getGold } from './state.js';
+import { forgeEquipment, getForgeEssenceReward } from './forge.js';
 import { initResearch } from './research.js';
 import { initTechUI, renderTechTree, updateEssenceDisplay } from './ui/tech-ui.js';
 import {
     updateUI, showDecisionModal, showItemDetailModal,
     hideItemDetailModal, showProfileModal, showForgeUpgradeModal, handleAutoForgeClick,
-    isAutoForging, showForgeToast, showSellToast, updateCombatUI, updateCombatInfo,
+    isAutoForging, showForgeToast, updateCombatUI, updateCombatInfo,
     showDamageNumber, showCombatResult, triggerAttackAnimation, triggerHitAnimation,
     triggerMonsterHitAnimation, updateWaveDisplay, renderMonsters, updateMonsterFocus,
     renderSkillHUD, updateSkillHUD,
 } from './ui.js';
 import { initSkillsUI } from './ui/skills-ui.js';
-import { showToast } from './ui/helpers.js';
+import { showToast, initGoldAnimation, showEssenceGain } from './ui/helpers.js';
 import { initNavigation, switchTab } from './navigation.js';
 import { initShop } from './shop.js';
 import { startCombat, stopCombat, refreshPlayerStats } from './combat.js';
@@ -75,16 +75,21 @@ gameEvents.on(EVENTS.STATE_CHANGED, updateUI);
 gameEvents.on(EVENTS.STATE_CHANGED, updateEssenceDisplay);
 gameEvents.on(EVENTS.ITEM_FORGED, showForgeToast);
 
-// Treasure Hunter: chance to find bonus gold when forging
+// Essence reward: earn a small amount of essence for each item forged
+gameEvents.on(EVENTS.ITEM_FORGED, (item) => {
+    const essenceGained = getForgeEssenceReward(item);
+    addEssence(essenceGained);
+    showEssenceGain(essenceGained);
+});
+
+// Treasure Hunter: chance to find bonus gold when forging (no toast, gold animation handles display)
 gameEvents.on(EVENTS.ITEM_FORGED, (item) => {
     const treasureChance = getTechEffect('treasureHunter'); // 10% per level
     if (treasureChance > 0 && Math.random() * 100 < treasureChance) {
         const bonusGold = Math.floor(10 + item.level * (item.tier || 1) * 2);
         addGold(bonusGold);
-        showToast(`🗝️ Trésor! +${bonusGold}g`, 'sell');
     }
 });
-gameEvents.on(EVENTS.ITEM_SOLD, showSellToast);
 
 // Research events
 gameEvents.on(EVENTS.RESEARCH_COMPLETED, ({ techId, level }) => {
@@ -201,23 +206,40 @@ async function startGame() {
         loadGame();
     }
 
+    // Initialize gold animation with current value (prevents drip on load)
+    initGoldAnimation(getGold());
+
     updateUI();
     initNavigation();
 
     // Forge button: show pending item or forge new batch (disabled during auto-forge)
-    document.getElementById('forge-btn').addEventListener('click', () => {
+    let manualForging = false;
+    const forgeBtn = document.getElementById('forge-btn');
+    forgeBtn.addEventListener('click', () => {
         try {
-            if (isAutoForging()) return;
+            if (isAutoForging() || manualForging) return;
             const pending = getForgedItem();
             if (pending) {
                 showDecisionModal(pending);
-            } else {
+                return;
+            }
+            // Start forging animation with delay
+            manualForging = true;
+            forgeBtn.classList.add('forging');
+            forgeBtn.textContent = '⚒️ Forge...';
+            setTimeout(() => {
+                manualForging = false;
+                forgeBtn.classList.remove('forging');
+                forgeBtn.textContent = '⚒️ Forge';
                 const items = forgeEquipment();
                 items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
                 showForgedBatch(items);
-            }
+            }, 2000);
         } catch (err) {
             console.error('Forge error:', err);
+            manualForging = false;
+            forgeBtn.classList.remove('forging');
+            forgeBtn.textContent = '⚒️ Forge';
             const activeModal = document.querySelector('.modal.active');
             if (activeModal) activeModal.classList.remove('active');
         }

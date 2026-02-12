@@ -67,9 +67,9 @@ describe('research engine', () => {
         });
 
         it('returns false when tech is already at max level', () => {
-            // autoStudy has maxLevel 1
-            completeResearch('autoStudy', 1);
-            expect(isTechUnlocked('autoStudy')).toBe(false);
+            // masterwork has maxLevel 1
+            completeResearch('masterwork', 1);
+            expect(isTechUnlocked('masterwork')).toBe(false);
         });
 
         it('handles altRequires (OR prerequisite) for bonusEnhance', () => {
@@ -110,9 +110,9 @@ describe('research engine', () => {
         });
 
         it('returns true when tech is at max level', () => {
-            // autoStudy has maxLevel 1
-            completeResearch('autoStudy', 1);
-            expect(isTechMaxed('autoStudy')).toBe(true);
+            // masterwork has maxLevel 1
+            completeResearch('masterwork', 1);
+            expect(isTechMaxed('masterwork')).toBe(true);
         });
 
         it('returns false for unknown tech', () => {
@@ -168,8 +168,8 @@ describe('research engine', () => {
 
         it('returns false when tech is maxed', () => {
             addEssence(100000);
-            completeResearch('autoStudy', 1);
-            expect(canStartResearch('autoStudy')).toBe(false);
+            completeResearch('masterwork', 1);
+            expect(canStartResearch('masterwork')).toBe(false);
         });
     });
 
@@ -210,8 +210,8 @@ describe('research engine', () => {
 
         it('returns false if already at max level', () => {
             addEssence(100000);
-            completeResearch('autoStudy', 1);
-            expect(startResearch('autoStudy')).toBe(false);
+            completeResearch('masterwork', 1);
+            expect(startResearch('masterwork')).toBe(false);
         });
 
         it('queues research if something is already active', () => {

@@ -67,6 +67,7 @@
     align-items: center;
     gap: 4px;
     cursor: pointer;
+    position: relative;
 }
 
 .gold-icon {
@@ -150,6 +151,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    position: relative;
 }
 
 .essence-icon {
@@ -160,4 +162,42 @@
     font-size: clamp(1em, 1.6vw, 1.2em);
     font-weight: bold;
     color: #7e57c2;
+}
+
+/* =============================================
+   CURRENCY GAIN ANIMATIONS (Gold & Essence drip)
+   ============================================= */
+
+.currency-pending {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(0.7em, 1.1vw, 0.8em);
+    font-weight: 700;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.currency-pending.active {
+    opacity: 1;
+    animation: pendingPulse 0.3s ease-out;
+}
+
+.gold-pending {
+    color: #d4a017;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.essence-pending {
+    color: #7e57c2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes pendingPulse {
+    0% { transform: translateX(-50%) scale(1.3); }
+    100% { transform: translateX(-50%) scale(1); }
 }

@@ -9,12 +9,12 @@ import {
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
     getPlayerLevel, getPlayerXP, getXPToNextLevel,
-    getStudyValue, addEssence, setForgedItem, getTechLevel, getTechEffect,
+    setForgedItem, getTechLevel, getTechEffect,
     addGold, saveGame, getProfileEmoji,
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
 import { gameEvents, EVENTS } from '../events.js';
-import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast } from './helpers.js';
+import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast, animateGoldToward, initGoldAnimation } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
 
 let forgeTimerInterval = null;
@@ -47,7 +47,6 @@ const autoForge = {
     selectedTiers: new Set(),
     timer: null,
     stopping: false,
-    autoStudy: false,  // if true, rejected items are studied (essence) instead of sold (gold)
     // Smart filter settings (persisted across auto-forge sessions)
     minLevel: 0,           // Niv.1: minimum item level (0 = disabled)
     minStats: 0,           // Niv.2: minimum main stat value (0 = disabled)
@@ -66,40 +65,6 @@ export function showSellToast({ item, goldEarned }) {
     showToast(`+${formatNumber(goldEarned)}g`, 'sell');
 }
 
-export function showStudyToast(essenceEarned) {
-    showToast(`+${formatNumber(essenceEarned)} 🔮`, 'study');
-}
-
-/** Study (dismantle) any item for essence, applying tech bonuses */
-function studyItem(item) {
-    let essenceEarned = getStudyValue(item);
-    const studyBonus = getTechEffect('essenceStudy'); // +2% per level
-    essenceEarned = Math.floor(essenceEarned * (1 + studyBonus / 100));
-
-    // Double Harvest: chance to also get gold
-    const doubleChance = getTechEffect('doubleHarvest');
-    if (doubleChance > 0 && Math.random() * 100 < doubleChance) {
-        const goldBonus = getTechEffect('goldRush');
-        const goldValue = Math.floor(getSellValue(item) * (1 + goldBonus / 100));
-        addGold(goldValue);
-        showToast(`🎰 Double! +${formatNumber(goldValue)}g`, 'sell');
-    }
-
-    addEssence(essenceEarned);
-    showStudyToast(essenceEarned);
-    return essenceEarned;
-}
-
-/** Study (dismantle) the currently forged item for essence instead of gold */
-export function studyForgedItem() {
-    const item = getForgedItem();
-    if (!item) return 0;
-
-    const essenceEarned = studyItem(item);
-    setForgedItem(null);
-    saveGame();
-    return essenceEarned;
-}
 
 // ===== Stats & Equipment =====
 
@@ -126,7 +91,8 @@ export function updateStats() {
         dom.xpFill.style.width = `${pct}%`;
     }
 
-    if (dom.goldAmount) dom.goldAmount.textContent = formatCompact(getGold());
+    // Animate gold display (drip effect for gains, snap for spends)
+    animateGoldToward(getGold());
 
     if (dom.profileBtn) dom.profileBtn.textContent = getProfileEmoji();
 
@@ -419,7 +385,7 @@ export function showDecisionModal(item, onClose) {
         // === ACTIONS ===
         const actionsContainer = createElement('div', 'decision-actions');
 
-        // Equip button (visually separated from sell/study)
+        // Equip button
         const powerDiff = calculateEquipPowerDiff(bottomItem);
         const sign = powerDiff >= 0 ? '+' : '-';
         const equipLabel = `🔄 Équiper (${sign}${formatCompact(Math.abs(powerDiff))} ⚡)`;
@@ -433,23 +399,12 @@ export function showDecisionModal(item, onClose) {
         const separator = createElement('div', 'decision-separator');
         actionsContainer.appendChild(separator);
 
-        // Sell & Study buttons (grouped together)
-        const disposeGroup = createElement('div', 'decision-dispose-group');
-
+        // Sell button
         const sellValue = getSellValue(bottomItem);
         const sellBtn = createElement('button', 'btn decision-btn-sell',
             `💰 Vendre · ${formatNumber(sellValue)}g`);
         sellBtn.addEventListener('click', handleSell);
-
-        const baseStudyValue = getStudyValue(bottomItem);
-        const studyBonus = getTechEffect('essenceStudy');
-        const effectiveStudyValue = Math.floor(baseStudyValue * (1 + studyBonus / 100));
-        const studyBtn = createElement('button', 'btn decision-btn-study',
-            `🔮 Étudier · ${formatNumber(effectiveStudyValue)}`);
-        studyBtn.addEventListener('click', handleStudy);
-
-        disposeGroup.append(sellBtn, studyBtn);
-        actionsContainer.appendChild(disposeGroup);
+        actionsContainer.appendChild(sellBtn);
 
         bottomSection.appendChild(actionsContainer);
         itemInfo.appendChild(bottomSection);
@@ -504,13 +459,6 @@ export function showDecisionModal(item, onClose) {
         addGold(goldEarned);
         gameEvents.emit(EVENTS.ITEM_SOLD, { item: bottomItem, goldEarned });
         setForgedItem(null);
-        hideDecisionModal();
-    }
-
-    function handleStudy() {
-        studyItem(bottomItem);
-        setForgedItem(null);
-        saveGame();
         hideDecisionModal();
     }
 
@@ -637,15 +585,11 @@ function doOneAutoForge() {
         }
     }
 
-    // Auto-sell/study non-matching items
+    // Auto-sell non-matching items
     for (const item of nonMatching) {
-        if (autoForge.autoStudy) {
-            studyItem(item);
-        } else {
-            const goldEarned = getSellValue(item);
-            addGold(goldEarned);
-            gameEvents.emit(EVENTS.ITEM_SOLD, { item, goldEarned });
-        }
+        const goldEarned = getSellValue(item);
+        addGold(goldEarned);
+        gameEvents.emit(EVENTS.ITEM_SOLD, { item, goldEarned });
     }
 
     // Auto-equip matching items if tech is active, show remaining to player
@@ -686,6 +630,8 @@ function updateAutoForgeButton() {
     if (forgeBtn) {
         forgeBtn.disabled = autoForge.active;
         forgeBtn.classList.toggle('forge-btn-disabled', autoForge.active);
+        // Animate forge button to show auto-forge is working
+        forgeBtn.classList.toggle('forging', autoForge.active);
     }
 }
 
@@ -699,14 +645,10 @@ function showAutoForgeModal() {
     if (!info) return;
     info.textContent = '';
 
-    const hasAutoStudyTech = getTechLevel('autoStudy') >= 1;
     const smartFilterLevel = getTechEffect('smartFilter');
     const hasAutoEquip = getTechEffect('autoEquip') >= 1;
 
-    const desc = hasAutoStudyTech
-        ? 'Sélectionnez les tiers à garder. Le reste sera auto-vendu ou auto-étudié.'
-        : 'Sélectionnez les tiers à garder. Le reste sera auto-vendu.';
-    info.appendChild(createElement('div', 'auto-forge-desc', desc));
+    info.appendChild(createElement('div', 'auto-forge-desc', 'Sélectionnez les tiers à garder. Le reste sera auto-vendu.'));
 
     const tierList = createElement('div', 'auto-forge-tiers');
     const forgeLevel = getForgeLevel();
@@ -791,19 +733,6 @@ function showAutoForgeModal() {
         info.appendChild(filterSection);
     }
 
-    // Auto-study toggle (only visible with autoStudy tech)
-    if (hasAutoStudyTech) {
-        const studyRow = createElement('label', 'auto-forge-study-row');
-        const studyCheck = document.createElement('input');
-        studyCheck.type = 'checkbox';
-        studyCheck.className = 'auto-forge-checkbox';
-        studyCheck.id = 'auto-study-toggle';
-        studyCheck.checked = autoForge.autoStudy;
-        const studyLabel = createElement('span', 'auto-forge-study-label', '🔮 Auto-study (essence au lieu d\'or)');
-        studyRow.append(studyCheck, studyLabel);
-        info.appendChild(studyRow);
-    }
-
     // Auto-equip indicator (if tech is active)
     if (hasAutoEquip) {
         const equipRow = createElement('div', 'auto-forge-equip-row');
@@ -821,8 +750,6 @@ function showAutoForgeModal() {
         autoForge.selectedTiers = selected;
         autoForge.active = true;
         autoForge.stopping = false;
-        const studyToggle = document.getElementById('auto-study-toggle');
-        autoForge.autoStudy = studyToggle ? studyToggle.checked : false;
 
         // Read smart filter values
         if (smartFilterLevel >= 1) {
