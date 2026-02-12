@@ -8,11 +8,12 @@
 
 .profile-section-title {
     font-size: 0.85em;
-    color: #888;
+    color: var(--gold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 8px;
     font-weight: 600;
+    font-family: var(--font-display);
 }
 
 .profile-info-row {
@@ -20,17 +21,17 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .profile-info-label {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.9em;
 }
 
 .profile-info-value {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     font-size: 0.95em;
 }
 
@@ -41,10 +42,11 @@
 }
 
 .profile-stat-card {
-    background: #f5f5f5;
+    background: var(--bg-card);
     border-radius: 8px;
     padding: 10px;
     text-align: center;
+    border: 1px solid var(--border-subtle);
 }
 
 .profile-stat-icon {
@@ -56,12 +58,12 @@
 .profile-stat-value {
     font-size: 1.2em;
     font-weight: 900;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .profile-stat-label {
     font-size: 0.75em;
-    color: #888;
+    color: var(--text-muted);
     margin-top: 2px;
 }
 
@@ -74,11 +76,12 @@
 .profile-bonus-tag {
     font-size: 0.8em;
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
     padding: 4px 8px;
-    background: #f5f5f5;
+    background: var(--bg-card);
     border-radius: 4px;
     white-space: nowrap;
+    border: 1px solid var(--border-subtle);
 }
 
 .profile-logout-btn {
@@ -87,8 +90,8 @@
     padding: 12px;
     border: none;
     border-radius: 8px;
-    background: #ff4444;
-    color: white;
+    background: linear-gradient(135deg, var(--accent-red), #c62828);
+    color: var(--text-primary);
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
@@ -97,7 +100,7 @@
 }
 
 .profile-logout-btn:hover {
-    background: #cc3333;
+    background: linear-gradient(135deg, #f44336, var(--accent-red));
 }
 
 /* =============================================
@@ -124,9 +127,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
+    background: var(--bg-card);
     border-radius: 50%;
-    border: 3px solid #f0c040;
+    border: 3px solid var(--gold);
 }
 
 .profile-avatar-clickable {
@@ -136,17 +139,18 @@
 
 .profile-avatar-clickable:hover {
     transform: scale(1.05);
-    box-shadow: 0 0 0 4px rgba(240, 192, 64, 0.3);
+    box-shadow: 0 0 0 4px var(--gold-glow);
 }
 
 .profile-level-badge {
     font-size: 1.1em;
     font-weight: 900;
-    color: #f0c040;
-    background: #333;
+    color: var(--gold);
+    background: var(--bg-card);
     padding: 2px 12px;
     border-radius: 12px;
     letter-spacing: 0.5px;
+    border: 1px solid var(--border-medium);
 }
 
 .profile-username-row {
@@ -159,7 +163,8 @@
 .profile-username-display {
     font-size: 1.1em;
     font-weight: 700;
-    color: #333;
+    color: var(--text-primary);
+    font-family: var(--font-display);
 }
 
 .profile-edit-name-btn {
@@ -190,7 +195,7 @@
 .profile-xp-bar {
     width: 100%;
     height: 10px;
-    background: #e0e0e0;
+    background: var(--bg-surface);
     border-radius: 5px;
     overflow: hidden;
     margin-bottom: 4px;
@@ -205,19 +210,19 @@
 
 .profile-xp-label {
     font-size: 0.8em;
-    color: #888;
+    color: var(--text-muted);
     font-weight: 600;
 }
 
 .profile-next-reward {
     font-size: 0.8em;
-    color: #666;
+    color: var(--text-secondary);
     margin-top: 4px;
     font-weight: 600;
 }
 
 .profile-milestone-reward {
-    color: #f0c040;
+    color: var(--gold);
     font-weight: 700;
 }
 
@@ -238,8 +243,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
-    border: 2px solid #e0e0e0;
+    background: var(--bg-card);
+    border: 2px solid var(--border-subtle);
     border-radius: 50%;
     cursor: pointer;
     transition: transform 0.2s, border-color 0.2s, background 0.2s;
@@ -249,13 +254,13 @@
 
 .profile-avatar-option:hover {
     transform: scale(1.1);
-    border-color: #aaa;
+    border-color: var(--border-strong);
 }
 
 .profile-avatar-option.profile-avatar-selected {
-    border-color: #f0c040;
-    background: #fff8e1;
-    box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.3);
+    border-color: var(--gold);
+    background: rgba(240, 192, 64, 0.1);
+    box-shadow: 0 0 0 2px var(--gold-glow);
 }
 
 /* =============================================
@@ -283,21 +288,23 @@
 
 .avatar-picker-modal {
     position: relative;
-    background: white;
+    background: var(--bg-panel);
     border-radius: 12px;
     padding: 24px;
     max-width: 340px;
     width: 90%;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     animation: slideIn 0.2s ease-out;
+    border: 1px solid var(--border-medium);
 }
 
 .avatar-picker-title {
     font-size: 1.1em;
     font-weight: 700;
-    color: #333;
+    color: var(--gold);
     text-align: center;
     margin-bottom: 16px;
+    font-family: var(--font-display);
 }
 
 .avatar-picker-grid {
@@ -352,9 +359,9 @@
 }
 
 .profile-link-google {
-    background: #fff;
-    color: #333;
-    border: 1px solid #d0d0d0;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-medium);
 }
 
 .profile-link-status {
@@ -365,9 +372,9 @@
     border-radius: 8px;
     font-size: 0.85em;
     font-weight: 600;
-    color: #4caf50;
-    background: #f0faf0;
-    border: 1px solid #c8e6c9;
+    color: var(--accent-green);
+    background: rgba(102, 187, 106, 0.1);
+    border: 1px solid rgba(102, 187, 106, 0.3);
 }
 
 .profile-link-status svg {
@@ -379,8 +386,8 @@
    ============================================= */
 
 .profile-rename-overlay {
-    background: #fff;
-    border: 2px solid #f0c040;
+    background: var(--bg-panel);
+    border: 2px solid var(--gold);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -390,9 +397,10 @@
 .profile-rename-title {
     font-weight: 700;
     font-size: 1em;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 4px;
     text-align: center;
+    font-family: var(--font-display);
 }
 
 .profile-rename-cost {
@@ -406,31 +414,33 @@
 .profile-rename-input {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--border-medium);
     border-radius: 6px;
     font-size: 1em;
     margin-bottom: 4px;
     outline: none;
+    background: var(--bg-card);
+    color: var(--text-primary);
 }
 
 .profile-rename-input:focus {
-    border-color: #f0c040;
+    border-color: var(--gold);
 }
 
 .profile-rename-error {
-    color: #ff4444;
+    color: var(--accent-red);
     font-size: 0.8em;
     min-height: 1.2em;
     margin-bottom: 4px;
 }
 
 .profile-rename-error-msg {
-    color: #ff4444;
+    color: var(--accent-red);
     font-size: 0.85em;
     font-weight: 600;
     text-align: center;
     padding: 8px;
-    background: #fff0f0;
+    background: rgba(239, 83, 80, 0.1);
     border-radius: 6px;
     margin-bottom: 8px;
     animation: slideIn 0.2s ease-out;
@@ -442,19 +452,19 @@
 }
 
 .profile-rename-cancel {
-    background: #e0e0e0;
-    color: #333;
+    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    color: var(--text-primary);
 }
 
 .profile-rename-cancel:hover {
-    background: #d0d0d0;
+    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
 }
 
 .profile-rename-confirm {
-    background: #f0c040;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
     color: #1a1a2e;
 }
 
 .profile-rename-confirm:hover {
-    background: #ffd700;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
 }

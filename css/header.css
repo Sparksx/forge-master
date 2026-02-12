@@ -1,17 +1,21 @@
 /* =============================================
    APP HEADER (Power, Gold, Level, XP, Essence)
+   — Game HUD Style
    ============================================= */
 
-/* Persistent App Header (always above modals) */
+/* Persistent App Header */
 .app-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1100;
-    background: white;
+    background: linear-gradient(180deg, #151829 0%, #1a1e35 100%);
     padding: 8px 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow:
+        0 2px 12px rgba(0, 0, 0, 0.5),
+        inset 0 -1px 0 rgba(255, 215, 0, 0.15);
+    border-bottom: 1px solid var(--border-medium);
 }
 
 /* Header Row (profile + power + gold) */
@@ -36,7 +40,8 @@
 .header-power-value {
     font-size: clamp(1.1em, 1.8vw, 1.4em);
     font-weight: 900;
-    color: #333;
+    color: var(--gold);
+    text-shadow: 0 1px 4px rgba(240, 192, 64, 0.3);
 }
 
 .gold-display {
@@ -47,19 +52,21 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1px solid #d0d0d0;
-    background: #f5f5f5;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-card);
     cursor: pointer;
     font-size: 1.1em;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
 }
 
 .header-btn:hover {
-    background: #e0e0e0;
+    background: var(--bg-card-hover);
+    border-color: var(--border-strong);
+    box-shadow: 0 0 8px var(--gold-glow);
 }
 
 .gold-display {
@@ -77,28 +84,30 @@
 .gold-value {
     font-size: clamp(1.1em, 1.8vw, 1.4em);
     font-weight: bold;
-    color: #333;
+    color: var(--gold);
+    text-shadow: 0 1px 3px rgba(240, 192, 64, 0.2);
 }
 
 .gold-add-btn {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid #d0d0d0;
-    background: #f5f5f5;
-    color: #555;
+    border: 1px solid var(--border-medium);
+    background: var(--bg-card);
+    color: var(--gold);
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
 }
 
 .gold-add-btn:hover {
-    background: #e0e0e0;
+    background: var(--bg-card-hover);
+    box-shadow: 0 0 6px var(--gold-glow);
 }
 
 /* =============================================
@@ -117,19 +126,22 @@
 .header-level-label {
     font-size: clamp(0.75em, 1.1vw, 0.9em);
     font-weight: 600;
-    color: #888;
+    color: var(--text-secondary);
+    font-family: var(--font-display);
 }
 
 .header-level-value {
     font-size: clamp(1.1em, 1.8vw, 1.4em);
     font-weight: 900;
-    color: #333;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
 }
 
 .header-xp-bar {
     width: 100%;
     height: 3px;
-    background: #e0e0e0;
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 2px;
     overflow: hidden;
     margin-top: -2px;
@@ -137,10 +149,11 @@
 
 .header-xp-fill {
     height: 100%;
-    background: linear-gradient(90deg, #f0c040, #ff8c00);
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-light));
     border-radius: 2px;
     transition: width 0.5s ease;
     width: 0%;
+    box-shadow: 0 0 6px rgba(240, 192, 64, 0.4);
 }
 
 /* =============================================
@@ -161,7 +174,8 @@
 .diamond-value {
     font-size: clamp(1em, 1.6vw, 1.2em);
     font-weight: bold;
-    color: #00bcd4;
+    color: var(--accent-cyan);
+    text-shadow: 0 1px 4px rgba(79, 195, 247, 0.3);
 }
 
 /* =============================================
@@ -182,7 +196,8 @@
 .essence-value {
     font-size: clamp(1em, 1.6vw, 1.2em);
     font-weight: bold;
-    color: #7e57c2;
+    color: var(--accent-purple);
+    text-shadow: 0 1px 4px rgba(156, 106, 255, 0.3);
 }
 
 /* =============================================
@@ -209,13 +224,13 @@
 }
 
 .gold-pending {
-    color: #d4a017;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    color: var(--gold);
+    text-shadow: 0 1px 4px rgba(240, 192, 64, 0.4);
 }
 
 .essence-pending {
-    color: #7e57c2;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    color: var(--accent-purple);
+    text-shadow: 0 1px 4px rgba(156, 106, 255, 0.4);
 }
 
 @keyframes pendingPulse {
