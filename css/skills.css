@@ -14,9 +14,9 @@
 .skills-forge-section {
     margin-bottom: 16px;
     padding: 12px;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%);
     border-radius: 12px;
-    border: 1px solid #2a2a4a;
+    border: 1px solid var(--border-medium);
     flex-shrink: 0;
 }
 
@@ -34,7 +34,7 @@
 .skills-shard-count {
     font-size: 16px;
     font-weight: 700;
-    color: #bb86fc;
+    color: var(--accent-purple);
 }
 
 .skills-shard-cost {
@@ -62,7 +62,7 @@
     padding: 2px 6px;
     border: 1px solid;
     border-radius: 4px;
-    background: rgba(255,255,255,0.05);
+    background: var(--overlay-soft);
 }
 
 .skills-forge-btn {
@@ -90,8 +90,8 @@
 }
 
 .skills-forge-btn.btn-disabled {
-    background: #333;
-    color: #666;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -175,7 +175,7 @@
 
 .skill-forge-new {
     background: linear-gradient(135deg, #f0c040, #ff8c00);
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     animation: new-skill-glow 1s ease-in-out infinite alternate;
 }
 
@@ -214,7 +214,7 @@
 
 .skill-detail-forge-hint {
     font-size: 12px;
-    color: #bb86fc;
+    color: var(--accent-purple);
     margin-bottom: 8px;
     font-style: italic;
 }
@@ -581,9 +581,9 @@
     position: relative;
     width: 42px;
     height: 42px;
-    border: 2px solid #444;
+    border: 2px solid var(--border-medium);
     border-radius: 10px;
-    background: rgba(0,0,0,0.4);
+    background: var(--overlay-soft);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -641,7 +641,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0,0,0,0.6);
+    background: var(--shadow-strong);
     z-index: 0;
     transition: height 0.1s;
     border-radius: 0 0 8px 8px;

@@ -35,6 +35,18 @@
     /* Fonts */
     --font-display: 'Cinzel', 'Georgia', serif;
     --font-body: 'Inter', 'Segoe UI', sans-serif;
+
+    /* Theme-adaptive helpers */
+    --text-on-gold: #1a1a2e;
+    --overlay-soft: rgba(255, 255, 255, 0.08);
+    --overlay-border: rgba(255, 255, 255, 0.05);
+    --shadow-strong: rgba(0, 0, 0, 0.5);
+    --btn-secondary-from: #3a3d6a;
+    --btn-secondary-to: #4a4d8a;
+    --btn-secondary-hover-from: #4a4d8a;
+    --btn-secondary-hover-to: #5a5daa;
+    --bg-header: linear-gradient(180deg, #151829 0%, #1a1e35 100%);
+    --bg-nav: linear-gradient(0deg, #111326 0%, #181c32 100%);
 }
 
 /* ── Light Theme Override ── */
@@ -67,6 +79,18 @@
     --accent-cyan: #0288d1;
     --accent-green: #2e7d32;
     --accent-red: #c62828;
+
+    /* Theme-adaptive helpers */
+    --text-on-gold: #ffffff;
+    --overlay-soft: rgba(0, 0, 0, 0.06);
+    --overlay-border: rgba(0, 0, 0, 0.08);
+    --shadow-strong: rgba(0, 0, 0, 0.15);
+    --btn-secondary-from: #6b70a8;
+    --btn-secondary-to: #7b80c0;
+    --btn-secondary-hover-from: #7b80c0;
+    --btn-secondary-hover-to: #8b90d0;
+    --bg-header: linear-gradient(180deg, #f5f2ec 0%, #ede9e0 100%);
+    --bg-nav: linear-gradient(0deg, #f0ece4 0%, #f5f2ec 100%);
 }
 
 * {
@@ -178,6 +202,290 @@ h1 {
     background-image:
         radial-gradient(ellipse at 20% 50%, rgba(160, 120, 24, 0.06) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 20%, rgba(100, 60, 180, 0.04) 0%, transparent 50%);
+}
+
+/* =============================================
+   LIGHT THEME — Component Overrides
+   ============================================= */
+
+/* ── Header ── */
+[data-theme="light"] .app-header {
+    background: var(--bg-header);
+    box-shadow: 0 2px 12px var(--shadow-strong), inset 0 -1px 0 rgba(139, 109, 56, 0.15);
+}
+
+[data-theme="light"] .header-level-value {
+    text-shadow: none;
+}
+
+[data-theme="light"] .header-xp-bar {
+    background: var(--overlay-soft);
+}
+
+/* ── Navigation ── */
+[data-theme="light"] .bottom-nav {
+    background: var(--bg-nav);
+    box-shadow: 0 -4px 16px var(--shadow-strong);
+}
+
+/* ── Container / Panels ── */
+[data-theme="light"] .container {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(139, 109, 56, 0.05);
+}
+
+/* ── Auth Screen ── */
+[data-theme="light"] .auth-screen {
+    background: linear-gradient(135deg, #e8e4dc 0%, #ddd8cc 40%, #d4cfbf 100%);
+}
+
+[data-theme="light"] .auth-screen::before {
+    background: radial-gradient(circle, rgba(160, 120, 24, 0.1) 0%, transparent 70%);
+}
+
+[data-theme="light"] .auth-container {
+    background: rgba(245, 242, 236, 0.9);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12), 0 0 1px rgba(139, 109, 56, 0.2);
+}
+
+[data-theme="light"] .auth-btn {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .auth-btn-guest {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .auth-btn-discord {
+    background: #5865F2;
+    color: #fff;
+}
+
+/* ── Combat Zone ── */
+[data-theme="light"] #view-home .combat-zone {
+    background: linear-gradient(180deg, #ddd8cc 0%, #e2ddd0 40%, #e8e4dc 100%);
+}
+
+[data-theme="light"] #view-home .combat-zone::before {
+    background:
+        radial-gradient(1px 1px at 10% 20%, rgba(160, 120, 24, 0.2), transparent),
+        radial-gradient(1px 1px at 30% 70%, rgba(124, 77, 255, 0.15), transparent),
+        radial-gradient(1px 1px at 70% 40%, rgba(2, 136, 209, 0.12), transparent),
+        radial-gradient(1px 1px at 90% 80%, rgba(160, 120, 24, 0.12), transparent),
+        radial-gradient(1px 1px at 50% 10%, rgba(124, 77, 255, 0.1), transparent);
+}
+
+[data-theme="light"] #view-home .forge-zone {
+    background: linear-gradient(180deg, #ede9e0 0%, #f0ece4 100%);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .wave-label {
+    color: var(--text-primary);
+    text-shadow: none;
+}
+
+[data-theme="light"] .wave-progress-bar {
+    background: var(--overlay-soft);
+    border-color: var(--overlay-border);
+}
+
+[data-theme="light"] .combatant-name,
+[data-theme="light"] .monster-row-name {
+    color: var(--text-secondary);
+}
+
+[data-theme="light"] .hp-bar-container {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .combat-result {
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Forge ── */
+[data-theme="light"] .forge-btn {
+    color: var(--text-on-gold);
+    text-shadow: none;
+}
+
+[data-theme="light"] .forge-progress-bar {
+    background: var(--overlay-soft);
+}
+
+[data-theme="light"] .btn-speed-up {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .btn-upgrade-forge {
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
+}
+
+[data-theme="light"] .btn-upgrade-forge:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
+}
+
+/* ── Sub-tabs (Upgrade section) ── */
+[data-theme="light"] .sub-tab.active {
+    color: var(--text-on-gold);
+}
+
+/* ── Modals ── */
+[data-theme="light"] .modal {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="light"] .modal-content {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 1px rgba(139, 109, 56, 0.2);
+}
+
+[data-theme="light"] .modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .decision-confirm-overlay {
+    background: rgba(245, 242, 236, 0.96);
+}
+
+[data-theme="light"] .decision-btn-equip {
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
+}
+
+[data-theme="light"] .decision-btn-equip:hover {
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
+}
+
+[data-theme="light"] .decision-btn-equip.equip-downgrade {
+    background: linear-gradient(135deg, #8a8aa8, #9a9abc);
+}
+
+[data-theme="light"] .decision-btn-equip.equip-downgrade:hover {
+    background: linear-gradient(135deg, #9a9abc, #aaaacc);
+}
+
+[data-theme="light"] .btn-equip {
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
+}
+
+[data-theme="light"] .btn-equip:hover {
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
+}
+
+/* ── Toasts ── */
+[data-theme="light"] .toast {
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .toast-forge {
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
+    color: #fff;
+}
+
+[data-theme="light"] .toast-level {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .toast-level-milestone {
+    color: var(--text-on-gold);
+}
+
+/* ── Shop ── */
+[data-theme="light"] .shop-card-btn {
+    color: var(--text-on-gold);
+}
+
+/* ── Skills ── */
+[data-theme="light"] .skills-forge-section {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-surface) 100%);
+    border-color: var(--border-medium);
+}
+
+[data-theme="light"] .skills-shard-count {
+    color: var(--accent-purple);
+}
+
+[data-theme="light"] .skills-tier-chance-chip {
+    background: var(--overlay-soft);
+}
+
+[data-theme="light"] .skills-forge-btn.btn-disabled {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+}
+
+[data-theme="light"] .skill-forge-new {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .skill-detail-forge-hint {
+    color: var(--accent-purple);
+}
+
+[data-theme="light"] .skill-hud-btn {
+    border-color: var(--border-medium);
+    background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .skill-hud-cd-overlay {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .skills-type-passive {
+    background: rgba(46, 125, 50, 0.08);
+}
+
+[data-theme="light"] .skills-type-active {
+    background: rgba(0, 112, 221, 0.08);
+}
+
+/* ── Auto-Forge Filter ── */
+[data-theme="light"] .auto-forge-filter-section {
+    background: rgba(63, 81, 181, 0.06);
+    border-color: rgba(63, 81, 181, 0.15);
+}
+
+[data-theme="light"] .auto-forge-slot-row {
+    background: rgba(63, 81, 181, 0.06);
+}
+
+[data-theme="light"] .auto-forge-slot-row:hover {
+    background: rgba(63, 81, 181, 0.12);
+}
+
+/* ── PvP ── */
+[data-theme="light"] .pvp-find-btn {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .pvp-action-btn {
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
+}
+
+[data-theme="light"] .pvp-action-btn:hover {
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
+}
+
+[data-theme="light"] .pvp-stat-item {
+    background: var(--overlay-soft);
+}
+
+[data-theme="light"] .pvp-log-entry:nth-child(odd) {
+    background: var(--overlay-soft);
+}
+
+/* ── Profile ── */
+[data-theme="light"] .profile-rename-confirm {
+    color: var(--text-on-gold);
+}
+
+[data-theme="light"] .profile-avatar-picker-overlay {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Tech Tree ── */
+[data-theme="light"] .tech-node-cost-display {
+    color: var(--text-secondary);
 }
 
 .hidden {

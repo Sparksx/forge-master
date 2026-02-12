@@ -452,17 +452,17 @@
 }
 
 .profile-rename-cancel {
-    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
     color: var(--text-primary);
 }
 
 .profile-rename-cancel:hover {
-    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
 }
 
 .profile-rename-confirm {
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
 }
 
 .profile-rename-confirm:hover {
@@ -586,7 +586,7 @@
 
 .theme-toggle-option.active {
     background: var(--gold);
-    color: #1a1a2e;
+    color: var(--text-on-gold);
 }
 
 .theme-toggle-option:hover:not(.active) {

@@ -9,12 +9,12 @@
     left: 0;
     right: 0;
     height: 64px;
-    background: linear-gradient(0deg, #111326 0%, #181c32 100%);
+    background: var(--bg-nav);
     display: flex;
     justify-content: space-around;
     align-items: center;
     border-top: 1px solid var(--border-medium);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 -4px 16px var(--shadow-strong);
     z-index: 500;
     padding: 0 4px;
     padding-bottom: env(safe-area-inset-bottom, 0);
@@ -93,7 +93,7 @@
 
 .sub-tab.active {
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     border-color: var(--gold);
     box-shadow: 0 2px 8px rgba(240, 192, 64, 0.3);
     font-weight: 700;

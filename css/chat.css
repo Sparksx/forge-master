@@ -179,7 +179,7 @@
     border: none;
     border-radius: 8px;
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     font-weight: bold;
     cursor: pointer;
 }

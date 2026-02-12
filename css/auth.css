@@ -5,7 +5,7 @@
 .auth-screen {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, #0a0c1a 0%, #12152e 40%, #1a1e3a 100%);
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-panel) 40%, var(--bg-surface) 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -27,7 +27,7 @@
 }
 
 .auth-container {
-    background: rgba(21, 24, 41, 0.8);
+    background: color-mix(in srgb, var(--bg-panel) 80%, transparent);
     backdrop-filter: blur(12px);
     border: 1px solid var(--border-medium);
     border-radius: 16px;
@@ -85,7 +85,7 @@
     border: none;
     border-radius: 8px;
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
@@ -128,7 +128,7 @@
 
 .auth-btn-guest {
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     font-size: 1.15em;
     padding: 14px;
     font-family: var(--font-display);

@@ -72,7 +72,7 @@
 .shop-card-btn {
     padding: 8px 16px;
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     border: none;
     border-radius: 6px;
     font-weight: bold;
