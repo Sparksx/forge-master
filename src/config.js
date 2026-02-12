@@ -37,8 +37,22 @@ export const MAX_TIER = TIERS.length;
 
 // --- Forge level system ---
 
-// Gold per remaining second to instantly complete an upgrade
+// Gold per remaining second to instantly complete an upgrade (legacy, kept for reference)
 export const SPEED_UP_GOLD_PER_SECOND = 2;
+
+// Diamonds: premium currency for speed-up and shop purchases
+export const STARTING_DIAMONDS = 100;
+export const SPEED_UP_SECONDS_PER_DIAMOND = 60; // 1 diamond = 60 seconds of acceleration
+
+// Diamond shop offers: buy gold or essence with diamonds
+export const DIAMOND_SHOP_OFFERS = [
+    { id: 'gold_s',    type: 'gold',    cost: 10,  amount: 5000,   label: 'Gold S' },
+    { id: 'gold_m',    type: 'gold',    cost: 50,  amount: 30000,  label: 'Gold M' },
+    { id: 'gold_l',    type: 'gold',    cost: 100, amount: 75000,  label: 'Gold L' },
+    { id: 'essence_s', type: 'essence', cost: 10,  amount: 100,    label: 'Essence S' },
+    { id: 'essence_m', type: 'essence', cost: 50,  amount: 600,    label: 'Essence M' },
+    { id: 'essence_l', type: 'essence', cost: 100, amount: 1500,   label: 'Essence L' },
+];
 
 // Auto-forge interval in milliseconds
 export const AUTO_FORGE_INTERVAL = 3500;

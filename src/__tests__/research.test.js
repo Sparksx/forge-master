@@ -16,6 +16,7 @@ const {
     resetGame, getEssence, addEssence, spendEssence, getTechLevel,
     getTechEffect, getResearchState, setResearchActive, completeResearch,
     getResearchQueue, addToResearchQueue, shiftResearchQueue, getGold, addGold,
+    getDiamonds, addDiamonds, spendDiamonds,
 } = await import('../state.js');
 
 const {
@@ -26,7 +27,7 @@ const {
 } = await import('../research.js');
 
 const { getResearchCost } = await import('../tech-config.js');
-const { SPEED_UP_GOLD_PER_SECOND } = await import('../config.js');
+const { SPEED_UP_SECONDS_PER_DIAMOND } = await import('../config.js');
 
 describe('research engine', () => {
 
@@ -276,7 +277,7 @@ describe('research engine', () => {
             expect(status.speedUpCost).toBeGreaterThanOrEqual(0);
         });
 
-        it('speedUpCost equals remaining * SPEED_UP_GOLD_PER_SECOND', () => {
+        it('speedUpCost equals remaining / SPEED_UP_SECONDS_PER_DIAMOND', () => {
             setResearchActive({
                 techId: 'vitality',
                 level: 1,
@@ -284,7 +285,7 @@ describe('research engine', () => {
                 duration: 100,
             });
             const status = getResearchStatus();
-            expect(status.speedUpCost).toBe(Math.ceil(status.remaining * SPEED_UP_GOLD_PER_SECOND));
+            expect(status.speedUpCost).toBe(Math.ceil(status.remaining / SPEED_UP_SECONDS_PER_DIAMOND));
         });
     });
 
@@ -344,32 +345,47 @@ describe('research engine', () => {
             expect(speedUpResearch()).toBe(false);
         });
 
-        it('returns false when not enough gold', () => {
+        it('returns false when not enough diamonds', () => {
             setResearchActive({
                 techId: 'vitality',
                 level: 1,
                 startedAt: Date.now(),
                 duration: 100,
             });
-            // Gold is 0
+            // Spend all starting diamonds
+            spendDiamonds(getDiamonds());
             expect(speedUpResearch()).toBe(false);
         });
 
-        it('completes research instantly when enough gold', () => {
+        it('completes research instantly when enough diamonds', () => {
             setResearchActive({
                 techId: 'vitality',
                 level: 1,
                 startedAt: Date.now(),
                 duration: 100,
             });
-            addGold(10000);
+            // Player starts with 100 diamonds, cost is ceil(100/60) = 2
             const result = speedUpResearch();
             expect(result).toBe(true);
             expect(getTechLevel('vitality')).toBe(1);
             expect(getResearchState().active).toBeNull();
         });
 
-        it('deducts gold equal to speedUpCost', () => {
+        it('deducts diamonds equal to speedUpCost', () => {
+            setResearchActive({
+                techId: 'vitality',
+                level: 1,
+                startedAt: Date.now(),
+                duration: 100,
+            });
+            addDiamonds(500);
+            const diamondsBefore = getDiamonds();
+            const status = getResearchStatus();
+            speedUpResearch();
+            expect(getDiamonds()).toBe(diamondsBefore - status.speedUpCost);
+        });
+
+        it('does not deduct gold when speeding up research', () => {
             setResearchActive({
                 techId: 'vitality',
                 level: 1,
@@ -378,9 +394,8 @@ describe('research engine', () => {
             });
             addGold(50000);
             const goldBefore = getGold();
-            const status = getResearchStatus();
             speedUpResearch();
-            expect(getGold()).toBe(goldBefore - status.speedUpCost);
+            expect(getGold()).toBe(goldBefore); // gold unchanged
         });
 
         it('auto-completes if research already done', () => {

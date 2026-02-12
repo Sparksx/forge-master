@@ -101,6 +101,7 @@ router.get('/state', requireAuth, async (req, res) => {
         res.json({
             equipment: state.equipment,
             gold: state.gold,
+            diamonds: state.diamonds,
             forgeLevel: state.forgeLevel,
             forgeUpgrade: state.forgeUpgrade,
             combat: state.combat,
@@ -118,7 +119,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
+    const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
 
     try {
         const data = {};
@@ -133,6 +134,12 @@ router.put('/state', requireAuth, async (req, res) => {
                 return res.status(400).json({ error: 'Gold must be a non-negative number' });
             }
             data.gold = Math.floor(gold);
+        }
+        if (diamonds !== undefined) {
+            if (typeof diamonds !== 'number' || diamonds < 0) {
+                return res.status(400).json({ error: 'Diamonds must be a non-negative number' });
+            }
+            data.diamonds = Math.floor(diamonds);
         }
         if (forgeLevel !== undefined) {
             if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > 30) {
@@ -190,6 +197,7 @@ router.put('/state', requireAuth, async (req, res) => {
                 userId: req.user.userId,
                 equipment: equipment || {},
                 gold: gold || 0,
+                diamonds: typeof diamonds === 'number' ? Math.floor(diamonds) : 100,
                 forgeLevel: forgeLevel || 1,
                 forgeUpgrade: forgeUpgrade || null,
                 combat: combat || { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },

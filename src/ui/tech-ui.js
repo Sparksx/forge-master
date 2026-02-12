@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════
 
 import { TECH_BRANCHES, TECHS, getTechById } from '../tech-config.js';
-import { getTechLevel, getEssence, getGold, getTechEffect } from '../state.js';
+import { getTechLevel, getEssence, getDiamonds, getTechEffect } from '../state.js';
 import {
     isTechUnlocked, isTechMaxed, getEffectiveResearchCost,
     getResearchStatus, startResearch, speedUpResearch,
@@ -301,8 +301,8 @@ function updateResearchTimerDisplay() {
 
     const speedUpBtn = document.getElementById('research-speed-up-btn');
     if (speedUpBtn) {
-        speedUpBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)}g`;
-        const canAfford = getGold() >= status.speedUpCost;
+        speedUpBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)} 💎`;
+        const canAfford = getDiamonds() >= status.speedUpCost;
         speedUpBtn.disabled = !canAfford;
         speedUpBtn.classList.toggle('btn-disabled', !canAfford);
     }

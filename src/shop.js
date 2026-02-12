@@ -1,5 +1,6 @@
-import { addGold, getCombatProgress, getShopState, setShopState } from './state.js';
+import { addGold, addEssence, getCombatProgress, getShopState, setShopState, getDiamonds, spendDiamonds } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
+import { DIAMOND_SHOP_OFFERS } from './config.js';
 
 // Daily login reward tiers — players can claim once per day
 const DAILY_REWARD_BASE = 50;
@@ -54,6 +55,23 @@ function claimMilestone(id) {
     return m.gold;
 }
 
+// --- Diamond shop: buy gold/essence with diamonds ---
+
+export function buyDiamondOffer(offerId) {
+    const offer = DIAMOND_SHOP_OFFERS.find(o => o.id === offerId);
+    if (!offer) return false;
+    if (getDiamonds() < offer.cost) return false;
+
+    if (!spendDiamonds(offer.cost)) return false;
+
+    if (offer.type === 'gold') {
+        addGold(offer.amount);
+    } else if (offer.type === 'essence') {
+        addEssence(offer.amount);
+    }
+    return true;
+}
+
 function createElement(tag, className, text) {
     const el = document.createElement(tag);
     if (className) el.className = className;
@@ -77,17 +95,17 @@ function renderShop() {
     dailyBtn.disabled = !dailyAvailable;
     if (shop.dailyStreak > 0) {
         dailyCard.append(
-            createElement('div', 'shop-card-icon', '🎁'),
+            createElement('div', 'shop-card-icon', '\uD83C\uDF81'),
             createElement('div', 'shop-card-name', 'Daily Reward'),
-            createElement('div', 'shop-card-gold', `💰 ${getDailyAmount()}`),
-            createElement('div', 'shop-card-streak', `🔥 ${shop.dailyStreak} day streak`),
+            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${getDailyAmount()}`),
+            createElement('div', 'shop-card-streak', `\uD83D\uDD25 ${shop.dailyStreak} day streak`),
             dailyBtn
         );
     } else {
         dailyCard.append(
-            createElement('div', 'shop-card-icon', '🎁'),
+            createElement('div', 'shop-card-icon', '\uD83C\uDF81'),
             createElement('div', 'shop-card-name', 'Daily Reward'),
-            createElement('div', 'shop-card-gold', `💰 ${getDailyAmount()}`),
+            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${getDailyAmount()}`),
             dailyBtn
         );
     }
@@ -116,9 +134,36 @@ function renderShop() {
         }
 
         card.append(
-            createElement('div', 'shop-card-icon', '🏆'),
+            createElement('div', 'shop-card-icon', '\uD83C\uDFC6'),
             createElement('div', 'shop-card-name', m.label),
-            createElement('div', 'shop-card-gold', `💰 ${m.gold.toLocaleString('en-US')}`),
+            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${m.gold.toLocaleString('en-US')}`),
+            btn
+        );
+        container.appendChild(card);
+    });
+
+    // --- Diamond Shop Section ---
+    const diamondTitle = createElement('div', 'shop-section-title', '\uD83D\uDC8E Diamond Shop');
+    container.appendChild(diamondTitle);
+
+    const diamonds = getDiamonds();
+
+    DIAMOND_SHOP_OFFERS.forEach(offer => {
+        const card = createElement('div', 'shop-card shop-card-diamond');
+        card.dataset.action = 'diamond';
+        card.dataset.offer = offer.id;
+
+        const icon = offer.type === 'gold' ? '\uD83D\uDCB0' : '\uD83D\uDD2E';
+        const resourceLabel = offer.type === 'gold' ? 'Gold' : 'Essence';
+        const canAfford = diamonds >= offer.cost;
+
+        const btn = createElement('button', 'shop-card-btn', canAfford ? 'Buy' : 'Not enough \uD83D\uDC8E');
+        btn.disabled = !canAfford;
+
+        card.append(
+            createElement('div', 'shop-card-icon', icon),
+            createElement('div', 'shop-card-name', `${offer.amount.toLocaleString('en-US')} ${resourceLabel}`),
+            createElement('div', 'shop-card-cost', `\uD83D\uDC8E ${offer.cost}`),
             btn
         );
         container.appendChild(card);
@@ -142,13 +187,15 @@ export function initShop() {
         const btn = card.querySelector('.shop-card-btn');
         if (!btn || btn.disabled) return;
 
-        let earned = 0;
+        let success = false;
         if (card.dataset.action === 'daily') {
-            earned = claimDaily();
+            success = claimDaily() > 0;
         } else if (card.dataset.action === 'milestone') {
-            earned = claimMilestone(card.dataset.milestone);
+            success = claimMilestone(card.dataset.milestone) > 0;
+        } else if (card.dataset.action === 'diamond') {
+            success = buyDiamondOffer(card.dataset.offer);
         }
-        if (earned > 0) {
+        if (success) {
             showPurchaseFeedback(card);
             renderShop();
         }
@@ -156,4 +203,6 @@ export function initShop() {
 
     // Re-render shop when combat progress changes (milestone may become claimable)
     gameEvents.on(EVENTS.COMBAT_WAVE_CHANGED, renderShop);
+    // Re-render when diamonds change (update affordability)
+    gameEvents.on(EVENTS.DIAMONDS_CHANGED, renderShop);
 }

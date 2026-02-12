@@ -11,8 +11,8 @@ import {
     saveGame,
 } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
-import { SPEED_UP_GOLD_PER_SECOND } from './config.js';
-import { getGold, addGold } from './state.js';
+import { SPEED_UP_SECONDS_PER_DIAMOND } from './config.js';
+import { getDiamonds, spendDiamonds } from './state.js';
 
 let researchTimerInterval = null;
 
@@ -131,7 +131,7 @@ export function getResearchStatus() {
     const elapsed = (Date.now() - startedAt) / 1000;
     const remaining = Math.max(0, duration - elapsed);
     const progress = Math.min(1, elapsed / duration);
-    const speedUpCost = Math.ceil(remaining * SPEED_UP_GOLD_PER_SECOND);
+    const speedUpCost = Math.ceil(remaining / SPEED_UP_SECONDS_PER_DIAMOND);
 
     return { remaining, progress, speedUpCost, duration, ...research.active };
 }
@@ -154,10 +154,10 @@ export function speedUpResearch() {
     if (!status || status.remaining <= 0) {
         return checkResearchComplete();
     }
-    const gold = getGold();
-    if (gold < status.speedUpCost) return false;
+    const diamonds = getDiamonds();
+    if (diamonds < status.speedUpCost) return false;
 
-    addGold(-status.speedUpCost);
+    spendDiamonds(status.speedUpCost);
     const research = getResearchState();
     completeResearch(research.active.techId, research.active.level);
     processQueue();
