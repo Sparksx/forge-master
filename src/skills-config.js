@@ -7,7 +7,7 @@
 import { TIERS } from './config.js';
 
 // Max skill levels per tier
-export const SKILL_MAX_LEVELS = { 1: 10, 2: 8, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2 };
+export const SKILL_MAX_LEVELS = { 1: 5, 2: 5, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2 };
 
 // Max equipped skills at once
 export const MAX_EQUIPPED_SKILLS = 3;
@@ -83,11 +83,11 @@ export const SKILLS = [
         icon: '🛡️',
         type: 'passive',
         tier: 1,
-        description: '+5% max HP per level',
+        description: '+8% max HP per level',
         effect: {
             stat: 'maxHPPercent',
-            base: 5,
-            perLevel: 5,
+            base: 8,
+            perLevel: 8,
         },
     },
     {
@@ -96,11 +96,11 @@ export const SKILLS = [
         icon: '🗡️',
         type: 'passive',
         tier: 1,
-        description: '+5% damage per level',
+        description: '+8% damage per level',
         effect: {
             stat: 'damagePercent',
-            base: 5,
-            perLevel: 5,
+            base: 8,
+            perLevel: 8,
         },
     },
 
@@ -111,11 +111,11 @@ export const SKILLS = [
         icon: '⚡',
         type: 'passive',
         tier: 2,
-        description: '+3% attack speed per level',
+        description: '+4% attack speed per level',
         effect: {
             stat: 'attackSpeedPercent',
-            base: 3,
-            perLevel: 3,
+            base: 4,
+            perLevel: 4,
         },
     },
     {
@@ -124,11 +124,11 @@ export const SKILLS = [
         icon: '🎯',
         type: 'passive',
         tier: 2,
-        description: '+2% crit chance per level',
+        description: '+3% crit chance per level',
         effect: {
             stat: 'critChanceFlat',
-            base: 2,
-            perLevel: 2,
+            base: 3,
+            perLevel: 3,
         },
     },
 
@@ -253,15 +253,15 @@ export const SKILLS = [
         icon: '🛡️',
         type: 'active',
         tier: 1,
-        description: 'Reduce damage taken by 20% for 5s (+2%/lvl)',
+        description: 'Reduce damage taken by 25% for 5s (+4%/lvl)',
         effect: {
             stat: 'damageReduction',
-            base: 20,
-            perLevel: 2,
+            base: 25,
+            perLevel: 4,
         },
         duration: 5,        // seconds
         cooldown: 30,       // seconds
-        cooldownPerLevel: -1, // -1s CD per level
+        cooldownPerLevel: -2, // -2s CD per level
     },
     {
         id: 'powerStrike',
@@ -269,11 +269,11 @@ export const SKILLS = [
         icon: '💪',
         type: 'active',
         tier: 1,
-        description: 'Next 3 attacks deal +50% damage (+10%/lvl)',
+        description: 'Next 3 attacks deal +50% damage (+15%/lvl)',
         effect: {
             stat: 'powerStrike',
             base: 50,
-            perLevel: 10,
+            perLevel: 15,
         },
         duration: 0,        // instant (charge-based: 3 attacks)
         charges: 3,
@@ -288,11 +288,11 @@ export const SKILLS = [
         icon: '📯',
         type: 'active',
         tier: 2,
-        description: '+30% attack speed for 6s (+5%/lvl)',
+        description: '+30% attack speed for 6s (+8%/lvl)',
         effect: {
             stat: 'attackSpeedBurst',
             base: 30,
-            perLevel: 5,
+            perLevel: 8,
         },
         duration: 6,
         cooldown: 35,
@@ -304,11 +304,11 @@ export const SKILLS = [
         icon: '💚',
         type: 'active',
         tier: 2,
-        description: 'Instantly heal 20% max HP (+3%/lvl)',
+        description: 'Instantly heal 20% max HP (+5%/lvl)',
         effect: {
             stat: 'instantHeal',
             base: 20,
-            perLevel: 3,
+            perLevel: 5,
         },
         duration: 0,
         cooldown: 40,

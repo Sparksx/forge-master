@@ -1,4 +1,4 @@
-import { addGold, addEssence, getCombatProgress, getShopState, setShopState, getDiamonds, spendDiamonds, loadGameFromServer } from './state.js';
+import { addGold, addEssence, getCombatProgress, getShopState, setShopState, getDiamonds, spendDiamonds, loadGameFromServer, getForgeLevel, addSkillShards } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 import { DIAMOND_SHOP_OFFERS, DIAMOND_PACKS } from './config.js';
 import { apiFetch, getAccessToken } from './api.js';
@@ -7,13 +7,19 @@ import { apiFetch, getAccessToken } from './api.js';
 const DAILY_REWARD_BASE = 50;
 const DAILY_REWARD_STREAK_BONUS = 25; // extra gold per consecutive day
 
-// Milestone gold rewards based on dungeon progress
+// Milestone rewards based on dungeon progress
 const MILESTONE_REWARDS = [
     { id: 'wave2',  label: 'Clear Wave 2',  wave: 2,  subWave: 1, gold: 200 },
     { id: 'wave4',  label: 'Clear Wave 4',  wave: 4,  subWave: 1, gold: 500 },
     { id: 'wave6',  label: 'Clear Wave 6',  wave: 6,  subWave: 1, gold: 1000 },
     { id: 'wave8',  label: 'Clear Wave 8',  wave: 8,  subWave: 1, gold: 2500 },
     { id: 'wave10', label: 'Clear Wave 10', wave: 10, subWave: 1, gold: 5000 },
+    // Extended waves (require Wave Breaker tech)
+    { id: 'wave12', label: 'Clear Wave 12', wave: 12, subWave: 1, gold: 10000,  essence: 500,   shards: 0 },
+    { id: 'wave14', label: 'Clear Wave 14', wave: 14, subWave: 1, gold: 25000,  essence: 1000,  shards: 50 },
+    { id: 'wave16', label: 'Clear Wave 16', wave: 16, subWave: 1, gold: 50000,  essence: 2500,  shards: 100 },
+    { id: 'wave18', label: 'Clear Wave 18', wave: 18, subWave: 1, gold: 100000, essence: 5000,  shards: 150 },
+    { id: 'wave20', label: 'Clear Wave 20', wave: 20, subWave: 1, gold: 250000, essence: 10000, shards: 250 },
 ];
 
 function getToday() {
@@ -25,7 +31,12 @@ function canClaimDaily() {
 }
 
 function getDailyAmount() {
-    return DAILY_REWARD_BASE + getShopState().dailyStreak * DAILY_REWARD_STREAK_BONUS;
+    const forgeLevelBonus = getForgeLevel() * 50;
+    return DAILY_REWARD_BASE + forgeLevelBonus + getShopState().dailyStreak * DAILY_REWARD_STREAK_BONUS;
+}
+
+function getDailyEssence() {
+    return getForgeLevel() * 3;
 }
 
 function claimDaily() {
@@ -37,6 +48,8 @@ function claimDaily() {
     setShopState({ dailyLastClaimed: today, dailyStreak: newStreak });
     const amount = getDailyAmount();
     addGold(amount);
+    const essenceAmount = getDailyEssence();
+    if (essenceAmount > 0) addEssence(essenceAmount);
     gameEvents.emit(EVENTS.GOLD_PURCHASED, { type: 'daily', gold: amount });
     return amount;
 }
@@ -52,6 +65,8 @@ function claimMilestone(id) {
     if (!reached) return 0;
     setShopState({ claimedMilestones: [...shop.claimedMilestones, id] });
     addGold(m.gold);
+    if (m.essence) addEssence(m.essence);
+    if (m.shards) addSkillShards(m.shards);
     gameEvents.emit(EVENTS.GOLD_PURCHASED, { type: 'milestone', gold: m.gold });
     return m.gold;
 }
@@ -171,22 +186,19 @@ function renderShop() {
     const dailyAvailable = canClaimDaily();
     const dailyBtn = createElement('button', 'shop-card-btn', dailyAvailable ? 'Claim!' : 'Claimed');
     dailyBtn.disabled = !dailyAvailable;
-    if (shop.dailyStreak > 0) {
-        dailyCard.append(
-            createElement('div', 'shop-card-icon', '\uD83C\uDF81'),
-            createElement('div', 'shop-card-name', 'Daily Reward'),
-            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${getDailyAmount()}`),
-            createElement('div', 'shop-card-streak', `\uD83D\uDD25 ${shop.dailyStreak} day streak`),
-            dailyBtn
-        );
-    } else {
-        dailyCard.append(
-            createElement('div', 'shop-card-icon', '\uD83C\uDF81'),
-            createElement('div', 'shop-card-name', 'Daily Reward'),
-            createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${getDailyAmount()}`),
-            dailyBtn
-        );
+    const dailyEssence = getDailyEssence();
+    dailyCard.append(
+        createElement('div', 'shop-card-icon', '\uD83C\uDF81'),
+        createElement('div', 'shop-card-name', 'Daily Reward'),
+        createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${getDailyAmount()}`),
+    );
+    if (dailyEssence > 0) {
+        dailyCard.appendChild(createElement('div', 'shop-card-essence', `\uD83D\uDD2E ${dailyEssence}`));
     }
+    if (shop.dailyStreak > 0) {
+        dailyCard.appendChild(createElement('div', 'shop-card-streak', `\uD83D\uDD25 ${shop.dailyStreak} day streak`));
+    }
+    dailyCard.appendChild(dailyBtn);
     container.appendChild(dailyCard);
 
     // Milestone cards
@@ -215,8 +227,14 @@ function renderShop() {
             createElement('div', 'shop-card-icon', '\uD83C\uDFC6'),
             createElement('div', 'shop-card-name', m.label),
             createElement('div', 'shop-card-gold', `\uD83D\uDCB0 ${m.gold.toLocaleString('en-US')}`),
-            btn
         );
+        if (m.essence) {
+            card.appendChild(createElement('div', 'shop-card-essence', `\uD83D\uDD2E ${m.essence.toLocaleString('en-US')}`));
+        }
+        if (m.shards) {
+            card.appendChild(createElement('div', 'shop-card-shards', `\u2728 ${m.shards} shards`));
+        }
+        card.appendChild(btn);
         container.appendChild(card);
     });
 
