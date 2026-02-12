@@ -7,7 +7,7 @@ import {
     PROFILE_PICTURES
 } from './config.js';
 import { TECHS, getTechById } from './tech-config.js';
-import { SKILLS, getSkillById as getSkillDef, MAX_EQUIPPED_SKILLS, getSkillMaxLevel } from './skills-config.js';
+import { SKILLS, getSkillById as getSkillDef, MAX_EQUIPPED_SKILLS, getSkillMaxLevel, getSkillLevelFromCopies } from './skills-config.js';
 import { gameEvents, EVENTS } from './events.js';
 import { apiFetch, getAccessToken } from './api.js';
 
@@ -125,7 +125,9 @@ const gameState = {
     skills: {
         unlocked: {},   // { [skillId]: level }  (level >= 1 means unlocked)
         equipped: [],   // [skillId, ...] max 3
+        copies: {},     // { [skillId]: totalCopiesForged }
     },
+    skillShards: 0,     // earned through combat sub-wave completions
     // Shop state (persisted with game save to prevent re-claiming after cache clear)
     shopState: {
         claimedMilestones: [],
@@ -146,7 +148,8 @@ export function resetGame() {
     gameState.diamonds = STARTING_DIAMONDS;
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
-    gameState.skills = { unlocked: {}, equipped: [] };
+    gameState.skills = { unlocked: {}, equipped: [], copies: {} };
+    gameState.skillShards = 0;
 }
 
 // --- Player level getters / setters ---
@@ -529,6 +532,56 @@ export function setEquippedSkills(equipped) {
     gameState.skills.equipped = equipped;
 }
 
+// --- Skill Shards ---
+
+export function getSkillShards() {
+    return gameState.skillShards;
+}
+
+export function addSkillShards(amount) {
+    gameState.skillShards += amount;
+    saveGame();
+    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skillShards);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function spendSkillShards(amount) {
+    if (gameState.skillShards < amount) return false;
+    gameState.skillShards -= amount;
+    saveGame();
+    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skillShards);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+// --- Skill Copies ---
+
+export function getSkillCopies(skillId) {
+    return gameState.skills.copies[skillId] || 0;
+}
+
+export function getAllSkillCopies() {
+    return { ...gameState.skills.copies };
+}
+
+export function addSkillCopy(skillId) {
+    if (!gameState.skills.copies[skillId]) {
+        gameState.skills.copies[skillId] = 0;
+    }
+    gameState.skills.copies[skillId]++;
+
+    // Recalculate level from copies
+    const skill = getSkillDef(skillId);
+    if (skill) {
+        const maxLevel = getSkillMaxLevel(skill);
+        const newLevel = getSkillLevelFromCopies(gameState.skills.copies[skillId], maxLevel);
+        const oldLevel = gameState.skills.unlocked[skillId] || 0;
+        if (newLevel > oldLevel) {
+            gameState.skills.unlocked[skillId] = newLevel;
+        }
+    }
+}
+
 /** Get effective value of a tech effect for game systems */
 export function getTechEffect(effectType) {
     let total = 0;
@@ -570,6 +623,7 @@ function buildSaveData() {
         essence: gameState.essence,
         research: gameState.research,
         skills: gameState.skills,
+        skillShards: gameState.skillShards,
     };
     return data;
 }
@@ -751,6 +805,17 @@ function applyLoadedData(loaded) {
 
     // Restore skills state
     if (loaded.skills && typeof loaded.skills === 'object') {
+        // Restore copies first
+        if (loaded.skills.copies && typeof loaded.skills.copies === 'object') {
+            gameState.skills.copies = {};
+            for (const [skillId, copies] of Object.entries(loaded.skills.copies)) {
+                const skill = getSkillDef(skillId);
+                if (skill && typeof copies === 'number' && copies >= 0) {
+                    gameState.skills.copies[skillId] = Math.floor(copies);
+                }
+            }
+        }
+
         if (loaded.skills.unlocked && typeof loaded.skills.unlocked === 'object') {
             gameState.skills.unlocked = {};
             for (const [skillId, level] of Object.entries(loaded.skills.unlocked)) {
@@ -765,6 +830,11 @@ function applyLoadedData(loaded) {
                 return typeof id === 'string' && gameState.skills.unlocked[id];
             }).slice(0, MAX_EQUIPPED_SKILLS);
         }
+    }
+
+    // Restore skill shards
+    if (typeof loaded.skillShards === 'number' && loaded.skillShards >= 0) {
+        gameState.skillShards = Math.floor(loaded.skillShards);
     }
 
     // Restore shop state (milestones + daily rewards)

@@ -1,15 +1,17 @@
 // ══════════════════════════════════════════════════════════
-// Skills System — unlock, level-up, equip, activate
+// Skills System — forge, equip, activate
 // ══════════════════════════════════════════════════════════
 
 import {
-    SKILLS, getSkillById, getSkillMaxLevel, getSkillUnlockReqs,
-    getSkillLevelUpCost, getSkillCooldown, getSkillDuration,
+    SKILLS, getSkillById, getSkillsByTier, getSkillMaxLevel,
+    getSkillCooldown, getSkillDuration,
     getSkillEffectValue, MAX_EQUIPPED_SKILLS,
+    SKILL_FORGE_COST, getSkillForgeTierChances, getSkillLevelFromCopies,
+    getTotalCopiesForLevel, getSkillCopiesForLevel,
 } from './skills-config.js';
 import {
-    getEssence, getGold, getCombatProgress, getPlayerLevel,
-    addGold, spendEssence, saveGame,
+    getCombatProgress, getPlayerLevel, saveGame,
+    getSkillShards, spendSkillShards, addSkillCopy, getSkillCopies,
 } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
 
@@ -32,81 +34,72 @@ let undyingWillLastProc = 0;
 
 // ── Persisted state accessors (delegated to state.js) ──
 
-// These are imported from state.js after we add the skill state there
 import {
     getSkillsState, setSkillUnlocked, setSkillLevel,
     getEquippedSkills, setEquippedSkills,
 } from './state.js';
 
-// ── Unlock ─────────────────────────────────────────────────
+// ── Skill Forge ─────────────────────────────────────────────
 
-export function canUnlockSkill(skillId) {
-    const skill = getSkillById(skillId);
-    if (!skill) return false;
-
-    const state = getSkillsState();
-    if (state.unlocked[skillId]) return false; // already unlocked
-
-    const reqs = getSkillUnlockReqs(skill.tier);
-    const combat = getCombatProgress();
-
-    if (combat.highestWave < reqs.wave) return false;
-    if (getEssence() < reqs.essenceCost) return false;
-    if (getGold() < reqs.goldCost) return false;
-
-    return true;
+/** Roll a skill tier based on highest wave reached */
+function rollSkillTier(highestWave) {
+    const { chances } = getSkillForgeTierChances(highestWave);
+    const roll = Math.random() * 100;
+    let cumulative = 0;
+    for (let i = 0; i < chances.length; i++) {
+        cumulative += chances[i];
+        if (roll < cumulative) return i + 1;
+    }
+    return 1;
 }
 
-export function unlockSkill(skillId) {
-    if (!canUnlockSkill(skillId)) return false;
-
-    const skill = getSkillById(skillId);
-    const reqs = getSkillUnlockReqs(skill.tier);
-
-    // Spend resources
-    spendEssence(reqs.essenceCost);
-    addGold(-reqs.goldCost);
-
-    setSkillUnlocked(skillId, 1);
-    saveGame();
-    gameEvents.emit(EVENTS.SKILL_UNLOCKED, { skillId, skill });
-    gameEvents.emit(EVENTS.STATE_CHANGED);
-    return true;
+/** Pick a random skill from the given tier */
+function pickRandomSkillFromTier(tier) {
+    const skills = getSkillsByTier(tier);
+    if (skills.length === 0) return null;
+    return skills[Math.floor(Math.random() * skills.length)];
 }
 
-// ── Level-up ───────────────────────────────────────────────
+/** Check if player can forge a skill */
+export function canForgeSkill() {
+    return getSkillShards() >= SKILL_FORGE_COST;
+}
 
-export function canLevelUpSkill(skillId) {
-    const skill = getSkillById(skillId);
-    if (!skill) return false;
+/** Forge a random skill: costs shards, rolls tier + skill, adds a copy */
+export function forgeSkill() {
+    if (!canForgeSkill()) return null;
 
-    const state = getSkillsState();
-    const currentLevel = state.unlocked[skillId] || 0;
-    if (currentLevel <= 0) return false; // not unlocked
+    spendSkillShards(SKILL_FORGE_COST);
 
+    const { highestWave } = getCombatProgress();
+    const tier = rollSkillTier(highestWave);
+    const skill = pickRandomSkillFromTier(tier);
+
+    if (!skill) return null;
+
+    const oldLevel = getSkillLevel(skill.id);
+    addSkillCopy(skill.id);
+    const newCopies = getSkillCopies(skill.id);
     const maxLevel = getSkillMaxLevel(skill);
-    if (currentLevel >= maxLevel) return false;
+    const newLevel = getSkillLevelFromCopies(newCopies, maxLevel);
+    const isNew = oldLevel === 0 && newLevel >= 1;
+    const didLevelUp = newLevel > oldLevel && !isNew;
 
-    const cost = getSkillLevelUpCost(skill.tier, currentLevel + 1);
-    if (getEssence() < cost) return false;
-
-    return true;
-}
-
-export function levelUpSkill(skillId) {
-    if (!canLevelUpSkill(skillId)) return false;
-
-    const skill = getSkillById(skillId);
-    const state = getSkillsState();
-    const currentLevel = state.unlocked[skillId];
-    const cost = getSkillLevelUpCost(skill.tier, currentLevel + 1);
-
-    spendEssence(cost);
-    setSkillLevel(skillId, currentLevel + 1);
     saveGame();
-    gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId, level: currentLevel + 1 });
+
+    const result = { skillId: skill.id, skill, tier, copies: newCopies, level: newLevel, isNew, didLevelUp };
+
+    gameEvents.emit(EVENTS.SKILL_FORGED, result);
+
+    if (isNew) {
+        gameEvents.emit(EVENTS.SKILL_UNLOCKED, { skillId: skill.id, skill });
+    }
+    if (didLevelUp) {
+        gameEvents.emit(EVENTS.SKILL_LEVELED, { skillId: skill.id, level: newLevel });
+    }
+
     gameEvents.emit(EVENTS.STATE_CHANGED);
-    return true;
+    return result;
 }
 
 // ── Equip / Unequip ────────────────────────────────────────

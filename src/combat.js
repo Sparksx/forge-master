@@ -1,5 +1,6 @@
 import { BASE_HEALTH, BASE_DAMAGE } from './config.js';
-import { getEquipment, getCombatProgress, setCombatWave, getTechEffect, getPlayerLevel } from './state.js';
+import { getEquipment, getCombatProgress, setCombatWave, getTechEffect, getPlayerLevel, addSkillShards } from './state.js';
+import { SKILL_SHARD_PER_SUBWAVE, SKILL_SHARD_BOSS_BONUS } from './skills-config.js';
 import { calculateStats, calculatePowerScore } from './forge.js';
 import { gameEvents, EVENTS } from './events.js';
 import { getMonsterForWave, getMonsterCount, getMaxWaveCount, SUB_WAVE_COUNT } from './monsters.js';
@@ -554,8 +555,13 @@ function onMonsterDefeated() {
         return;
     }
 
-    // All monsters dead — advance to next sub-wave
+    // All monsters dead — award skill shards
     const { currentWave, currentSubWave } = getCombatProgress();
+    let shardsEarned = SKILL_SHARD_PER_SUBWAVE;
+    if (currentSubWave === SUB_WAVE_COUNT) {
+        shardsEarned += SKILL_SHARD_BOSS_BONUS;
+    }
+    addSkillShards(shardsEarned);
 
     let nextWave = currentWave;
     let nextSubWave = currentSubWave + 1;

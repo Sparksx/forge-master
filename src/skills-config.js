@@ -12,20 +12,64 @@ export const SKILL_MAX_LEVELS = { 1: 10, 2: 8, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2 };
 // Max equipped skills at once
 export const MAX_EQUIPPED_SKILLS = 3;
 
-// Unlock requirements per tier
-export const SKILL_UNLOCK_REQS = [
-    { tier: 1, wave: 1,  essenceCost: 50,     goldCost: 100 },
-    { tier: 2, wave: 3,  essenceCost: 200,    goldCost: 500 },
-    { tier: 3, wave: 5,  essenceCost: 800,    goldCost: 2000 },
-    { tier: 4, wave: 7,  essenceCost: 3000,   goldCost: 8000 },
-    { tier: 5, wave: 9,  essenceCost: 10000,  goldCost: 30000 },
-    { tier: 6, wave: 10, essenceCost: 50000,  goldCost: 100000 },
-    { tier: 7, wave: 10, essenceCost: 200000, goldCost: 500000 },
+// ── Skill Forge System ──────────────────────────────────────
+// Skills are obtained through forging (random), not direct purchase.
+// Forging costs Skill Shards (earned through combat sub-wave completions).
+
+// Shard economy
+export const SKILL_FORGE_COST = 5;          // shards per forge
+export const SKILL_SHARD_PER_SUBWAVE = 1;   // shards earned per sub-wave cleared
+export const SKILL_SHARD_BOSS_BONUS = 2;    // extra shards for boss sub-waves (sub-wave 10)
+
+// Tier chances based on highest wave reached (like item forge tiers)
+// Each entry: { wave, chances: [T1%, T2%, T3%, T4%, T5%, T6%] }
+export const SKILL_FORGE_CHANCES = [
+    { wave: 1,  chances: [100,  0,     0,     0,     0,     0    ] },
+    { wave: 2,  chances: [85,   15,    0,     0,     0,     0    ] },
+    { wave: 3,  chances: [65,   30,    5,     0,     0,     0    ] },
+    { wave: 4,  chances: [45,   30,    20,    5,     0,     0    ] },
+    { wave: 5,  chances: [30,   25,    25,    15,    5,     0    ] },
+    { wave: 6,  chances: [20,   20,    25,    20,    10,    5    ] },
+    { wave: 7,  chances: [15,   15,    20,    25,    15,    10   ] },
+    { wave: 8,  chances: [10,   12,    18,    25,    20,    15   ] },
+    { wave: 9,  chances: [5,    10,    15,    25,    25,    20   ] },
+    { wave: 10, chances: [3,    7,     12,    20,    30,    28   ] },
 ];
 
-// Level-up cost: baseCost * LEVEL_COST_SCALE^(level-1), essence only
-export const SKILL_LEVEL_BASE_COST = { 1: 30, 2: 120, 3: 500, 4: 2000, 5: 8000, 6: 40000, 7: 150000 };
-export const SKILL_LEVEL_COST_SCALE = 1.5;
+// Copies needed to reach each level (exponential: 2^(n-1))
+// Level 1: 1 copy, Level 2: +2, Level 3: +4, Level 4: +8, etc.
+export function getSkillCopiesForLevel(level) {
+    if (level <= 1) return 1;
+    return Math.pow(2, level - 1);
+}
+
+// Total copies needed to reach a given level (cumulative)
+export function getTotalCopiesForLevel(level) {
+    let total = 0;
+    for (let i = 1; i <= level; i++) {
+        total += getSkillCopiesForLevel(i);
+    }
+    return total;
+}
+
+// Derive skill level from total copies collected
+export function getSkillLevelFromCopies(copies, maxLevel) {
+    let level = 0;
+    let totalNeeded = 0;
+    while (level < maxLevel) {
+        const needed = getSkillCopiesForLevel(level + 1);
+        if (totalNeeded + needed > copies) break;
+        totalNeeded += needed;
+        level++;
+    }
+    return level;
+}
+
+// Get forge tier chances for a given wave
+export function getSkillForgeTierChances(highestWave) {
+    const clamped = Math.min(highestWave, SKILL_FORGE_CHANCES.length);
+    return SKILL_FORGE_CHANCES[clamped - 1] || SKILL_FORGE_CHANCES[0];
+}
 
 // ── Skill definitions ──────────────────────────────────────
 
@@ -432,19 +476,9 @@ export function getSkillMaxLevel(skill) {
     return SKILL_MAX_LEVELS[skill.tier] || 1;
 }
 
-export function getSkillUnlockReqs(tier) {
-    return SKILL_UNLOCK_REQS.find(r => r.tier === tier) || SKILL_UNLOCK_REQS[0];
-}
-
 /** Calculate the effect value at a given level */
 export function getSkillEffectValue(skill, level) {
     return skill.effect.base + skill.effect.perLevel * (level - 1);
-}
-
-/** Calculate the level-up cost for a given skill tier and target level */
-export function getSkillLevelUpCost(tier, targetLevel) {
-    const baseCost = SKILL_LEVEL_BASE_COST[tier] || 30;
-    return Math.floor(baseCost * Math.pow(SKILL_LEVEL_COST_SCALE, targetLevel - 1));
 }
 
 /** Get the effective cooldown at a given level */
