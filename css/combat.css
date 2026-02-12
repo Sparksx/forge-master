@@ -13,7 +13,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #0a0c1a 0%, #12152e 40%, #1a1e3a 100%);
+    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-panel) 40%, var(--bg-surface) 100%);
     padding: clamp(6px, 1.2vw, 12px);
     min-height: 0;
     position: relative;
@@ -44,12 +44,12 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #161a30 0%, #1c2040 100%);
+    background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-card) 100%);
     padding: clamp(8px, 1.5vw, 16px);
     min-height: 0;
     overflow-y: auto;
     border-top: 2px solid var(--border-medium);
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 2px 8px var(--shadow-strong);
 }
 
 /* Wave indicator */
@@ -64,19 +64,19 @@
 .wave-label {
     font-size: clamp(0.75em, 1.2vw, 0.95em);
     font-weight: 800;
-    color: #e0e0e0;
+    color: var(--text-primary);
     white-space: nowrap;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 3px var(--shadow-strong);
     font-family: var(--font-display);
 }
 
 .wave-progress-bar {
     flex: 1;
     height: 6px;
-    background: rgba(255,255,255,0.08);
+    background: var(--overlay-soft);
     border-radius: 3px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--overlay-border);
 }
 
 .wave-progress-fill {
@@ -119,7 +119,7 @@
 .combatant-name {
     font-size: clamp(0.65em, 1vw, 0.85em);
     font-weight: 700;
-    color: #b0bec5;
+    color: var(--text-secondary);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -180,7 +180,7 @@
 .monster-row-name {
     font-size: clamp(0.55em, 0.85vw, 0.7em);
     font-weight: 700;
-    color: #b0bec5;
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -201,10 +201,10 @@
     width: 100%;
     position: relative;
     height: clamp(14px, 2.5vw, 20px);
-    background: rgba(0,0,0,0.5);
+    background: var(--overlay-soft);
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid var(--overlay-border);
 }
 
 .hp-bar {

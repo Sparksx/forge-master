@@ -106,7 +106,7 @@
 .forge-progress-bar {
     width: 100%;
     height: 8px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--overlay-soft);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -135,7 +135,7 @@
     font-size: clamp(0.9em, 1.3vw, 1.1em);
     font-weight: 700;
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     border: none;
     border-radius: 6px;
     cursor: pointer;
@@ -166,7 +166,7 @@
     padding: 10px;
     font-size: clamp(0.9em, 1.3vw, 1.1em);
     font-weight: 700;
-    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
     color: var(--text-primary);
     border: 1px solid var(--border-medium);
     border-radius: 6px;
@@ -175,7 +175,7 @@
 }
 
 .btn-upgrade-forge:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(100, 100, 200, 0.3);
 }
@@ -220,13 +220,13 @@
     font-size: clamp(1em, 1.8vw, 1.4em);
     font-weight: bold;
     background: linear-gradient(135deg, #c8960c, #f0c040);
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     border: none;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
     font-family: var(--font-display);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+    text-shadow: none;
     box-shadow: 0 2px 12px rgba(240, 192, 64, 0.3);
 }
 
@@ -500,7 +500,7 @@
 /* Speed-up button (shared) */
 .btn-speed-up {
     background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: #1a1a2e;
+    color: var(--text-on-gold);
     font-weight: 700;
 }
 

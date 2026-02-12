@@ -20,8 +20,8 @@
     padding: 14px 32px;
     border: none;
     border-radius: 10px;
-    background: #f0c040;
-    color: #1a1a2e;
+    background: var(--gold);
+    color: var(--text-on-gold);
     font-size: 1.1em;
     font-weight: bold;
     cursor: pointer;
@@ -29,17 +29,17 @@
 }
 
 .pvp-btn:hover {
-    background: #ffd700;
+    background: var(--gold-light);
     transform: scale(1.02);
 }
 
 .pvp-cancel-btn {
-    background: linear-gradient(135deg, #3a3d6a, #4a4d8a);
+    background: linear-gradient(135deg, var(--btn-secondary-from), var(--btn-secondary-to));
     color: var(--text-primary);
 }
 
 .pvp-cancel-btn:hover {
-    background: linear-gradient(135deg, #4a4d8a, #5a5daa);
+    background: linear-gradient(135deg, var(--btn-secondary-hover-from), var(--btn-secondary-hover-to));
 }
 
 .pvp-spinner {
@@ -108,7 +108,7 @@
     padding: 12px 24px;
     border: 2px solid var(--border-medium);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--overlay-soft);
     color: var(--text-primary);
     font-size: 1em;
     font-weight: bold;
@@ -117,9 +117,9 @@
 }
 
 .pvp-action-btn:hover:not(:disabled) {
-    background: rgba(240, 192, 64, 0.15);
-    border-color: #f0c040;
-    color: #f0c040;
+    background: var(--gold-glow);
+    border-color: var(--gold);
+    color: var(--gold);
 }
 
 .pvp-action-btn:disabled {
@@ -144,7 +144,7 @@
 
 .pvp-log-entry {
     padding: 4px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--overlay-border);
 }
 
 .pvp-result-title {
@@ -258,7 +258,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--overlay-soft);
     border-radius: 6px;
     font-size: 0.9em;
 }

@@ -10,10 +10,10 @@
     left: 0;
     right: 0;
     z-index: 1100;
-    background: linear-gradient(180deg, #151829 0%, #1a1e35 100%);
+    background: var(--bg-header);
     padding: 8px 12px;
     box-shadow:
-        0 2px 12px rgba(0, 0, 0, 0.5),
+        0 2px 12px var(--shadow-strong),
         inset 0 -1px 0 rgba(255, 215, 0, 0.15);
     border-bottom: 1px solid var(--border-medium);
 }
@@ -135,13 +135,13 @@
     font-weight: 900;
     color: var(--text-primary);
     font-family: var(--font-display);
-    text-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+    text-shadow: 0 1px 3px var(--overlay-soft);
 }
 
 .header-xp-bar {
     width: 100%;
     height: 3px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--overlay-soft);
     border-radius: 2px;
     overflow: hidden;
     margin-top: -2px;
