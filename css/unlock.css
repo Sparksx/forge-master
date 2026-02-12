@@ -1,0 +1,35 @@
+/* ===== Progressive Feature Unlock ===== */
+
+/* Hidden state for locked features */
+.feature-locked {
+    display: none !important;
+}
+
+/* Unlock animation: scale + glow when a feature appears */
+.feature-just-unlocked {
+    animation: featureUnlock 0.6s ease-out;
+}
+
+@keyframes featureUnlock {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Unlock toast styling */
+.toast-unlock {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a2e;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}

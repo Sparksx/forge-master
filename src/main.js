@@ -17,6 +17,7 @@ import '../css/profile.css';
 import '../css/tech-tree.css';
 import '../css/skills.css';
 import '../css/admin.css';
+import '../css/unlock.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture, getGold } from './state.js';
 import { forgeEquipment, getForgeEssenceReward } from './forge.js';
@@ -42,6 +43,7 @@ import { initChat, refreshChatSocket } from './chat.js';
 import { initPvp, refreshPvpSocket } from './pvp.js';
 import { getAccessToken } from './api.js';
 import { initAdminUI } from './ui/admin-ui.js';
+import { initFeatureUnlock } from './feature-unlock.js';
 
 // PWA: Register service worker
 if ('serviceWorker' in navigator) {
@@ -220,6 +222,7 @@ async function startGame() {
 
     updateUI();
     initNavigation();
+    initFeatureUnlock();
 
     // Forge button: show pending item or forge new batch (disabled during auto-forge)
     let manualForging = false;
