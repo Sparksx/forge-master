@@ -6,13 +6,49 @@ import {
 } from '../state.js';
 import { apiFetch } from '../api.js';
 import { createElement, formatNumber } from './helpers.js';
-import { startDiscordLink, linkGoogle } from '../auth.js';
+import { startDiscordLink, linkGoogle, getCurrentUser } from '../auth.js';
 
 // Lazy import to break circular dependency with forge-ui
 let _getCachedStats = null;
 export function _setCachedStatsGetter(fn) { _getCachedStats = fn; }
 
+/** Initialize profile tab switching (call once) */
+let profileTabsInitialized = false;
+function initProfileTabs() {
+    if (profileTabsInitialized) return;
+    profileTabsInitialized = true;
+
+    document.querySelectorAll('.profile-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.profileTab;
+            // Update tab buttons
+            document.querySelectorAll('.profile-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.profileTab === targetTab);
+                t.setAttribute('aria-selected', t.dataset.profileTab === targetTab);
+            });
+            // Update tab content
+            document.querySelectorAll('.profile-tab-content').forEach(c => {
+                c.classList.toggle('active', c.id === `profile-tab-${targetTab}`);
+            });
+            // Render settings content when switching to it
+            if (targetTab === 'settings') {
+                renderSettingsContent();
+            }
+        });
+    });
+}
+
 export function showProfileModal(user, onLogout) {
+    initProfileTabs();
+    // Reset to Profile tab
+    document.querySelectorAll('.profile-tab').forEach(t => {
+        const isProfile = t.dataset.profileTab === 'profile';
+        t.classList.toggle('active', isProfile);
+        t.setAttribute('aria-selected', isProfile);
+    });
+    document.querySelectorAll('.profile-tab-content').forEach(c => {
+        c.classList.toggle('active', c.id === 'profile-tab-profile');
+    });
     renderProfileContent(user, onLogout);
     document.getElementById('profile-modal').classList.add('active');
 }
@@ -353,4 +389,88 @@ function showUsernameChangeUI(container, currentUser) {
 
     input.focus();
     input.select();
+}
+
+// ─── Settings Tab ──────────────────────────────────────────────
+
+function renderSettingsContent() {
+    const container = document.getElementById('settings-info');
+    if (!container) return;
+    container.textContent = '';
+
+    // Close button
+    const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
+    closeBtn.addEventListener('click', () => {
+        document.getElementById('profile-modal').classList.remove('active');
+    });
+    container.appendChild(closeBtn);
+
+    // --- Theme section ---
+    const themeSection = createElement('div', 'settings-section');
+    themeSection.appendChild(createElement('div', 'settings-section-title', 'Appearance'));
+
+    const themeRow = createElement('div', 'settings-row');
+
+    const label = createElement('div', 'settings-row-label');
+    label.appendChild(createElement('div', 'settings-row-title', 'Theme'));
+    label.appendChild(createElement('div', 'settings-row-desc', 'Switch between dark and light mode'));
+    themeRow.appendChild(label);
+
+    const toggle = createElement('div', 'theme-toggle');
+    const currentTheme = getCurrentTheme();
+
+    const darkBtn = createElement('button', `theme-toggle-option${currentTheme === 'dark' ? ' active' : ''}`, 'Dark');
+    const lightBtn = createElement('button', `theme-toggle-option${currentTheme === 'light' ? ' active' : ''}`, 'Light');
+
+    darkBtn.addEventListener('click', () => {
+        applyTheme('dark');
+        saveThemePreference('dark');
+        darkBtn.classList.add('active');
+        lightBtn.classList.remove('active');
+    });
+
+    lightBtn.addEventListener('click', () => {
+        applyTheme('light');
+        saveThemePreference('light');
+        lightBtn.classList.add('active');
+        darkBtn.classList.remove('active');
+    });
+
+    toggle.append(darkBtn, lightBtn);
+    themeRow.appendChild(toggle);
+    themeSection.appendChild(themeRow);
+    container.appendChild(themeSection);
+}
+
+// ─── Theme Helpers ─────────────────────────────────────────────
+
+export function getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'dark';
+}
+
+export function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+async function saveThemePreference(theme) {
+    // Update user object locally
+    const user = getCurrentUser();
+    if (user) {
+        if (!user.settings) user.settings = {};
+        user.settings.theme = theme;
+    }
+
+    // Persist to server
+    try {
+        await apiFetch('/api/auth/settings', {
+            method: 'PUT',
+            body: { settings: { theme } },
+        });
+    } catch {
+        // Silently fail — theme is already applied locally
+    }
 }

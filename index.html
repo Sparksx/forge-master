@@ -450,8 +450,16 @@
         <!-- Profile Modal -->
         <div class="modal" id="profile-modal" role="dialog" aria-label="Player profile" aria-modal="true">
             <div class="modal-content">
-                <h2>👤 Profile</h2>
-                <div id="profile-info"></div>
+                <div class="profile-tabs" role="tablist" aria-label="Profile sections">
+                    <button class="profile-tab active" data-profile-tab="profile" role="tab" aria-selected="true">Profile</button>
+                    <button class="profile-tab" data-profile-tab="settings" role="tab" aria-selected="false">Settings</button>
+                </div>
+                <div class="profile-tab-content active" id="profile-tab-profile">
+                    <div id="profile-info"></div>
+                </div>
+                <div class="profile-tab-content" id="profile-tab-settings">
+                    <div id="settings-info"></div>
+                </div>
             </div>
         </div>
     </div>

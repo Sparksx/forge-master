@@ -62,6 +62,7 @@ async function issueTokens(user, res, statusCode = 200) {
             role: user.role || 'user',
             hasDiscord: !!user.discordId,
             hasGoogle: !!user.googleId,
+            settings: user.settings || {},
         },
     });
 }
@@ -512,6 +513,7 @@ router.get('/me', requireAuth, async (req, res) => {
                 id: true, username: true, email: true, profilePicture: true,
                 pvpRating: true, pvpWins: true, pvpLosses: true,
                 isGuest: true, role: true, googleId: true, discordId: true,
+                settings: true,
             }
         });
         if (!user) {
@@ -526,6 +528,7 @@ router.get('/me', requireAuth, async (req, res) => {
                 hasGoogle: !!user.googleId,
                 hasDiscord: !!user.discordId,
                 role: user.role || 'user',
+                settings: user.settings || {},
             }
         });
     } catch (err) {
@@ -560,6 +563,42 @@ router.post('/change-username', requireAuth, [
         res.json({ message: 'Username changed', username });
     } catch (err) {
         console.error('Change username error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── PUT /api/auth/settings ─────────────────────────────────────
+router.put('/settings', requireAuth, async (req, res) => {
+    const { settings } = req.body;
+
+    if (typeof settings !== 'object' || Array.isArray(settings) || settings === null) {
+        return res.status(400).json({ error: 'Settings must be an object' });
+    }
+
+    // Validate known keys
+    const VALID_THEMES = ['dark', 'light'];
+    if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
+        return res.status(400).json({ error: 'Invalid theme value' });
+    }
+
+    try {
+        // Merge with existing settings
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.userId },
+            select: { settings: true },
+        });
+
+        const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
+        const merged = { ...current, ...settings };
+
+        await prisma.user.update({
+            where: { id: req.user.userId },
+            data: { settings: merged },
+        });
+
+        res.json({ message: 'Settings updated', settings: merged });
+    } catch (err) {
+        console.error('Update settings error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
