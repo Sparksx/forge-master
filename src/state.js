@@ -1,7 +1,7 @@
 import {
     EQUIPMENT_TYPES, MAX_LEVEL, SAVE_KEY, BONUS_STAT_KEYS, HEALTH_ITEMS,
     HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, TIERS, FORGE_LEVELS, MAX_FORGE_LEVEL,
-    GROWTH_EXPONENT, SPEED_UP_GOLD_PER_SECOND,
+    GROWTH_EXPONENT, SPEED_UP_SECONDS_PER_DIAMOND, STARTING_DIAMONDS,
     LEVEL_REWARD_BASE_GOLD, LEVEL_REWARD_GOLD_PER_LEVEL,
     LEVEL_MILESTONE_INTERVAL, LEVEL_MILESTONE_MULTIPLIER,
     PROFILE_PICTURES
@@ -112,6 +112,8 @@ const gameState = {
         xp: 0,
         profilePicture: 'wizard',
     },
+    // Premium currency
+    diamonds: STARTING_DIAMONDS,
     // Tech tree
     essence: 0,
     research: {
@@ -141,6 +143,7 @@ export function resetGame() {
     gameState.forgeHighestLevel = createEmptyForgeTracker();
     gameState.combat = { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 };
     gameState.player = { level: 1, xp: 0, profilePicture: 'wizard' };
+    gameState.diamonds = STARTING_DIAMONDS;
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
     gameState.skills = { unlocked: {}, equipped: [] };
@@ -272,6 +275,28 @@ export function addGold(amount) {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
+// --- Diamonds (premium currency) ---
+
+export function getDiamonds() {
+    return gameState.diamonds;
+}
+
+export function addDiamonds(amount) {
+    gameState.diamonds += amount;
+    saveGame();
+    gameEvents.emit(EVENTS.DIAMONDS_CHANGED, gameState.diamonds);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export function spendDiamonds(amount) {
+    if (gameState.diamonds < amount) return false;
+    gameState.diamonds -= amount;
+    saveGame();
+    gameEvents.emit(EVENTS.DIAMONDS_CHANGED, gameState.diamonds);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
 export function getForgeLevel() {
     return gameState.forgeLevel;
 }
@@ -330,7 +355,7 @@ export function getForgeUpgradeStatus() {
     const elapsed = (Date.now() - startedAt) / 1000;
     const remaining = Math.max(0, duration - elapsed);
     const progress = Math.min(1, elapsed / duration);
-    const speedUpCost = Math.ceil(remaining * SPEED_UP_GOLD_PER_SECOND);
+    const speedUpCost = Math.ceil(remaining / SPEED_UP_SECONDS_PER_DIAMOND);
     return { remaining, progress, speedUpCost, duration };
 }
 
@@ -354,12 +379,13 @@ export function speedUpForgeUpgrade() {
     if (!status || status.remaining <= 0) {
         return checkForgeUpgradeComplete();
     }
-    if (gameState.gold < status.speedUpCost) return false;
+    if (gameState.diamonds < status.speedUpCost) return false;
 
-    gameState.gold -= status.speedUpCost;
+    gameState.diamonds -= status.speedUpCost;
     gameState.forgeLevel = gameState.forgeUpgrade.targetLevel;
     gameState.forgeUpgrade = null;
     saveGame();
+    gameEvents.emit(EVENTS.DIAMONDS_CHANGED, gameState.diamonds);
     gameEvents.emit(EVENTS.FORGE_UPGRADED, gameState.forgeLevel);
     gameEvents.emit(EVENTS.STATE_CHANGED);
     return true;
@@ -540,6 +566,7 @@ function buildSaveData() {
         combat: gameState.combat,
         // Embed shopState inside player JSON so it persists on server without schema changes
         player: { ...gameState.player, shopState: gameState.shopState },
+        diamonds: gameState.diamonds,
         essence: gameState.essence,
         research: gameState.research,
         skills: gameState.skills,
@@ -671,6 +698,11 @@ function applyLoadedData(loaded) {
         if (typeof loaded.player.profilePicture === 'string' && PROFILE_PICTURES.some(p => p.id === loaded.player.profilePicture)) {
             gameState.player.profilePicture = loaded.player.profilePicture;
         }
+    }
+
+    // Restore diamonds (premium currency)
+    if (typeof loaded.diamonds === 'number' && loaded.diamonds >= 0) {
+        gameState.diamonds = Math.floor(loaded.diamonds);
     }
 
     // Restore essence

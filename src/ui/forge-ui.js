@@ -4,7 +4,7 @@ import {
     AUTO_FORGE_INTERVAL
 } from '../config.js';
 import {
-    getEquipment, getEquipmentByType, getGold, getForgedItem,
+    getEquipment, getEquipmentByType, getGold, getDiamonds, getForgedItem,
     equipItem, sellForgedItem, getSellValue, getForgeLevel,
     getForgeUpgradeCost, startForgeUpgrade, getForgeUpgradeStatus,
     getForgeUpgradeState, speedUpForgeUpgrade, checkForgeUpgradeComplete,
@@ -93,6 +93,10 @@ export function updateStats() {
 
     // Animate gold display (drip effect for gains, snap for spends)
     animateGoldToward(getGold());
+
+    // Update diamond display
+    const diamondEl = document.getElementById('diamond-amount');
+    if (diamondEl) diamondEl.textContent = formatCompact(getDiamonds());
 
     if (dom.profileBtn) dom.profileBtn.textContent = getProfileEmoji();
 
@@ -237,8 +241,8 @@ function updateForgeTimerDisplay() {
 
     const speedUpBtn = document.getElementById('forge-speed-up-btn');
     if (speedUpBtn) {
-        speedUpBtn.textContent = `\u26A1 ${formatNumber(status.speedUpCost)}g`;
-        const canAfford = getGold() >= status.speedUpCost;
+        speedUpBtn.textContent = `\u26A1 ${formatNumber(status.speedUpCost)} \uD83D\uDC8E`;
+        const canAfford = getDiamonds() >= status.speedUpCost;
         speedUpBtn.disabled = !canAfford;
         speedUpBtn.classList.toggle('btn-disabled', !canAfford);
     }

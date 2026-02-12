@@ -119,6 +119,14 @@ export async function addEssenceToUser(userId, amount) {
     return res.json();
 }
 
+export async function addDiamondsToUser(userId, amount) {
+    const res = await apiFetch(`/api/admin/users/${userId}/diamonds`, {
+        method: 'POST', body: { amount },
+    });
+    if (!res.ok) throw new Error('Add diamonds failed');
+    return res.json();
+}
+
 export async function setUserLevel(userId, level) {
     const res = await apiFetch(`/api/admin/users/${userId}/level`, {
         method: 'POST', body: { level },

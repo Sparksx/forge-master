@@ -6,11 +6,11 @@ import {
     isStaff, isAdmin, isModerator, getUserRole,
     searchUsers, getUserProfile,
     warnUser, muteUser, unmuteUser, banUser, unbanUser, kickUser,
-    addGoldToUser, addEssenceToUser, setUserLevel, setUserRole, resetUserState,
+    addGoldToUser, addEssenceToUser, addDiamondsToUser, setUserLevel, setUserRole, resetUserState,
     getServerStats, getAuditLog, broadcastMessage,
 } from '../admin.js';
 import { getCurrentUser } from '../auth.js';
-import { addGold, addEssence, saveGame, resetGame } from '../state.js';
+import { addGold, addEssence, addDiamonds, saveGame, resetGame } from '../state.js';
 import { showToast } from './helpers.js';
 import { stopCombat, startCombat } from '../combat.js';
 import { updateWaveDisplay } from './combat-ui.js';
@@ -222,6 +222,7 @@ function renderUserDetail(container, data) {
     html += `<span>Niveau: ${level}</span>`;
     html += `<span>Gold: ${(gs.gold || 0).toLocaleString()}</span>`;
     html += `<span>Essence: ${(gs.essence || 0).toLocaleString()}</span>`;
+    html += `<span>💎 ${(gs.diamonds || 0).toLocaleString()}</span>`;
     html += `<span>Forge: Lv.${gs.forgeLevel || 1}</span>`;
     html += `<span>PvP: ${user.pvpRating} ELO (${user.pvpWins}W/${user.pvpLosses}L)</span>`;
     html += `</div>`;
@@ -246,6 +247,8 @@ function renderUserDetail(container, data) {
         html += `<button class="btn admin-btn admin-btn-gold" data-action="gold-100k">+100K Gold</button>`;
         html += `<button class="btn admin-btn admin-btn-essence" data-action="essence-1k">+1K Essence</button>`;
         html += `<button class="btn admin-btn admin-btn-essence" data-action="essence-10k">+10K Essence</button>`;
+        html += `<button class="btn admin-btn admin-btn-diamond" data-action="diamond-100">+100 💎</button>`;
+        html += `<button class="btn admin-btn admin-btn-diamond" data-action="diamond-1k">+1K 💎</button>`;
         html += `</div>`;
         html += `<div class="admin-resource-actions">`;
         html += `<label>Role: <select id="admin-role-select">`;
@@ -406,6 +409,16 @@ async function handleUserAction(action, userId) {
                 showToast('+10K essence', 'study');
                 break;
             }
+            case 'diamond-100': {
+                await addDiamondsToUser(userId, 100);
+                showToast('+100 💎', 'level');
+                break;
+            }
+            case 'diamond-1k': {
+                await addDiamondsToUser(userId, 1000);
+                showToast('+1K 💎', 'level');
+                break;
+            }
             case 'set-role': {
                 const select = document.getElementById('admin-role-select');
                 if (!select) return;
@@ -449,6 +462,11 @@ function renderSelfSection(container) {
         html += `<button class="btn admin-btn admin-btn-essence" id="admin-self-essence-10k">+10K Essence</button>`;
         html += `</div>`;
         html += `<div class="admin-actions-row">`;
+        html += `<button class="btn admin-btn admin-btn-diamond" id="admin-self-diamond-100">+100 💎</button>`;
+        html += `<button class="btn admin-btn admin-btn-diamond" id="admin-self-diamond-1k">+1K 💎</button>`;
+        html += `<button class="btn admin-btn admin-btn-diamond" id="admin-self-diamond-10k">+10K 💎</button>`;
+        html += `</div>`;
+        html += `<div class="admin-actions-row">`;
         html += `<button class="btn admin-btn admin-btn-reset" id="admin-self-reset">Reset Ma Progression</button>`;
         html += `</div>`;
 
@@ -477,6 +495,9 @@ function renderSelfSection(container) {
         document.getElementById('admin-self-gold-10m')?.addEventListener('click', () => { addGold(10_000_000); showToast('+10M gold', 'sell'); });
         document.getElementById('admin-self-essence-1k')?.addEventListener('click', () => { addEssence(1_000); showToast('+1K essence', 'study'); });
         document.getElementById('admin-self-essence-10k')?.addEventListener('click', () => { addEssence(10_000); showToast('+10K essence', 'study'); });
+        document.getElementById('admin-self-diamond-100')?.addEventListener('click', () => { addDiamonds(100); showToast('+100 💎', 'level'); });
+        document.getElementById('admin-self-diamond-1k')?.addEventListener('click', () => { addDiamonds(1_000); showToast('+1K 💎', 'level'); });
+        document.getElementById('admin-self-diamond-10k')?.addEventListener('click', () => { addDiamonds(10_000); showToast('+10K 💎', 'level'); });
         document.getElementById('admin-self-reset')?.addEventListener('click', () => {
             if (!confirm('Reset all progression? This cannot be undone.')) return;
             stopCombat();
@@ -523,6 +544,10 @@ async function renderStatsSection(container) {
                 `<div class="admin-stat-card">` +
                     `<div class="admin-stat-value">${stats.totalEssenceInCirculation.toLocaleString()}</div>` +
                     `<div class="admin-stat-label">Essence en Circulation</div>` +
+                `</div>` +
+                `<div class="admin-stat-card">` +
+                    `<div class="admin-stat-value">${(stats.totalDiamondsInCirculation || 0).toLocaleString()}</div>` +
+                    `<div class="admin-stat-label">💎 en Circulation</div>` +
                 `</div>` +
             `</div>`;
     } catch (err) {

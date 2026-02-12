@@ -18,7 +18,7 @@ const {
     saveGame, loadGame, resetGame, getForgeLevel, getSellValue, getForgeUpgradeCost,
     upgradeForge, startForgeUpgrade, getForgeUpgradeStatus, getForgeUpgradeState,
     speedUpForgeUpgrade, checkForgeUpgradeComplete, addGold, getHighestLevelForTier,
-    getHighestLevelForSlot, trackForgedLevel
+    getHighestLevelForSlot, trackForgedLevel, getDiamonds, addDiamonds, spendDiamonds,
 } = await import('../state.js');
 const { createItem, calculateItemStats, forgeEquipment } = await import('../forge.js');
 const { INITIAL_LEVEL_MAX, LEVEL_RANGE, MAX_LEVEL } = await import('../config.js');
@@ -167,20 +167,22 @@ describe('state', () => {
             expect(getForgeUpgradeState()).toBeNull();
         });
 
-        it('speed up completes upgrade instantly', () => {
+        it('speed up completes upgrade instantly with diamonds', () => {
             addGold(1000);
-            startForgeUpgrade(); // costs 200, leaves 800
+            startForgeUpgrade(); // costs 200 gold, leaves 800
             const status = getForgeUpgradeStatus();
             expect(status).not.toBeNull();
-            // Speed up costs remaining time * 2 gold/sec
+            // Speed up costs remaining time / 60 diamonds (player starts with 100)
             const result = speedUpForgeUpgrade();
             expect(result).toBe(true);
             expect(getForgeLevel()).toBe(2);
             expect(getForgeUpgradeState()).toBeNull();
         });
 
-        it('speed up fails when not enough gold', () => {
+        it('speed up fails when not enough diamonds', () => {
             addGold(200); // just enough for upgrade cost
+            // Spend all starting diamonds first
+            spendDiamonds(getDiamonds());
             startForgeUpgrade();
             const result = speedUpForgeUpgrade();
             expect(result).toBe(false);
@@ -195,6 +197,54 @@ describe('state', () => {
             resetGame();
             expect(getForgeLevel()).toBe(1);
             expect(getForgeUpgradeState()).toBeNull();
+        });
+    });
+
+    describe('diamonds', () => {
+        it('starts with 100 diamonds', () => {
+            expect(getDiamonds()).toBe(100);
+        });
+
+        it('addDiamonds increases diamond count', () => {
+            addDiamonds(50);
+            expect(getDiamonds()).toBe(150);
+        });
+
+        it('spendDiamonds decreases diamond count', () => {
+            const result = spendDiamonds(30);
+            expect(result).toBe(true);
+            expect(getDiamonds()).toBe(70);
+        });
+
+        it('spendDiamonds fails when insufficient', () => {
+            const result = spendDiamonds(200);
+            expect(result).toBe(false);
+            expect(getDiamonds()).toBe(100); // unchanged
+        });
+
+        it('resets diamonds to 100 on resetGame', () => {
+            spendDiamonds(50);
+            expect(getDiamonds()).toBe(50);
+            resetGame();
+            expect(getDiamonds()).toBe(100);
+        });
+
+        it('forge speed-up cost is in diamonds (time / 60)', () => {
+            addGold(400);
+            startForgeUpgrade(); // level 2: duration 60s
+            const status = getForgeUpgradeStatus();
+            // speedUpCost = ceil(remaining / 60), remaining ~60s
+            expect(status.speedUpCost).toBe(Math.ceil(status.remaining / 60));
+        });
+
+        it('forge speed-up deducts diamonds not gold', () => {
+            addGold(400);
+            startForgeUpgrade();
+            const goldBefore = getGold();
+            const diamondsBefore = getDiamonds();
+            speedUpForgeUpgrade();
+            expect(getGold()).toBe(goldBefore); // gold unchanged
+            expect(getDiamonds()).toBeLessThan(diamondsBefore); // diamonds spent
         });
     });
 
