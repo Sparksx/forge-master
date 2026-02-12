@@ -1,44 +1,58 @@
 // ══════════════════════════════════════════════════════════
-// Skills UI — Collection, detail modal, equip/unequip
+// Skills UI — Skill Forge, collection, detail modal
 // ══════════════════════════════════════════════════════════
 
 import {
-    SKILLS, getSkillById, getSkillMaxLevel, getSkillUnlockReqs,
-    getSkillLevelUpCost, getSkillCooldown, getSkillDuration,
+    SKILLS, getSkillById, getSkillMaxLevel,
+    getSkillCooldown, getSkillDuration,
     getSkillEffectValue, getSkillTier, MAX_EQUIPPED_SKILLS,
+    SKILL_FORGE_COST, getSkillForgeTierChances, getSkillCopiesForLevel,
+    getTotalCopiesForLevel,
 } from '../skills-config.js';
 import { TIERS } from '../config.js';
 import {
-    getSkillLevel, isSkillEquipped, canUnlockSkill, unlockSkill,
-    canLevelUpSkill, levelUpSkill, equipSkill, unequipSkill,
+    getSkillLevel, isSkillEquipped, canForgeSkill, forgeSkill,
+    equipSkill, unequipSkill,
     canActivateSkill, getCooldownRemaining,
 } from '../skills.js';
-import { getSkillsState, getEquippedSkills, getCombatProgress, getEssence, getGold } from '../state.js';
+import {
+    getSkillsState, getEquippedSkills, getCombatProgress,
+    getSkillShards, getSkillCopies,
+} from '../state.js';
 import { createElement, formatNumber, formatCompact, formatTime } from './helpers.js';
 import { showToast } from './helpers.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 let activeFilter = 'all'; // 'all', 'passive', 'active'
 let activeTierFilter = 0; // 0 = all, 1-6 = specific tier
+let forging = false;
 
 export function initSkillsUI() {
     renderSkillsTab();
 
     // Re-render on state changes
     gameEvents.on(EVENTS.STATE_CHANGED, renderSkillsTab);
-    gameEvents.on(EVENTS.SKILL_UNLOCKED, ({ skill }) => {
-        showToast(`⚡ ${skill.name} débloqué!`, 'study');
+    gameEvents.on(EVENTS.SKILL_FORGED, ({ skill, isNew, didLevelUp, tier }) => {
+        const tierDef = TIERS[tier - 1];
+        if (isNew) {
+            showToast(`${skill.icon} ${skill.name} obtenu!`, 'study');
+        } else if (didLevelUp) {
+            showToast(`${skill.icon} ${skill.name} monte de niveau!`, 'study');
+        } else {
+            showToast(`${skill.icon} ${skill.name} +1 copie`, 'info');
+        }
     });
-    gameEvents.on(EVENTS.SKILL_LEVELED, ({ skillId, level }) => {
-        const skill = getSkillById(skillId);
-        if (skill) showToast(`⬆️ ${skill.name} Niv.${level}`, 'study');
-    });
+    gameEvents.on(EVENTS.SKILL_SHARDS_CHANGED, renderSkillsTab);
 }
 
 export function renderSkillsTab() {
     const container = document.getElementById('subtab-skills');
     if (!container) return;
     container.textContent = '';
+
+    // Shard counter + Forge button
+    const forgeSection = buildForgeSection();
+    container.appendChild(forgeSection);
 
     // Equipped skills bar
     const equippedSection = buildEquippedSection();
@@ -53,11 +67,165 @@ export function renderSkillsTab() {
     container.appendChild(grid);
 }
 
+// ── Skill Forge Section ─────────────────────────────────────
+
+function buildForgeSection() {
+    const section = createElement('div', 'skills-forge-section');
+
+    // Shard display
+    const shardRow = createElement('div', 'skills-shard-row');
+    const shardIcon = createElement('span', 'skills-shard-icon', '\uD83D\uDD2E');
+    const shardCount = createElement('span', 'skills-shard-count', `${formatNumber(getSkillShards())} Fragments`);
+    const costHint = createElement('span', 'skills-shard-cost', `(${SKILL_FORGE_COST} par forge)`);
+    shardRow.append(shardIcon, shardCount, costHint);
+    section.appendChild(shardRow);
+
+    // Tier chances preview
+    const chanceRow = buildTierChancesPreview();
+    section.appendChild(chanceRow);
+
+    // Forge button
+    const canDo = canForgeSkill() && !forging;
+    const forgeBtn = createElement('button', `btn skills-forge-btn${canDo ? '' : ' btn-disabled'}`,
+        forging ? '\u2728 Forge...' : `\u2728 Forger un Skill (${SKILL_FORGE_COST} \uD83D\uDD2E)`);
+    forgeBtn.disabled = !canDo;
+    forgeBtn.addEventListener('click', () => {
+        if (forging || !canForgeSkill()) return;
+        forging = true;
+        forgeBtn.classList.add('forging');
+        forgeBtn.textContent = '\u2728 Forge...';
+
+        setTimeout(() => {
+            forging = false;
+            const result = forgeSkill();
+            if (result) {
+                showForgeResult(result);
+            }
+        }, 1200);
+    });
+    section.appendChild(forgeBtn);
+
+    return section;
+}
+
+function buildTierChancesPreview() {
+    const { highestWave } = getCombatProgress();
+    const { chances } = getSkillForgeTierChances(highestWave);
+
+    const row = createElement('div', 'skills-tier-chances');
+    const label = createElement('span', 'skills-tier-chances-label', 'Chances:');
+    row.appendChild(label);
+
+    chances.forEach((chance, idx) => {
+        if (chance <= 0) return;
+        const tier = TIERS[idx];
+        const chip = createElement('span', 'skills-tier-chance-chip');
+        chip.style.color = tier.color;
+        chip.style.borderColor = tier.color;
+        chip.textContent = `${tier.name.charAt(0)} ${chance}%`;
+        chip.title = tier.name;
+        row.appendChild(chip);
+    });
+
+    return row;
+}
+
+function showForgeResult(result) {
+    const { skill, tier, copies, level, isNew, didLevelUp } = result;
+    const tierDef = TIERS[tier - 1];
+
+    // Create or re-use forge result modal
+    let modal = document.getElementById('skill-forge-result-modal');
+    if (!modal) {
+        modal = createElement('div', 'modal');
+        modal.id = 'skill-forge-result-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'Forge result');
+        modal.setAttribute('aria-modal', 'true');
+        const content = createElement('div', 'modal-content skill-forge-result-content');
+        content.id = 'skill-forge-result-content';
+        modal.appendChild(content);
+        document.getElementById('game-container').appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+    }
+
+    const content = document.getElementById('skill-forge-result-content');
+    content.textContent = '';
+
+    // Close button
+    const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
+    closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+    content.appendChild(closeBtn);
+
+    // Result header
+    const header = createElement('div', 'skill-forge-result-header');
+    const icon = createElement('div', 'skill-forge-result-icon', skill.icon);
+    icon.style.borderColor = tierDef.color;
+    header.appendChild(icon);
+
+    const titleCol = createElement('div', 'skill-forge-result-title');
+    const name = createElement('div', 'skill-forge-result-name', skill.name);
+    name.style.color = tierDef.color;
+    titleCol.appendChild(name);
+
+    const tierLabel = createElement('div', 'skill-forge-result-tier', tierDef.name);
+    tierLabel.style.color = tierDef.color;
+    titleCol.appendChild(tierLabel);
+    header.appendChild(titleCol);
+    content.appendChild(header);
+
+    // Status tag
+    if (isNew) {
+        const tag = createElement('div', 'skill-forge-result-tag skill-forge-new', 'NOUVEAU!');
+        content.appendChild(tag);
+    } else if (didLevelUp) {
+        const tag = createElement('div', 'skill-forge-result-tag skill-forge-levelup', `NIVEAU ${level}!`);
+        content.appendChild(tag);
+    } else {
+        const maxLevel = getSkillMaxLevel(skill);
+        const nextLevelCopies = level < maxLevel ? getTotalCopiesForLevel(level + 1) : null;
+        const tag = createElement('div', 'skill-forge-result-tag skill-forge-copy',
+            nextLevelCopies !== null
+                ? `Copie ${copies} / ${nextLevelCopies}`
+                : `MAX (${copies} copies)`);
+        content.appendChild(tag);
+    }
+
+    // Description
+    const desc = createElement('div', 'skill-forge-result-desc', skill.description);
+    content.appendChild(desc);
+
+    // Forge again button
+    const canDoAgain = canForgeSkill();
+    const againBtn = createElement('button', `btn skills-forge-btn${canDoAgain ? '' : ' btn-disabled'}`,
+        `\u2728 Forger encore (${SKILL_FORGE_COST} \uD83D\uDD2E)`);
+    againBtn.disabled = !canDoAgain;
+    againBtn.addEventListener('click', () => {
+        if (!canForgeSkill()) return;
+        modal.classList.remove('active');
+        // Small delay to re-trigger forge
+        setTimeout(() => {
+            forging = true;
+            setTimeout(() => {
+                forging = false;
+                const newResult = forgeSkill();
+                if (newResult) showForgeResult(newResult);
+            }, 1200);
+        }, 200);
+    });
+    content.appendChild(againBtn);
+
+    modal.classList.add('active');
+}
+
 // ── Equipped Skills Section ─────────────────────────────────
 
 function buildEquippedSection() {
     const section = createElement('div', 'skills-equipped-section');
-    const title = createElement('div', 'skills-equipped-title', 'Equipped Skills');
+    const title = createElement('div', 'skills-equipped-title', 'Skills Equip\u00e9s');
     section.appendChild(title);
 
     const slotsRow = createElement('div', 'skills-equipped-slots');
@@ -86,7 +254,7 @@ function buildEquippedSection() {
             }
         } else {
             slotDiv.classList.add('skills-equipped-slot-empty');
-            slotDiv.textContent = 'Empty';
+            slotDiv.textContent = 'Vide';
         }
         slotsRow.appendChild(slotDiv);
     }
@@ -169,6 +337,7 @@ function buildSkillsGrid() {
 function buildSkillCard(skill) {
     const state = getSkillsState();
     const level = state.unlocked[skill.id] || 0;
+    const copies = getSkillCopies(skill.id);
     const isUnlocked = level > 0;
     const isEquipped = isSkillEquipped(skill.id);
     const maxLevel = getSkillMaxLevel(skill);
@@ -190,7 +359,7 @@ function buildSkillCard(skill) {
 
     const nameRow = createElement('div', 'skill-card-name-row');
     const name = createElement('span', 'skill-card-name', skill.name);
-    name.style.color = tier.color;
+    name.style.color = isUnlocked ? tier.color : '#666';
     nameRow.appendChild(name);
 
     const typeTag = createElement('span', `skills-type-tag skills-type-${skill.type}`, skill.type === 'passive' ? 'Passif' : 'Actif');
@@ -205,15 +374,31 @@ function buildSkillCard(skill) {
         const levelText = createElement('div', 'skill-card-level', `Niv. ${level}/${maxLevel}`);
         info.appendChild(levelText);
 
-        // Level progress bar
-        const progressBar = createElement('div', 'skill-level-bar');
-        const progressFill = createElement('div', 'skill-level-fill');
-        progressFill.style.width = `${(level / maxLevel) * 100}%`;
-        progressFill.style.backgroundColor = tier.color;
-        progressBar.appendChild(progressFill);
-        info.appendChild(progressBar);
+        // Copies progress to next level
+        if (level < maxLevel) {
+            const nextTotalCopies = getTotalCopiesForLevel(level + 1);
+            const currentTotalForLevel = getTotalCopiesForLevel(level);
+            const copiesIntoLevel = copies - currentTotalForLevel;
+            const copiesNeeded = getSkillCopiesForLevel(level + 1);
+            const progressBar = createElement('div', 'skill-level-bar');
+            const progressFill = createElement('div', 'skill-level-fill');
+            progressFill.style.width = `${(copiesIntoLevel / copiesNeeded) * 100}%`;
+            progressFill.style.backgroundColor = tier.color;
+            progressBar.appendChild(progressFill);
+            info.appendChild(progressBar);
+
+            const copiesText = createElement('div', 'skill-card-copies', `${copiesIntoLevel}/${copiesNeeded} copies`);
+            info.appendChild(copiesText);
+        } else {
+            const maxTag = createElement('div', 'skill-card-copies', 'MAX');
+            info.appendChild(maxTag);
+        }
+    } else if (copies > 0) {
+        // Has copies but not yet level 1 (shouldn't happen with 1-copy unlock, but defensive)
+        const copiesText = createElement('div', 'skill-card-copies', `${copies}/1 copie`);
+        info.appendChild(copiesText);
     } else {
-        const lockText = createElement('div', 'skill-card-locked-text', '🔒 Locked');
+        const lockText = createElement('div', 'skill-card-locked-text', '\uD83D\uDD12 Non obtenu');
         info.appendChild(lockText);
     }
 
@@ -254,13 +439,14 @@ function showSkillDetailModal(skillId) {
 
     const state = getSkillsState();
     const level = state.unlocked[skill.id] || 0;
+    const copies = getSkillCopies(skill.id);
     const isUnlocked = level > 0;
     const equipped = isSkillEquipped(skill.id);
     const maxLevel = getSkillMaxLevel(skill);
     const tier = getSkillTier(skill);
 
     // Close button
-    const closeBtn = createElement('button', 'modal-close-btn', '✕');
+    const closeBtn = createElement('button', 'modal-close-btn', '\u2715');
     closeBtn.addEventListener('click', () => modal.classList.remove('active'));
     content.appendChild(closeBtn);
 
@@ -278,7 +464,7 @@ function showSkillDetailModal(skillId) {
     const tierDot = createElement('span', 'skill-detail-tier-dot');
     tierDot.style.backgroundColor = tier.color;
     tierRow.appendChild(tierDot);
-    tierRow.appendChild(createElement('span', '', `${tier.name} — ${skill.type === 'passive' ? 'Passif' : 'Actif'}`));
+    tierRow.appendChild(createElement('span', '', `${tier.name} \u2014 ${skill.type === 'passive' ? 'Passif' : 'Actif'}`));
     titleCol.appendChild(tierRow);
     header.appendChild(titleCol);
     content.appendChild(header);
@@ -294,22 +480,40 @@ function showSkillDetailModal(skillId) {
         const levelLabel = createElement('div', 'skill-detail-level-label', `Niveau ${level} / ${maxLevel}`);
         levelSection.appendChild(levelLabel);
 
-        const progressBar = createElement('div', 'skill-detail-progress-bar');
-        const progressFill = createElement('div', 'skill-detail-progress-fill');
-        progressFill.style.width = `${(level / maxLevel) * 100}%`;
-        progressFill.style.backgroundColor = tier.color;
-        progressBar.appendChild(progressFill);
-        levelSection.appendChild(progressBar);
+        // Copies progress bar
+        if (level < maxLevel) {
+            const currentTotalForLevel = getTotalCopiesForLevel(level);
+            const copiesIntoLevel = copies - currentTotalForLevel;
+            const copiesNeeded = getSkillCopiesForLevel(level + 1);
+
+            const progressBar = createElement('div', 'skill-detail-progress-bar');
+            const progressFill = createElement('div', 'skill-detail-progress-fill');
+            progressFill.style.width = `${(copiesIntoLevel / copiesNeeded) * 100}%`;
+            progressFill.style.backgroundColor = tier.color;
+            progressBar.appendChild(progressFill);
+            levelSection.appendChild(progressBar);
+
+            const copiesLabel = createElement('div', 'skill-detail-copies', `Copies: ${copiesIntoLevel} / ${copiesNeeded} pour le prochain niveau`);
+            levelSection.appendChild(copiesLabel);
+        } else {
+            const progressBar = createElement('div', 'skill-detail-progress-bar');
+            const progressFill = createElement('div', 'skill-detail-progress-fill');
+            progressFill.style.width = '100%';
+            progressFill.style.backgroundColor = tier.color;
+            progressBar.appendChild(progressFill);
+            levelSection.appendChild(progressBar);
+
+            const maxLabel = createElement('div', 'skill-detail-copies', `Niveau maximum atteint (${copies} copies)`);
+            levelSection.appendChild(maxLabel);
+        }
 
         // Current effect
-        const currentValue = getSkillEffectValue(skill, level);
         const effectText = createElement('div', 'skill-detail-effect');
         effectText.innerHTML = `<strong>Effet actuel:</strong> ${formatEffectDescription(skill, level)}`;
         levelSection.appendChild(effectText);
 
         // Next level preview
         if (level < maxLevel) {
-            const nextValue = getSkillEffectValue(skill, level + 1);
             const nextText = createElement('div', 'skill-detail-next');
             nextText.innerHTML = `<strong>Prochain niveau:</strong> ${formatEffectDescription(skill, level + 1)}`;
             levelSection.appendChild(nextText);
@@ -321,9 +525,9 @@ function showSkillDetailModal(skillId) {
             const dur = getSkillDuration(skill, level);
             const timingRow = createElement('div', 'skill-detail-timing');
             if (dur > 0) {
-                timingRow.innerHTML = `⏱️ Durée: ${dur}s &nbsp; 🔄 Recharge: ${cd}s`;
+                timingRow.innerHTML = `\u23F1\uFE0F Dur\u00e9e: ${dur}s &nbsp; \uD83D\uDD04 Recharge: ${cd}s`;
             } else {
-                timingRow.innerHTML = `⚡ Instantané &nbsp; 🔄 Recharge: ${cd}s`;
+                timingRow.innerHTML = `\u26A1 Instantan\u00e9 &nbsp; \uD83D\uDD04 Recharge: ${cd}s`;
             }
             levelSection.appendChild(timingRow);
         }
@@ -333,26 +537,9 @@ function showSkillDetailModal(skillId) {
         // Action buttons
         const actions = createElement('div', 'skill-detail-actions');
 
-        // Level up button
-        if (level < maxLevel) {
-            const cost = getSkillLevelUpCost(skill.tier, level + 1);
-            const canAfford = getEssence() >= cost;
-            const upgradeBtn = createElement('button', `btn skill-btn-upgrade${canAfford ? '' : ' btn-disabled'}`,
-                `⬆️ Upgrade — ${formatCompact(cost)} 🔮`);
-            upgradeBtn.disabled = !canAfford;
-            upgradeBtn.addEventListener('click', () => {
-                if (levelUpSkill(skill.id)) {
-                    showSkillDetailModal(skill.id); // refresh
-                }
-            });
-            actions.appendChild(upgradeBtn);
-        } else {
-            actions.appendChild(createElement('div', 'skill-detail-maxed', 'MAX'));
-        }
-
         // Equip / Unequip
         if (equipped) {
-            const unequipBtn = createElement('button', 'btn skill-btn-unequip', '❌ Unequip');
+            const unequipBtn = createElement('button', 'btn skill-btn-unequip', '\u274C D\u00e9s\u00e9quiper');
             unequipBtn.addEventListener('click', () => {
                 unequipSkill(skill.id);
                 showSkillDetailModal(skill.id);
@@ -362,7 +549,7 @@ function showSkillDetailModal(skillId) {
             const equippedCount = getEquippedSkills().length;
             const canEquip = equippedCount < MAX_EQUIPPED_SKILLS;
             const equipBtn = createElement('button', `btn skill-btn-equip${canEquip ? '' : ' btn-disabled'}`,
-                canEquip ? '⚔️ Equip' : 'Slots pleins');
+                canEquip ? '\u2694\uFE0F \u00C9quiper' : 'Slots pleins');
             equipBtn.disabled = !canEquip;
             equipBtn.addEventListener('click', () => {
                 if (equipSkill(skill.id)) {
@@ -374,46 +561,25 @@ function showSkillDetailModal(skillId) {
 
         content.appendChild(actions);
     } else {
-        // Locked: show unlock requirements
-        const reqs = getSkillUnlockReqs(skill.tier);
-        const combat = getCombatProgress();
-
+        // Not yet unlocked - show preview
         const lockSection = createElement('div', 'skill-detail-lock-section');
 
-        const reqTitle = createElement('div', 'skill-detail-req-title', '🔒 Requirements to unlock:');
+        const reqTitle = createElement('div', 'skill-detail-req-title', '\uD83D\uDD12 Pas encore obtenu');
         lockSection.appendChild(reqTitle);
 
-        const reqList = createElement('div', 'skill-detail-req-list');
+        const hint = createElement('div', 'skill-detail-forge-hint', 'Forgez des skills pour obtenir cette comp\u00e9tence al\u00e9atoirement!');
+        lockSection.appendChild(hint);
 
-        const waveReq = createElement('div', `skill-detail-req ${combat.highestWave >= reqs.wave ? 'req-met' : 'req-unmet'}`);
-        waveReq.textContent = `Wave ${reqs.wave} ${combat.highestWave >= reqs.wave ? '✓' : '✗'}`;
-        reqList.appendChild(waveReq);
-
-        const essenceReq = createElement('div', `skill-detail-req ${getEssence() >= reqs.essenceCost ? 'req-met' : 'req-unmet'}`);
-        essenceReq.textContent = `${formatNumber(reqs.essenceCost)} 🔮 ${getEssence() >= reqs.essenceCost ? '✓' : '✗'}`;
-        reqList.appendChild(essenceReq);
-
-        const goldReq = createElement('div', `skill-detail-req ${getGold() >= reqs.goldCost ? 'req-met' : 'req-unmet'}`);
-        goldReq.textContent = `${formatNumber(reqs.goldCost)} 💰 ${getGold() >= reqs.goldCost ? '✓' : '✗'}`;
-        reqList.appendChild(goldReq);
-
-        lockSection.appendChild(reqList);
+        // Copies progress (if any copies collected)
+        if (copies > 0) {
+            const copiesLabel = createElement('div', 'skill-detail-copies', `Copies: ${copies} / 1`);
+            lockSection.appendChild(copiesLabel);
+        }
 
         // Effect preview at level 1
         const previewText = createElement('div', 'skill-detail-preview');
         previewText.innerHTML = `<strong>Effet (Niv.1):</strong> ${formatEffectDescription(skill, 1)}`;
         lockSection.appendChild(previewText);
-
-        // Unlock button
-        const canDo = canUnlockSkill(skill.id);
-        const unlockBtn = createElement('button', `btn skill-btn-unlock${canDo ? '' : ' btn-disabled'}`, '🔓 Unlock');
-        unlockBtn.disabled = !canDo;
-        unlockBtn.addEventListener('click', () => {
-            if (unlockSkill(skill.id)) {
-                showSkillDetailModal(skill.id);
-            }
-        });
-        lockSection.appendChild(unlockBtn);
 
         content.appendChild(lockSection);
     }
@@ -427,35 +593,35 @@ function formatEffectDescription(skill, level) {
 
     switch (stat) {
         case 'maxHPPercent': return `+${value}% max HP`;
-        case 'damagePercent': return `+${value}% dégâts`;
+        case 'damagePercent': return `+${value}% d\u00e9g\u00e2ts`;
         case 'attackSpeedPercent': return `+${value}% vitesse d'attaque`;
         case 'critChanceFlat': return `+${value}% chance de critique`;
         case 'berserkerRage': return `Vitesse d'attaque x2 quand HP < ${value}%`;
-        case 'thornReflect': return `Renvoie ${value}% des dégâts reçus`;
+        case 'thornReflect': return `Renvoie ${value}% des d\u00e9g\u00e2ts re\u00e7us`;
         case 'lifeStealFlat': return `+${value}% life steal`;
-        case 'overkill': return `${value}% du surplus de dégâts passe au monstre suivant`;
+        case 'overkill': return `${value}% du surplus de d\u00e9g\u00e2ts passe au monstre suivant`;
         case 'undyingWill': return `Survit un coup fatal (CD interne: ${value}s)`;
-        case 'bonusEnhance': return `Bonus d'équipement +${value}%`;
-        case 'soulHarvest': return `+${value}% dégâts par monstre tué dans la wave`;
+        case 'bonusEnhance': return `Bonus d'\u00e9quipement +${value}%`;
+        case 'soulHarvest': return `+${value}% d\u00e9g\u00e2ts par monstre tu\u00e9 dans la wave`;
         case 'transcendence': return `+${value}% tous les stats par niveau du joueur`;
-        case 'damageReduction': return `-${value}% dégâts reçus`;
-        case 'powerStrike': return `3 prochaines attaques +${value}% dégâts`;
+        case 'damageReduction': return `-${value}% d\u00e9g\u00e2ts re\u00e7us`;
+        case 'powerStrike': return `3 prochaines attaques +${value}% d\u00e9g\u00e2ts`;
         case 'attackSpeedBurst': return `+${value}% vitesse d'attaque`;
-        case 'instantHeal': return `Soin instantané ${value}% HP max`;
+        case 'instantHeal': return `Soin instantan\u00e9 ${value}% HP max`;
         case 'focusBurst': {
             const critMulti = (skill.effect.baseCritMulti || 0) + (skill.effect.critMultiPerLevel || 0) * (level - 1);
             return `+${value}% crit chance, +${critMulti}% crit multi`;
         }
         case 'enrage': {
             const taken = (skill.effect.damageTaken || 0) + (skill.effect.damageTakenPerLevel || 0) * (level - 1);
-            return `+${value}% dégâts, +${Math.max(0, taken)}% dégâts reçus`;
+            return `+${value}% d\u00e9g\u00e2ts, +${Math.max(0, taken)}% d\u00e9g\u00e2ts re\u00e7us`;
         }
         case 'evasion': return `${value}% chance d'esquiver`;
         case 'lifeStealBurst': return `+${value}% life steal`;
         case 'warCry': return `+${value}% TOUS les stats`;
-        case 'execute': return `${value}% dégâts aux monstres < ${skill.effect.threshold || 30}% HP`;
-        case 'apocalypse': return `${value}% dégâts à TOUS les monstres`;
-        case 'divineShield': return `Immunité totale aux dégâts pendant ${getSkillDuration(skill, level)}s`;
+        case 'execute': return `${value}% d\u00e9g\u00e2ts aux monstres < ${skill.effect.threshold || 30}% HP`;
+        case 'apocalypse': return `${value}% d\u00e9g\u00e2ts \u00e0 TOUS les monstres`;
+        case 'divineShield': return `Immunit\u00e9 totale aux d\u00e9g\u00e2ts pendant ${getSkillDuration(skill, level)}s`;
         default: return `${value}`;
     }
 }

@@ -62,4 +62,7 @@ export const EVENTS = {
     SKILL_ACTIVATED: 'skill:activated',
     SKILL_EXPIRED: 'skill:expired',
     SKILL_COOLDOWN_READY: 'skill:cooldown_ready',
+    // Skill forge
+    SKILL_FORGED: 'skill:forged',
+    SKILL_SHARDS_CHANGED: 'skill:shards_changed',
 };
