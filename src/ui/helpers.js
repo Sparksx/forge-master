@@ -103,12 +103,15 @@ export function showToast(message, type = 'forge', duration = 1500) {
 
 // ===== Gold Drip Animation =====
 
+const DRAIN_DELAY = 1000; // ms to show total before draining
+
 const goldAnim = {
     displayed: 0,
     target: 0,
     pending: 0,
     pendingEl: null,
     timer: null,
+    delayTimer: null,
 };
 
 function ensureGoldPendingEl() {
@@ -154,22 +157,28 @@ function startGoldDrain(amountEl) {
     if (!pendingEl) return;
     updatePendingDisplay(goldAnim, pendingEl);
 
-    if (goldAnim.timer) return; // already running
-    goldAnim.timer = setInterval(() => {
-        if (goldAnim.pending <= 0) {
-            clearInterval(goldAnim.timer);
-            goldAnim.timer = null;
-            if (pendingEl) pendingEl.classList.remove('active');
-            return;
-        }
-        // Transfer rate: finish in ~1s regardless of amount
-        const rate = Math.max(1, Math.ceil(goldAnim.pending / 20));
-        const transfer = Math.min(rate, goldAnim.pending);
-        goldAnim.pending -= transfer;
-        goldAnim.displayed += transfer;
-        amountEl.textContent = formatCompact(goldAnim.displayed);
-        updatePendingDisplay(goldAnim, pendingEl);
-    }, 50);
+    if (goldAnim.timer) return; // drain already running, just accumulate
+
+    // Reset delay so new gains extend the pause (lets total accumulate)
+    if (goldAnim.delayTimer) clearTimeout(goldAnim.delayTimer);
+    goldAnim.delayTimer = setTimeout(() => {
+        goldAnim.delayTimer = null;
+        goldAnim.timer = setInterval(() => {
+            if (goldAnim.pending <= 0) {
+                clearInterval(goldAnim.timer);
+                goldAnim.timer = null;
+                if (pendingEl) pendingEl.classList.remove('active');
+                return;
+            }
+            // Transfer rate: finish in ~1s regardless of amount
+            const rate = Math.max(1, Math.ceil(goldAnim.pending / 20));
+            const transfer = Math.min(rate, goldAnim.pending);
+            goldAnim.pending -= transfer;
+            goldAnim.displayed += transfer;
+            amountEl.textContent = formatCompact(goldAnim.displayed);
+            updatePendingDisplay(goldAnim, pendingEl);
+        }, 50);
+    }, DRAIN_DELAY);
 }
 
 /** Initialize the gold animation displayed value (on game load) */
@@ -211,12 +220,12 @@ export function showEssenceGain(amount) {
     el.textContent = `+${formatCompact(essenceAnim.pending)}`;
     el.classList.add('active');
 
-    // Reset fade timer
+    // Reset fade timer — wait long enough to see the accumulated total
     if (essenceAnim.fadeTimer) clearTimeout(essenceAnim.fadeTimer);
     essenceAnim.fadeTimer = setTimeout(() => {
         el.classList.remove('active');
         essenceAnim.pending = 0;
-    }, 1500);
+    }, 2500);
 }
 
 // ===== Shared pending display helper =====
