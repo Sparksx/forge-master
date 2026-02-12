@@ -1,0 +1,163 @@
+/* =============================================
+   RESPONSIVE DESIGN
+   ============================================= */
+
+/* Tall narrow screens (mobile portrait) */
+@media (max-width: 600px) {
+    body {
+        padding: 6px;
+        padding-top: 52px;
+        padding-bottom: 64px;
+    }
+
+    .app-header {
+        padding: 6px 8px;
+    }
+
+    .container {
+        padding: 10px;
+    }
+
+    .stats-panel {
+        margin-bottom: 6px;
+    }
+
+    .forge-btn {
+        padding: 10px;
+    }
+
+    /* Modal responsive */
+    .modal-content {
+        width: 95%;
+        padding: 16px;
+        max-height: 80dvh;
+    }
+
+    .comparison-container {
+        gap: 8px;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* Combat responsive */
+    .combatant-emoji {
+        font-size: 2em;
+    }
+
+    .monster-row-emoji {
+        font-size: 1.4em;
+    }
+
+    .hp-text {
+        font-size: 0.55em;
+    }
+}
+
+/* Very short screens (landscape or small laptops) */
+@media (max-height: 600px) {
+    .bottom-nav {
+        height: 48px;
+    }
+
+    body {
+        padding: 4px;
+        padding-top: 48px;
+        padding-bottom: 48px;
+    }
+
+    .app-header {
+        padding: 4px 8px;
+    }
+
+    .container {
+        padding: 8px;
+    }
+
+    h1 {
+        font-size: 1.2em;
+        margin-bottom: 4px;
+    }
+
+    .header-row {
+        margin-bottom: 4px;
+    }
+
+    .stats-panel {
+        padding: 4px;
+        margin-bottom: 4px;
+    }
+
+    .power-score-row {
+        margin-bottom: 4px;
+        padding-bottom: 4px;
+    }
+
+    .stats-row-main {
+        gap: 16px;
+    }
+
+    .stat-label {
+        font-size: 0.75em;
+    }
+
+    .stat-value {
+        font-size: 1.1em;
+    }
+
+    .equipment-display {
+        margin-bottom: 4px;
+    }
+
+    .body-container {
+        gap: 4px;
+        padding: 2px;
+    }
+
+    .equipment-slot {
+        padding: 3px;
+    }
+
+    .slot-icon {
+        font-size: 1.2em;
+        margin-bottom: 0;
+    }
+
+    .forge-btn {
+        padding: 8px;
+        font-size: 1em;
+    }
+
+    .action-icon-btn {
+        width: 40px;
+        font-size: 1.1em;
+    }
+
+    /* Combat responsive - short screens */
+    .combat-zone {
+        padding: 4px !important;
+    }
+
+    .wave-indicator {
+        margin-bottom: 2px;
+    }
+
+    .combatant-emoji {
+        font-size: 1.8em;
+    }
+
+    .monster-row-emoji {
+        font-size: 1.2em;
+    }
+
+    .hp-bar-container {
+        height: 12px;
+    }
+
+    .monster-row {
+        padding: 1px 3px;
+        gap: 3px;
+    }
+}

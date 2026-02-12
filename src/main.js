@@ -1,5 +1,22 @@
-import '../style.css';
-import '../admin.css';
+/* CSS – split by feature */
+import '../css/base.css';
+import '../css/navigation.css';
+import '../css/header.css';
+import '../css/stats.css';
+import '../css/equipment.css';
+import '../css/forge.css';
+import '../css/modals.css';
+import '../css/shop.css';
+import '../css/toasts.css';
+import '../css/combat.css';
+import '../css/responsive.css';
+import '../css/auth.css';
+import '../css/chat.css';
+import '../css/pvp.css';
+import '../css/profile.css';
+import '../css/tech-tree.css';
+import '../css/skills.css';
+import '../css/admin.css';
 import { gameEvents, EVENTS } from './events.js';
 import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture } from './state.js';
 import { forgeEquipment } from './forge.js';

@@ -1,0 +1,360 @@
+/* =============================================
+   COMBAT ZONE
+   ============================================= */
+
+/* Home page split layout */
+#view-home.active {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+}
+
+#view-home .combat-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    padding: clamp(6px, 1.2vw, 12px);
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+#view-home .forge-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    padding: clamp(8px, 1.5vw, 16px);
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 2px solid #d0d0d0;
+}
+
+/* Wave indicator */
+.wave-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: clamp(4px, 0.8vw, 8px);
+    flex-shrink: 0;
+}
+
+.wave-label {
+    font-size: clamp(0.75em, 1.2vw, 0.95em);
+    font-weight: 800;
+    color: #e0e0e0;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.wave-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.wave-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4fc3f7, #ab47bc);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+    width: 1%;
+}
+
+/* Combat arena */
+.combat-arena {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(8px, 2vw, 24px);
+    min-height: 0;
+}
+
+/* Player combatant */
+.combatant {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2px, 0.5vw, 6px);
+    max-width: 140px;
+    position: relative;
+}
+
+.combatant-emoji {
+    font-size: clamp(2em, 5vw, 3.5em);
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    transition: transform 0.15s ease;
+}
+
+.combatant-name {
+    font-size: clamp(0.65em, 1vw, 0.85em);
+    font-weight: 700;
+    color: #b0bec5;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Monster side: vertical stack of 1-3 monsters */
+.monsters-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(3px, 0.5vw, 6px);
+    max-width: 180px;
+    min-width: 0;
+}
+
+.monster-row {
+    display: flex;
+    align-items: center;
+    gap: clamp(4px, 0.8vw, 8px);
+    padding: clamp(2px, 0.4vw, 4px) clamp(4px, 0.6vw, 6px);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, opacity 0.3s;
+    position: relative;
+}
+
+.monster-row.monster-focused {
+    border-color: #ffd740;
+    background: rgba(255, 215, 64, 0.08);
+}
+
+.monster-row.monster-dead {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.monster-row-emoji {
+    font-size: clamp(1.4em, 3vw, 2.2em);
+    line-height: 1;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4));
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+.monster-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.monster-row-name {
+    font-size: clamp(0.55em, 0.85vw, 0.7em);
+    font-weight: 700;
+    color: #b0bec5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Monster row attack animation */
+.monster-row.attacking .monster-row-emoji {
+    animation: attackLeft 0.3s ease-out;
+}
+
+/* Monster row hit shake */
+.monster-row.hit .monster-row-emoji {
+    animation: hitShake 0.3s ease-out;
+}
+
+/* HP Bars */
+.hp-bar-container {
+    width: 100%;
+    position: relative;
+    height: clamp(14px, 2.5vw, 20px);
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.hp-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.15s ease;
+    width: 100%;
+}
+
+.hp-bar-player {
+    background: linear-gradient(90deg, #43a047, #66bb6a);
+}
+
+.hp-bar-monster {
+    background: linear-gradient(90deg, #e53935, #ef5350);
+}
+
+.hp-bar.hp-mid {
+    background: linear-gradient(90deg, #f9a825, #fbc02d) !important;
+}
+.hp-bar.hp-low {
+    background: linear-gradient(90deg, #c62828, #e53935) !important;
+}
+
+.hp-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(0.55em, 0.9vw, 0.7em);
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    white-space: nowrap;
+}
+
+/* VS / center column */
+.combat-vs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.vs-text {
+    font-size: clamp(1.2em, 2.5vw, 1.8em);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* Damage numbers — per-side containers */
+.damage-numbers {
+    position: absolute;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.damage-numbers-player {
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 50px;
+}
+
+.damage-numbers-monster {
+    top: -4px;
+    right: -4px;
+    width: 70px;
+    height: 40px;
+}
+
+.damage-number {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    font-weight: 900;
+    font-size: clamp(0.7em, 1.1vw, 0.9em);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: damageFloat 0.7s ease-out forwards;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.damage-player {
+    color: #ef5350;
+}
+
+.damage-monster {
+    color: #66bb6a;
+}
+
+.damage-heal {
+    color: #4fc3f7;
+}
+
+.damage-crit {
+    font-size: clamp(0.85em, 1.3vw, 1.1em) !important;
+    color: #ffd740 !important;
+}
+
+@keyframes damageFloat {
+    0% {
+        opacity: 1;
+        transform: translate(calc(-50% + var(--offset-x, 0px)), var(--offset-y, 0px)) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--offset-x, 0px)), calc(var(--offset-y, 0px) - 35px)) scale(0.7);
+    }
+}
+
+/* Attack animation (player side only — monster animations are on .monster-row) */
+.combatant-player.attacking .combatant-emoji {
+    animation: attackRight 0.3s ease-out;
+}
+
+@keyframes attackRight {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(20px) scale(1.1); }
+    100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attackLeft {
+    0% { transform: translateX(0); }
+    40% { transform: translateX(-20px) scale(1.1); }
+    100% { transform: translateX(0) scale(1); }
+}
+
+/* Hit/shake animation */
+.combatant.hit .combatant-emoji {
+    animation: hitShake 0.3s ease-out;
+}
+
+@keyframes hitShake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+}
+
+/* Combat result overlay */
+.combat-result {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(1.4em, 3vw, 2.2em);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 10;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+.combat-result-show {
+    animation: resultPop 1.2s ease-out forwards;
+}
+
+.combat-result-victory {
+    color: #ffd740;
+}
+
+.combat-result-defeat {
+    color: #ef5350;
+}
+
+@keyframes resultPop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    40% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}

@@ -2,6 +2,42 @@
    Admin & Moderator Panel Styles
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ===== Admin FAB & Inline Styles ===== */
+
+.admin-fab {
+    position: fixed;
+    bottom: 70px;
+    right: 10px;
+    z-index: 10000;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #d32f2f;
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+}
+
+.admin-fab:hover {
+    background: #b71c1c;
+}
+
+.admin-modal {
+    z-index: 10001;
+}
+
+.admin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
 /* ─── Role Badges (chat) ───────────────────────────────────────── */
 
 .chat-role-badge {
@@ -100,59 +136,6 @@
     padding: 4px 8px;
     background: rgba(255, 107, 107, 0.1);
     border-radius: 6px;
-}
-
-/* ─── Moderation section in player profile ─────────────────────── */
-
-.chat-profile-moderation {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.chat-profile-mod-stats {
-    display: flex;
-    gap: 12px;
-    font-size: 0.8em;
-    color: #aaa;
-    margin-bottom: 6px;
-}
-
-.chat-profile-mod-warnings {
-    margin-bottom: 6px;
-}
-
-.chat-profile-mod-label {
-    font-size: 0.8em;
-    color: #ffaa33;
-    font-weight: 600;
-}
-
-.chat-profile-mod-warn-item {
-    font-size: 0.75em;
-    color: #ccc;
-    padding: 2px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.chat-profile-mod-status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75em;
-    font-weight: 700;
-    margin-right: 6px;
-    margin-top: 4px;
-}
-
-.chat-profile-mod-banned {
-    background: rgba(255, 46, 99, 0.2);
-    color: #ff2e63;
-}
-
-.chat-profile-mod-muted {
-    background: rgba(255, 170, 51, 0.2);
-    color: #ffaa33;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
