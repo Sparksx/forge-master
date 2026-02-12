@@ -4137,16 +4137,24 @@ h1 {
    Skills UI
    ══════════════════════════════════════════════════════════ */
 
+/* ── Skills Tab Layout ────────────────────────────────── */
+
+#subtab-skills {
+    flex-direction: column;
+    overflow-y: auto;
+}
+
 /* ── Equipped Skills Section ──────────────────────────── */
 
 .skills-equipped-section {
     margin-bottom: 16px;
+    flex-shrink: 0;
 }
 
 .skills-equipped-title {
     font-size: 14px;
     font-weight: 700;
-    color: #ddd;
+    color: #333;
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -4160,9 +4168,9 @@ h1 {
 .skills-equipped-slot {
     flex: 1;
     min-height: 60px;
-    border: 2px solid #333;
+    border: 2px solid #e0e0e0;
     border-radius: 10px;
-    background: rgba(255,255,255,0.04);
+    background: #f8f8f8;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4174,11 +4182,11 @@ h1 {
 }
 
 .skills-equipped-slot:hover {
-    background: rgba(255,255,255,0.08);
+    background: #f0f0f0;
 }
 
 .skills-equipped-slot-empty {
-    color: #555;
+    color: #aaa;
     font-size: 12px;
     border-style: dashed;
 }
@@ -4204,7 +4212,7 @@ h1 {
 
 .skills-equipped-level {
     font-size: 9px;
-    color: #aaa;
+    color: #888;
 }
 
 .skills-type-tag {
@@ -4216,12 +4224,12 @@ h1 {
 }
 
 .skills-type-passive {
-    background: rgba(30, 255, 0, 0.15);
-    color: #1eff00;
+    background: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
 }
 
 .skills-type-active {
-    background: rgba(0, 112, 221, 0.15);
+    background: rgba(0, 112, 221, 0.1);
     color: #0070dd;
 }
 
@@ -4232,6 +4240,7 @@ h1 {
     flex-direction: column;
     gap: 8px;
     margin-bottom: 12px;
+    flex-shrink: 0;
 }
 
 .skills-type-filters,
@@ -4244,10 +4253,10 @@ h1 {
 .skills-filter-btn,
 .skills-tier-btn {
     padding: 4px 10px;
-    border: 1px solid #444;
+    border: 1px solid #d0d0d0;
     border-radius: 6px;
-    background: rgba(255,255,255,0.04);
-    color: #ccc;
+    background: #f5f5f5;
+    color: #666;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.15s;
@@ -4255,14 +4264,15 @@ h1 {
 
 .skills-filter-btn:hover,
 .skills-tier-btn:hover {
-    background: rgba(255,255,255,0.1);
+    background: #eaeaea;
 }
 
 .skills-filter-btn.active,
 .skills-tier-btn.active {
-    background: rgba(74, 144, 217, 0.2);
+    background: rgba(74, 144, 217, 0.15);
     border-color: #4a90d9;
-    color: #fff;
+    color: #4a90d9;
+    font-weight: 700;
 }
 
 /* ── Skills Grid ──────────────────────────────────────── */
@@ -4279,16 +4289,17 @@ h1 {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border: 2px solid #333;
+    border: 1px solid #e0e0e0;
     border-radius: 10px;
-    background: rgba(255,255,255,0.03);
+    background: white;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .skill-card:hover {
-    background: rgba(255,255,255,0.07);
+    background: #f8f8f8;
     transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .skill-card.skill-locked {
@@ -4296,8 +4307,8 @@ h1 {
 }
 
 .skill-card.skill-equipped {
-    background: rgba(255,255,255,0.06);
-    box-shadow: inset 0 0 12px rgba(255,255,255,0.05);
+    background: #f5f0ff;
+    border-color: #d1c4e9;
 }
 
 .skill-card-icon {
@@ -4331,19 +4342,19 @@ h1 {
 
 .skill-card-level {
     font-size: 11px;
-    color: #aaa;
+    color: #888;
     margin-top: 2px;
 }
 
 .skill-card-locked-text {
     font-size: 11px;
-    color: #666;
+    color: #999;
     margin-top: 2px;
 }
 
 .skill-level-bar {
     height: 4px;
-    background: rgba(255,255,255,0.08);
+    background: #e0e0e0;
     border-radius: 2px;
     margin-top: 4px;
     overflow: hidden;
@@ -4363,7 +4374,7 @@ h1 {
     right: 12px;
     background: none;
     border: none;
-    color: #aaa;
+    color: #888;
     font-size: 18px;
     cursor: pointer;
     padding: 4px 8px;
@@ -4372,8 +4383,8 @@ h1 {
 }
 
 .modal-close-btn:hover {
-    background: rgba(255,255,255,0.1);
-    color: #fff;
+    background: rgba(0,0,0,0.06);
+    color: #333;
 }
 
 .skill-detail-header {
@@ -4401,7 +4412,7 @@ h1 {
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: #aaa;
+    color: #888;
     margin-top: 2px;
 }
 
@@ -4413,11 +4424,11 @@ h1 {
 }
 
 .skill-detail-desc {
-    color: #bbb;
+    color: #666;
     font-size: 13px;
     margin-bottom: 16px;
     padding: 8px;
-    background: rgba(255,255,255,0.03);
+    background: #f8f8f8;
     border-radius: 6px;
     border-left: 3px solid #4a90d9;
 }
@@ -4429,13 +4440,13 @@ h1 {
 .skill-detail-level-label {
     font-size: 13px;
     font-weight: 600;
-    color: #ddd;
+    color: #333;
     margin-bottom: 4px;
 }
 
 .skill-detail-progress-bar {
     height: 6px;
-    background: rgba(255,255,255,0.08);
+    background: #e0e0e0;
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -4451,7 +4462,7 @@ h1 {
 .skill-detail-next,
 .skill-detail-preview {
     font-size: 12px;
-    color: #ccc;
+    color: #555;
     margin-bottom: 4px;
 }
 
@@ -4461,10 +4472,10 @@ h1 {
 
 .skill-detail-timing {
     font-size: 12px;
-    color: #aaa;
+    color: #666;
     margin-top: 6px;
     padding: 4px 8px;
-    background: rgba(255,255,255,0.04);
+    background: #f5f5f5;
     border-radius: 4px;
 }
 
@@ -4495,21 +4506,21 @@ h1 {
 }
 
 .skill-btn-equip {
-    background: linear-gradient(135deg, #1eff00, #15cc00);
-    color: #111;
+    background: linear-gradient(135deg, #43a047, #2e7d32);
+    color: #fff;
 }
 
 .skill-btn-equip:hover:not(:disabled) {
-    background: linear-gradient(135deg, #44ff22, #22dd11);
+    background: linear-gradient(135deg, #4caf50, #388e3c);
 }
 
 .skill-btn-unequip {
-    background: linear-gradient(135deg, #ff4444, #cc2222);
+    background: linear-gradient(135deg, #ef5350, #c62828);
     color: #fff;
 }
 
 .skill-btn-unequip:hover {
-    background: linear-gradient(135deg, #ff6666, #dd3333);
+    background: linear-gradient(135deg, #f44336, #d32f2f);
 }
 
 .skill-btn-unlock {
@@ -4529,22 +4540,22 @@ h1 {
     text-align: center;
     font-weight: 700;
     font-size: 14px;
-    color: #f0c040;
+    color: #f9a825;
     padding: 8px;
-    background: rgba(240, 192, 64, 0.1);
+    background: rgba(249, 168, 37, 0.1);
     border-radius: 8px;
 }
 
 .skill-detail-lock-section {
     padding: 12px;
-    background: rgba(255,255,255,0.03);
+    background: #f8f8f8;
     border-radius: 8px;
 }
 
 .skill-detail-req-title {
     font-size: 14px;
     font-weight: 600;
-    color: #ddd;
+    color: #333;
     margin-bottom: 8px;
 }
 
@@ -4562,13 +4573,13 @@ h1 {
 }
 
 .req-met {
-    color: #1eff00;
-    background: rgba(30, 255, 0, 0.05);
+    color: #2e7d32;
+    background: rgba(46, 125, 50, 0.08);
 }
 
 .req-unmet {
-    color: #ff4444;
-    background: rgba(255, 68, 68, 0.05);
+    color: #c62828;
+    background: rgba(198, 40, 40, 0.08);
 }
 
 /* ── Skill HUD (combat) ──────────────────────────────── */
