@@ -1,36 +1,55 @@
 /* =============================================
-   AUTH SCREEN
+   AUTH SCREEN — Enhanced Fantasy Style
    ============================================= */
 
 .auth-screen {
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(135deg, #0a0c1a 0%, #12152e 40%, #1a1e3a 100%);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 9999;
+    overflow: hidden;
+}
+
+/* Ambient glow behind auth container */
+.auth-screen::before {
+    content: '';
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(240, 192, 64, 0.08) 0%, transparent 70%);
+    pointer-events: none;
 }
 
 .auth-container {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(21, 24, 41, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-medium);
     border-radius: 16px;
     padding: 40px 32px;
     width: 90%;
     max-width: 380px;
     text-align: center;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 215, 0, 0.15);
+    position: relative;
 }
 
 .auth-title {
-    color: #f0c040;
-    font-size: 2em;
+    color: var(--gold);
+    font-size: 2.2em;
     margin-bottom: 8px;
+    font-family: var(--font-display);
+    text-shadow: 0 2px 12px rgba(240, 192, 64, 0.3);
+    letter-spacing: 1px;
 }
 
 .auth-subtitle {
-    color: #aaa;
+    color: var(--text-secondary);
     font-size: 0.9em;
     margin-bottom: 24px;
 }
@@ -43,53 +62,56 @@
 
 .auth-form input {
     padding: 12px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
+    background: var(--bg-card);
+    color: var(--text-primary);
     font-size: 1em;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .auth-form input:focus {
-    border-color: #f0c040;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(240, 192, 64, 0.15);
 }
 
 .auth-form input::placeholder {
-    color: #888;
+    color: var(--text-muted);
 }
 
 .auth-btn {
     padding: 12px;
     border: none;
     border-radius: 8px;
-    background: #f0c040;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
     color: #1a1a2e;
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(240, 192, 64, 0.25);
 }
 
 .auth-btn:hover {
-    background: #ffd700;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    box-shadow: 0 4px 16px rgba(240, 192, 64, 0.35);
 }
 
 .auth-error {
-    color: #ff6b6b;
+    color: var(--accent-red);
     font-size: 0.85em;
     min-height: 1.2em;
 }
 
 .auth-switch {
-    color: #aaa;
+    color: var(--text-muted);
     font-size: 0.85em;
     margin-top: 8px;
 }
 
 .auth-switch a {
-    color: #f0c040;
+    color: var(--gold);
     text-decoration: none;
 }
 
@@ -105,14 +127,16 @@
 }
 
 .auth-btn-guest {
-    background: #f0c040;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
     color: #1a1a2e;
     font-size: 1.15em;
     padding: 14px;
+    font-family: var(--font-display);
+    letter-spacing: 0.5px;
 }
 
 .auth-btn-guest:hover {
-    background: #ffd700;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
 }
 
 .auth-btn-guest:disabled {
@@ -125,7 +149,7 @@
     align-items: center;
     gap: 12px;
     margin: 4px 0;
-    color: #666;
+    color: var(--text-muted);
     font-size: 0.85em;
 }
 
@@ -133,7 +157,7 @@
 .auth-divider::after {
     content: '';
     flex: 1;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .auth-oauth-row {
@@ -167,11 +191,11 @@
 }
 
 .auth-btn-google {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
 }
 
 .auth-btn-google:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: var(--bg-card-hover);
 }

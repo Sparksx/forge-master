@@ -18,8 +18,8 @@
 }
 
 .tech-research-active.has-research {
-    background: #f5f0ff;
-    border: 1px solid #d1c4e9;
+    background: rgba(156, 106, 255, 0.1);
+    border: 1px solid var(--accent-purple);
     border-radius: 8px;
     padding: 10px 12px;
 }
@@ -33,13 +33,14 @@
 .research-banner-title {
     font-weight: 700;
     font-size: clamp(0.9em, 1.3vw, 1.05em);
-    color: #5e35b1;
+    color: var(--accent-purple);
+    font-family: var(--font-display);
 }
 
 .research-progress-bar {
     width: 100%;
     height: 8px;
-    background: #e0e0e0;
+    background: var(--bg-surface);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -62,7 +63,7 @@
 .research-timer-text {
     font-size: clamp(0.85em, 1.2vw, 1em);
     font-weight: 600;
-    color: #555;
+    color: var(--text-secondary);
 }
 
 .btn-speed-up-research {
@@ -76,12 +77,12 @@
 .research-queue {
     margin-top: 6px;
     padding-top: 6px;
-    border-top: 1px solid #d1c4e9;
+    border-top: 1px solid rgba(156, 106, 255, 0.3);
 }
 
 .research-queue-label {
     font-size: clamp(0.75em, 1vw, 0.85em);
-    color: #888;
+    color: var(--text-muted);
     margin-bottom: 4px;
 }
 
@@ -105,10 +106,10 @@
     flex: 1;
     min-width: 0;
     padding: 6px 2px;
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--border-subtle);
     border-radius: 6px;
-    background: #f5f5f5;
-    color: #888;
+    background: var(--bg-card);
+    color: var(--text-muted);
     font-size: clamp(0.65em, 1.1vw, 0.8em);
     font-weight: 600;
     cursor: pointer;
@@ -118,9 +119,9 @@
 }
 
 .tech-branch-tab.active {
-    background: #5e35b1;
-    color: white;
-    border-color: #5e35b1;
+    background: var(--accent-purple);
+    color: var(--text-primary);
+    border-color: var(--accent-purple);
 }
 
 /* ── Tech List ──────────────────────────────── */
@@ -137,8 +138,8 @@
 /* ── Tech Card ──────────────────────────────── */
 
 .tech-card {
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     padding: 10px 12px;
     transition: border-color 0.2s, opacity 0.2s;
@@ -146,22 +147,22 @@
 
 .tech-card.tech-locked {
     opacity: 0.5;
-    border-color: #e0e0e0;
+    border-color: var(--border-subtle);
 }
 
 .tech-card.tech-maxed {
-    border-color: #ffd600;
-    background: linear-gradient(135deg, #fffde7, #fff9c4);
+    border-color: var(--gold);
+    background: linear-gradient(135deg, rgba(240, 192, 64, 0.15), rgba(240, 192, 64, 0.08));
 }
 
 .tech-card.tech-active {
-    border-color: #7e57c2;
-    background: #f5f0ff;
+    border-color: var(--accent-purple);
+    background: rgba(156, 106, 255, 0.1);
 }
 
 .tech-card.tech-queued {
-    border-color: #b39ddb;
-    background: #faf5ff;
+    border-color: rgba(156, 106, 255, 0.4);
+    background: rgba(156, 106, 255, 0.05);
 }
 
 .tech-card-header {
@@ -185,12 +186,13 @@
 .tech-card-name {
     font-weight: 700;
     font-size: clamp(0.85em, 1.2vw, 1em);
-    color: #333;
+    color: var(--text-primary);
+    font-family: var(--font-display);
 }
 
 .tech-card-desc {
     font-size: clamp(0.7em, 1vw, 0.82em);
-    color: #888;
+    color: var(--text-muted);
     margin-top: 2px;
     line-height: 1.3;
 }
@@ -212,8 +214,8 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #e0e0e0;
-    border: 1px solid #ccc;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-medium);
 }
 
 .tech-dot-filled {
@@ -224,7 +226,7 @@
 .tech-level-bar {
     width: 100%;
     height: 6px;
-    background: #e0e0e0;
+    background: var(--bg-surface);
     border-radius: 3px;
     overflow: hidden;
     min-width: 50px;
@@ -239,7 +241,7 @@
 
 .tech-card-level {
     font-size: clamp(0.65em, 0.9vw, 0.75em);
-    color: #999;
+    color: var(--text-muted);
     font-weight: 600;
 }
 
@@ -277,7 +279,7 @@
     gap: 6px;
     margin-top: 6px;
     padding: 4px 8px;
-    background: #f5f5f5;
+    background: var(--bg-surface);
     border-radius: 4px;
 }
 
@@ -288,7 +290,7 @@
 
 .tech-lock-text {
     font-size: clamp(0.7em, 1vw, 0.8em);
-    color: #999;
+    color: var(--text-muted);
 }
 
 /* ── Tech Card Action ───────────────────────── */
@@ -312,7 +314,7 @@
 
 .tech-card-time {
     font-size: clamp(0.75em, 1vw, 0.85em);
-    color: #999;
+    color: var(--text-muted);
 }
 
 .btn-research {
@@ -321,7 +323,7 @@
     padding: 6px 14px !important;
     font-size: clamp(0.75em, 1vw, 0.85em) !important;
     background: linear-gradient(135deg, #7e57c2, #5e35b1);
-    color: white;
+    color: var(--text-primary);
     white-space: nowrap;
 }
 
@@ -330,8 +332,8 @@
 }
 
 .btn-research.btn-disabled {
-    background: #ccc;
-    color: #888;
+    background: var(--bg-surface);
+    color: var(--text-muted);
     cursor: not-allowed;
     transform: none !important;
 }

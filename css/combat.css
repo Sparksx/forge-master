@@ -1,5 +1,5 @@
 /* =============================================
-   COMBAT ZONE
+   COMBAT ZONE — Enhanced Fantasy Theme
    ============================================= */
 
 /* Home page split layout */
@@ -13,22 +13,43 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(180deg, #0a0c1a 0%, #12152e 40%, #1a1e3a 100%);
     padding: clamp(6px, 1.2vw, 12px);
     min-height: 0;
     position: relative;
     overflow: hidden;
 }
 
+/* Subtle animated background particles */
+#view-home .combat-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(1px 1px at 10% 20%, rgba(255, 215, 0, 0.15), transparent),
+        radial-gradient(1px 1px at 30% 70%, rgba(156, 106, 255, 0.12), transparent),
+        radial-gradient(1px 1px at 70% 40%, rgba(79, 195, 247, 0.1), transparent),
+        radial-gradient(1px 1px at 90% 80%, rgba(255, 215, 0, 0.1), transparent),
+        radial-gradient(1px 1px at 50% 10%, rgba(156, 106, 255, 0.08), transparent);
+    pointer-events: none;
+    animation: particleFloat 8s ease-in-out infinite alternate;
+}
+
+@keyframes particleFloat {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
 #view-home .forge-zone {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: white;
+    background: linear-gradient(180deg, #161a30 0%, #1c2040 100%);
     padding: clamp(8px, 1.5vw, 16px);
     min-height: 0;
     overflow-y: auto;
-    border-top: 2px solid #d0d0d0;
+    border-top: 2px solid var(--border-medium);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Wave indicator */
@@ -46,14 +67,16 @@
     color: #e0e0e0;
     white-space: nowrap;
     text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    font-family: var(--font-display);
 }
 
 .wave-progress-bar {
     flex: 1;
     height: 6px;
-    background: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.08);
     border-radius: 3px;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .wave-progress-fill {
@@ -62,6 +85,7 @@
     border-radius: 3px;
     transition: width 0.5s ease;
     width: 1%;
+    box-shadow: 0 0 8px rgba(79, 195, 247, 0.3);
 }
 
 /* Combat arena */
@@ -88,7 +112,7 @@
 .combatant-emoji {
     font-size: clamp(2em, 5vw, 3.5em);
     line-height: 1;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
     transition: transform 0.15s ease;
 }
 
@@ -101,6 +125,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    font-family: var(--font-display);
 }
 
 /* Monster side: vertical stack of 1-3 monsters */
@@ -121,13 +146,14 @@
     padding: clamp(2px, 0.4vw, 4px) clamp(4px, 0.6vw, 6px);
     border-radius: 8px;
     border: 2px solid transparent;
-    transition: border-color 0.2s, opacity 0.3s;
+    transition: border-color 0.2s, opacity 0.3s, background 0.2s;
     position: relative;
 }
 
 .monster-row.monster-focused {
-    border-color: #ffd740;
+    border-color: rgba(255, 215, 64, 0.6);
     background: rgba(255, 215, 64, 0.08);
+    box-shadow: 0 0 12px rgba(255, 215, 64, 0.15);
 }
 
 .monster-row.monster-dead {
@@ -138,7 +164,7 @@
 .monster-row-emoji {
     font-size: clamp(1.4em, 3vw, 2.2em);
     line-height: 1;
-    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.4));
+    filter: drop-shadow(0 1px 6px rgba(0,0,0,0.5));
     flex-shrink: 0;
     transition: transform 0.15s ease;
 }
@@ -175,10 +201,10 @@
     width: 100%;
     position: relative;
     height: clamp(14px, 2.5vw, 20px);
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.5);
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 .hp-bar {
@@ -189,18 +215,20 @@
 }
 
 .hp-bar-player {
-    background: linear-gradient(90deg, #43a047, #66bb6a);
+    background: linear-gradient(90deg, #2e7d32, #43a047, #66bb6a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .hp-bar-monster {
-    background: linear-gradient(90deg, #e53935, #ef5350);
+    background: linear-gradient(90deg, #c62828, #e53935, #ef5350);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .hp-bar.hp-mid {
-    background: linear-gradient(90deg, #f9a825, #fbc02d) !important;
+    background: linear-gradient(90deg, #e65100, #f9a825, #fbc02d) !important;
 }
 .hp-bar.hp-low {
-    background: linear-gradient(90deg, #c62828, #e53935) !important;
+    background: linear-gradient(90deg, #b71c1c, #c62828, #e53935) !important;
 }
 
 .hp-text {
@@ -211,7 +239,7 @@
     font-size: clamp(0.55em, 0.9vw, 0.7em);
     font-weight: 800;
     color: white;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     white-space: nowrap;
 }
 
@@ -227,7 +255,7 @@
 
 .vs-text {
     font-size: clamp(1.2em, 2.5vw, 1.8em);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 2px 6px rgba(255, 140, 0, 0.4));
 }
 
 /* Damage numbers — per-side containers */
@@ -261,7 +289,7 @@
     white-space: nowrap;
     pointer-events: none;
     animation: damageFloat 0.7s ease-out forwards;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
 }
 
 .damage-player {
@@ -279,6 +307,7 @@
 .damage-crit {
     font-size: clamp(0.85em, 1.3vw, 1.1em) !important;
     color: #ffd740 !important;
+    text-shadow: 0 0 8px rgba(255, 215, 64, 0.5), 0 1px 4px rgba(0,0,0,0.8) !important;
 }
 
 @keyframes damageFloat {
@@ -336,7 +365,8 @@
     pointer-events: none;
     opacity: 0;
     z-index: 10;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+    font-family: var(--font-display);
 }
 
 .combat-result-show {
@@ -345,10 +375,12 @@
 
 .combat-result-victory {
     color: #ffd740;
+    text-shadow: 0 0 20px rgba(255, 215, 64, 0.5), 0 2px 12px rgba(0,0,0,0.8);
 }
 
 .combat-result-defeat {
     color: #ef5350;
+    text-shadow: 0 0 20px rgba(239, 83, 80, 0.4), 0 2px 12px rgba(0,0,0,0.8);
 }
 
 @keyframes resultPop {
