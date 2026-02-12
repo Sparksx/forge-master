@@ -126,8 +126,8 @@ const gameState = {
         unlocked: {},   // { [skillId]: level }  (level >= 1 means unlocked)
         equipped: [],   // [skillId, ...] max 3
         copies: {},     // { [skillId]: totalCopiesForged }
+        shards: 0,      // earned through combat sub-wave completions
     },
-    skillShards: 0,     // earned through combat sub-wave completions
     // Shop state (persisted with game save to prevent re-claiming after cache clear)
     shopState: {
         claimedMilestones: [],
@@ -148,8 +148,7 @@ export function resetGame() {
     gameState.diamonds = STARTING_DIAMONDS;
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
-    gameState.skills = { unlocked: {}, equipped: [], copies: {} };
-    gameState.skillShards = 0;
+    gameState.skills = { unlocked: {}, equipped: [], copies: {}, shards: 0 };
 }
 
 // --- Player level getters / setters ---
@@ -532,24 +531,24 @@ export function setEquippedSkills(equipped) {
     gameState.skills.equipped = equipped;
 }
 
-// --- Skill Shards ---
+// --- Skill Shards (embedded in skills JSON for DB persistence) ---
 
 export function getSkillShards() {
-    return gameState.skillShards;
+    return gameState.skills.shards || 0;
 }
 
 export function addSkillShards(amount) {
-    gameState.skillShards += amount;
+    gameState.skills.shards = (gameState.skills.shards || 0) + amount;
     saveGame();
-    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skillShards);
+    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skills.shards);
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
 export function spendSkillShards(amount) {
-    if (gameState.skillShards < amount) return false;
-    gameState.skillShards -= amount;
+    if ((gameState.skills.shards || 0) < amount) return false;
+    gameState.skills.shards -= amount;
     saveGame();
-    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skillShards);
+    gameEvents.emit(EVENTS.SKILL_SHARDS_CHANGED, gameState.skills.shards);
     gameEvents.emit(EVENTS.STATE_CHANGED);
     return true;
 }
@@ -569,17 +568,35 @@ export function addSkillCopy(skillId) {
         gameState.skills.copies[skillId] = 0;
     }
     gameState.skills.copies[skillId]++;
-
-    // Recalculate level from copies
-    const skill = getSkillDef(skillId);
-    if (skill) {
-        const maxLevel = getSkillMaxLevel(skill);
-        const newLevel = getSkillLevelFromCopies(gameState.skills.copies[skillId], maxLevel);
-        const oldLevel = gameState.skills.unlocked[skillId] || 0;
-        if (newLevel > oldLevel) {
-            gameState.skills.unlocked[skillId] = newLevel;
-        }
+    // First copy always unlocks at level 1
+    if (gameState.skills.copies[skillId] === 1 && !gameState.skills.unlocked[skillId]) {
+        gameState.skills.unlocked[skillId] = 1;
     }
+}
+
+/** Check if a skill can be upgraded based on copies collected */
+export function canUpgradeSkillFromCopies(skillId) {
+    const skill = getSkillDef(skillId);
+    if (!skill) return false;
+    const currentLevel = gameState.skills.unlocked[skillId] || 0;
+    if (currentLevel <= 0) return false;
+    const maxLevel = getSkillMaxLevel(skill);
+    if (currentLevel >= maxLevel) return false;
+    const copies = gameState.skills.copies[skillId] || 0;
+    const possibleLevel = getSkillLevelFromCopies(copies, maxLevel);
+    return possibleLevel > currentLevel;
+}
+
+/** Upgrade a skill to the next level if enough copies */
+export function upgradeSkillFromCopies(skillId) {
+    if (!canUpgradeSkillFromCopies(skillId)) return false;
+    const skill = getSkillDef(skillId);
+    const maxLevel = getSkillMaxLevel(skill);
+    const copies = gameState.skills.copies[skillId] || 0;
+    const newLevel = getSkillLevelFromCopies(copies, maxLevel);
+    gameState.skills.unlocked[skillId] = newLevel;
+    saveGame();
+    return newLevel;
 }
 
 /** Get effective value of a tech effect for game systems */
@@ -623,7 +640,6 @@ function buildSaveData() {
         essence: gameState.essence,
         research: gameState.research,
         skills: gameState.skills,
-        skillShards: gameState.skillShards,
     };
     return data;
 }
@@ -816,6 +832,12 @@ function applyLoadedData(loaded) {
             }
         }
 
+        // Restore shards (embedded in skills JSON for DB persistence)
+        const shardsValue = loaded.skills.shards ?? loaded.skillShards ?? 0;
+        if (typeof shardsValue === 'number' && shardsValue >= 0) {
+            gameState.skills.shards = Math.floor(shardsValue);
+        }
+
         if (loaded.skills.unlocked && typeof loaded.skills.unlocked === 'object') {
             gameState.skills.unlocked = {};
             for (const [skillId, level] of Object.entries(loaded.skills.unlocked)) {
@@ -830,11 +852,6 @@ function applyLoadedData(loaded) {
                 return typeof id === 'string' && gameState.skills.unlocked[id];
             }).slice(0, MAX_EQUIPPED_SKILLS);
         }
-    }
-
-    // Restore skill shards
-    if (typeof loaded.skillShards === 'number' && loaded.skillShards >= 0) {
-        gameState.skillShards = Math.floor(loaded.skillShards);
     }
 
     // Restore shop state (milestones + daily rewards)
