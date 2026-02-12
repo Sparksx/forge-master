@@ -708,7 +708,8 @@ function applyLoadedData(loaded) {
     // Restore combat progress
     if (loaded.combat && typeof loaded.combat === 'object') {
         const { currentWave, currentSubWave, highestWave, highestSubWave } = loaded.combat;
-        if (typeof currentWave === 'number' && currentWave >= 1 && currentWave <= 10) {
+        const maxWaves = 10 + getTechEffect('waveBreaker');
+        if (typeof currentWave === 'number' && currentWave >= 1 && currentWave <= maxWaves) {
             gameState.combat.currentWave = Math.floor(currentWave);
         }
         if (typeof currentSubWave === 'number' && currentSubWave >= 1 && currentSubWave <= 10) {
