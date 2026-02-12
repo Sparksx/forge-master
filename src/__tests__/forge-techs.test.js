@@ -103,7 +103,7 @@ describe('forge tech effects', () => {
         });
 
         it('bonus count is capped at total available bonus stat keys', () => {
-            // Extreme case: extraBonus 3 + tier 6 (bonusCount 3) = 6, but BONUS_STAT_KEYS has 7
+            // Extreme case: extraBonus 3 + tier 7 (bonusCount 3) = 6, but BONUS_STAT_KEYS has 7
             completeResearch('armorMastery', 5);
             completeResearch('bonusEnhance', 1);
             completeResearch('bonusEnhance', 2);
@@ -112,8 +112,8 @@ describe('forge tech effects', () => {
             completeResearch('extraBonus', 2);
             completeResearch('extraBonus', 3);
 
-            // Tier 6 (3 base bonuses + 3 extra = 6)
-            const item = createItem('weapon', 50, 6);
+            // Tier 7 (3 base bonuses + 3 extra = 6)
+            const item = createItem('weapon', 50, 7);
             expect(item.bonuses.length).toBe(6);
             expect(item.bonuses.length).toBeLessThanOrEqual(BONUS_STAT_KEYS.length);
         });
@@ -205,7 +205,7 @@ describe('forge tech effects', () => {
     });
 
     describe('rollTier consistency', () => {
-        it('returns valid tier values (1-6)', () => {
+        it('returns valid tier values (1-7)', () => {
             for (let forgeLevel = 1; forgeLevel <= FORGE_LEVELS.length; forgeLevel++) {
                 for (let i = 0; i < 20; i++) {
                     const tier = rollTier(forgeLevel);

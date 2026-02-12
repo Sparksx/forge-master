@@ -66,11 +66,10 @@ describe('createItem', () => {
         expect(item.bonuses).toHaveLength(1);
     });
 
-    it('creates a tier 4 item with 2 distinct bonuses', () => {
+    it('creates a tier 4 item with 1 bonus', () => {
         const item = createItem('belt', 30, 4);
         expect(item.tier).toBe(4);
-        expect(item.bonuses).toHaveLength(2);
-        expect(item.bonuses[0].type).not.toBe(item.bonuses[1].type);
+        expect(item.bonuses).toHaveLength(1);
     });
 
     it('creates a tier 5 item with 2 distinct bonuses', () => {
@@ -80,9 +79,16 @@ describe('createItem', () => {
         expect(item.bonuses[0].type).not.toBe(item.bonuses[1].type);
     });
 
-    it('creates a tier 6 (Mythic) item with 3 distinct bonuses', () => {
+    it('creates a tier 6 (Mythic) item with 2 distinct bonuses', () => {
         const item = createItem('weapon', 50, 6);
         expect(item.tier).toBe(6);
+        expect(item.bonuses).toHaveLength(2);
+        expect(item.bonuses[0].type).not.toBe(item.bonuses[1].type);
+    });
+
+    it('creates a tier 7 (Divine) item with 3 distinct bonuses', () => {
+        const item = createItem('weapon', 50, 7);
+        expect(item.tier).toBe(7);
         expect(item.bonuses).toHaveLength(3);
         const types = item.bonuses.map(b => b.type);
         expect(new Set(types).size).toBe(3);
@@ -126,7 +132,7 @@ describe('rollTier', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(10);
             expect(tier).toBeGreaterThanOrEqual(1);
-            expect(tier).toBeLessThanOrEqual(6);
+            expect(tier).toBeLessThanOrEqual(7);
         }
     });
 
@@ -134,7 +140,7 @@ describe('rollTier', () => {
         for (let i = 0; i < 100; i++) {
             const tier = rollTier(30);
             expect(tier).toBeGreaterThanOrEqual(2); // forge 30 has 0% Common
-            expect(tier).toBeLessThanOrEqual(6);
+            expect(tier).toBeLessThanOrEqual(7);
         }
     });
 
