@@ -20,3 +20,17 @@ export const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || '';
 // OAuth — Google
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+
+// Stripe
+export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+
+// Diamond packs available for purchase
+export const DIAMOND_PACKS = [
+    { id: 'welcome',  diamonds: 100,  bonus: 0,   priceCents: 299,  label: 'Welcome Pack',  oneTime: true },
+    { id: 'starter',  diamonds: 50,   bonus: 0,   priceCents: 499,  label: 'Starter' },
+    { id: 'popular',  diamonds: 100,  bonus: 20,  priceCents: 999,  label: 'Popular' },
+    { id: 'value',    diamonds: 200,  bonus: 60,  priceCents: 1999, label: 'Value' },
+    { id: 'premium',  diamonds: 500,  bonus: 200, priceCents: 4999, label: 'Premium' },
+    { id: 'ultimate', diamonds: 1000, bonus: 500, priceCents: 9999, label: 'Ultimate' },
+];

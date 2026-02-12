@@ -1,6 +1,7 @@
-import { addGold, addEssence, getCombatProgress, getShopState, setShopState, getDiamonds, spendDiamonds } from './state.js';
+import { addGold, addEssence, getCombatProgress, getShopState, setShopState, getDiamonds, spendDiamonds, loadGameFromServer } from './state.js';
 import { gameEvents, EVENTS } from './events.js';
-import { DIAMOND_SHOP_OFFERS } from './config.js';
+import { DIAMOND_SHOP_OFFERS, DIAMOND_PACKS } from './config.js';
+import { apiFetch, getAccessToken } from './api.js';
 
 // Daily login reward tiers — players can claim once per day
 const DAILY_REWARD_BASE = 50;
@@ -72,11 +73,47 @@ export function buyDiamondOffer(offerId) {
     return true;
 }
 
+// --- Real-money diamond purchase via Stripe ---
+
+let purchaseInProgress = false;
+
+async function buyDiamondPack(packId) {
+    if (purchaseInProgress) return;
+    if (!getAccessToken()) return;
+
+    purchaseInProgress = true;
+    try {
+        const res = await apiFetch('/api/payment/create-checkout-session', {
+            method: 'POST',
+            body: { packId },
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            alert(data.error || 'Purchase failed');
+            return;
+        }
+
+        const { url } = await res.json();
+        // Redirect to Stripe Checkout
+        window.location.href = url;
+    } catch (err) {
+        console.error('Purchase error:', err);
+        alert('Unable to start purchase. Please try again.');
+    } finally {
+        purchaseInProgress = false;
+    }
+}
+
 function createElement(tag, className, text) {
     const el = document.createElement(tag);
     if (className) el.className = className;
     if (text !== undefined) el.textContent = text;
     return el;
+}
+
+function formatPrice(cents) {
+    return `$${(cents / 100).toFixed(2)}`;
 }
 
 function renderShop() {
@@ -86,8 +123,49 @@ function renderShop() {
 
     const progress = getCombatProgress();
     const shop = getShopState();
+    const isLoggedIn = !!getAccessToken();
+
+    // --- Buy Diamonds Section (real money) ---
+    if (isLoggedIn) {
+        const buyTitle = createElement('div', 'shop-section-title', '\uD83D\uDC8E Buy Diamonds');
+        container.appendChild(buyTitle);
+
+        DIAMOND_PACKS.forEach(pack => {
+            const card = createElement('div', 'shop-card shop-card-buy');
+            card.dataset.action = 'buy-pack';
+            card.dataset.pack = pack.id;
+
+            const totalDiamonds = pack.diamonds + pack.bonus;
+            const bonusText = pack.bonus > 0 ? ` +${pack.bonus} bonus` : '';
+
+            const btn = createElement('button', 'shop-card-btn shop-card-btn-buy', formatPrice(pack.priceCents));
+
+            const nameEl = createElement('div', 'shop-card-name', pack.label);
+            const amountEl = createElement('div', 'shop-card-diamonds', `\uD83D\uDC8E ${totalDiamonds}`);
+
+            card.append(
+                createElement('div', 'shop-card-icon', '\uD83D\uDC8E'),
+                nameEl,
+                amountEl
+            );
+
+            if (pack.bonus > 0) {
+                card.appendChild(createElement('div', 'shop-card-bonus', `+${pack.bonus} bonus`));
+            }
+
+            if (pack.oneTime) {
+                card.appendChild(createElement('div', 'shop-card-tag', 'One-time'));
+            }
+
+            card.appendChild(btn);
+            container.appendChild(card);
+        });
+    }
 
     // Daily reward card
+    const rewardsTitle = createElement('div', 'shop-section-title', '\uD83C\uDF81 Free Rewards');
+    container.appendChild(rewardsTitle);
+
     const dailyCard = createElement('div', 'shop-card');
     dailyCard.dataset.action = 'daily';
     const dailyAvailable = canClaimDaily();
@@ -142,7 +220,7 @@ function renderShop() {
         container.appendChild(card);
     });
 
-    // --- Diamond Shop Section ---
+    // --- Diamond Shop Section (spend diamonds) ---
     const diamondTitle = createElement('div', 'shop-section-title', '\uD83D\uDC8E Diamond Shop');
     container.appendChild(diamondTitle);
 
@@ -175,7 +253,31 @@ function showPurchaseFeedback(card) {
     setTimeout(() => card.classList.remove('purchased'), 600);
 }
 
+// Handle payment return from Stripe Checkout
+function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+
+    if (!paymentStatus) return;
+
+    // Clean URL without reloading
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, '', cleanUrl);
+
+    if (paymentStatus === 'success') {
+        // Reload game state from server to pick up the new diamonds
+        if (getAccessToken()) {
+            loadGameFromServer().then(() => {
+                renderShop();
+            });
+        }
+    }
+}
+
 export function initShop() {
+    // Check for Stripe return params
+    handlePaymentReturn();
+
     renderShop();
 
     const container = document.getElementById('shop-offers');
@@ -186,6 +288,11 @@ export function initShop() {
         if (!card) return;
         const btn = card.querySelector('.shop-card-btn');
         if (!btn || btn.disabled) return;
+
+        if (card.dataset.action === 'buy-pack') {
+            buyDiamondPack(card.dataset.pack);
+            return;
+        }
 
         let success = false;
         if (card.dataset.action === 'daily') {

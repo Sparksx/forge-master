@@ -54,6 +54,17 @@ export const DIAMOND_SHOP_OFFERS = [
     { id: 'essence_l', type: 'essence', cost: 100, amount: 1500,   label: 'Essence L' },
 ];
 
+// Diamond packs for real-money purchase (mirrors server config, used for UI rendering)
+// Actual prices and validation happen server-side — these are display-only
+export const DIAMOND_PACKS = [
+    { id: 'welcome',  diamonds: 100,  bonus: 0,   priceCents: 299,  label: 'Welcome Pack',  oneTime: true },
+    { id: 'starter',  diamonds: 50,   bonus: 0,   priceCents: 499,  label: 'Starter' },
+    { id: 'popular',  diamonds: 100,  bonus: 20,  priceCents: 999,  label: 'Popular' },
+    { id: 'value',    diamonds: 200,  bonus: 60,  priceCents: 1999, label: 'Value' },
+    { id: 'premium',  diamonds: 500,  bonus: 200, priceCents: 4999, label: 'Premium' },
+    { id: 'ultimate', diamonds: 1000, bonus: 500, priceCents: 9999, label: 'Ultimate' },
+];
+
 // Auto-forge interval in milliseconds
 export const AUTO_FORGE_INTERVAL = 3500;
 

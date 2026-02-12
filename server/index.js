@@ -9,6 +9,7 @@ import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
+import paymentRoutes from './routes/payment.js';
 import prisma from './lib/prisma.js';
 
 // Sync Prisma schema to database on startup (non-fatal)
@@ -24,12 +25,17 @@ const server = createServer(app);
 
 // Middleware
 app.use(cors(CORS_ORIGIN === '*' ? {} : { origin: CORS_ORIGIN }));
+
+// Stripe webhook needs raw body for signature verification — must be registered before express.json()
+app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

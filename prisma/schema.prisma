@@ -31,6 +31,7 @@ model User {
   warnings       Warning[]     @relation("warnedUser")
   issuedWarnings Warning[]     @relation("warningIssuer")
   auditLogs      AuditLog[]    @relation("auditActor")
+  purchases      Purchase[]
 }
 
 model GameState {
@@ -122,4 +123,22 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([targetId])
+}
+
+model Purchase {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSessionId String   @unique
+  stripePaymentId String?
+  packId          String   @db.VarChar(30)
+  diamondsGranted Int
+  amountCents     Int
+  currency        String   @default("usd") @db.VarChar(10)
+  status          String   @default("pending") @db.VarChar(20) // pending, completed, refunded
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
 }

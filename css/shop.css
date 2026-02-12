@@ -133,3 +133,54 @@
     font-size: clamp(0.85em, 1.3vw, 1em);
     white-space: nowrap;
 }
+
+/* =============================================
+   BUY DIAMONDS SECTION (real money)
+   ============================================= */
+
+.shop-card-buy {
+    border-color: #ce93d8;
+    background: linear-gradient(135deg, #fafafa 0%, #f3e5f5 100%);
+}
+
+.shop-card-buy.purchased {
+    animation: buyFlash 0.6s ease-out;
+}
+
+@keyframes buyFlash {
+    0% { background: #ce93d8; }
+    100% { background: linear-gradient(135deg, #fafafa 0%, #f3e5f5 100%); }
+}
+
+.shop-card-diamonds {
+    font-weight: 700;
+    color: #7b1fa2;
+    font-size: clamp(0.85em, 1.3vw, 1em);
+    white-space: nowrap;
+}
+
+.shop-card-bonus {
+    font-size: clamp(0.7em, 1vw, 0.85em);
+    color: #388e3c;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.shop-card-tag {
+    font-size: clamp(0.65em, 0.9vw, 0.75em);
+    color: #fff;
+    background: #7b1fa2;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.shop-card-btn-buy {
+    background: #7b1fa2;
+    font-size: clamp(0.9em, 1.3vw, 1.05em);
+}
+
+.shop-card-btn-buy:hover {
+    background: #6a1b9a;
+}
