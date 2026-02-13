@@ -8,6 +8,11 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: auto;
+    overflow: auto;
+}
+
 body {
     font-family: var(--font-body);
     background: var(--bg-dark);

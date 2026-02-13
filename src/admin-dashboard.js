@@ -676,15 +676,10 @@ async function fetchSpriteSheets() {
 
 function buildSpriteCSSFromData(sheetFile, sheetW, sheetH, sx, sy, sw, sh) {
     if (!sheetFile || sw <= 0 || sh <= 0) return '';
-    const pad = 8;
-    const x = Math.max(0, sx - pad);
-    const y = Math.max(0, sy - pad);
-    const w = Math.min(sheetW - x, sw + pad * 2);
-    const h = Math.min(sheetH - y, sh + pad * 2);
-    const sizeX = (sheetW / w) * 100;
-    const sizeY = (sheetH / h) * 100;
-    const posX = w < sheetW ? (x / (sheetW - w)) * 100 : 0;
-    const posY = h < sheetH ? (y / (sheetH - h)) * 100 : 0;
+    const sizeX = (sheetW / sw) * 100;
+    const sizeY = (sheetH / sh) * 100;
+    const posX = sw < sheetW ? (sx / (sheetW - sw)) * 100 : 0;
+    const posY = sh < sheetH ? (sy / (sheetH - sh)) * 100 : 0;
     return `background-image: url(${sheetFile}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
 }
 
@@ -909,8 +904,43 @@ function loadSprEditorImage() {
 
         drawSprEditor();
         syncSelectionFromInputs();
+        zoomToSelection();
     };
     img.src = file;
+}
+
+function zoomToSelection() {
+    const { selX, selY, selW, selH } = sprEditorState;
+    if (selW <= 0 || selH <= 0) return;
+
+    const canvas = document.getElementById('adm-spr-canvas');
+    const wrap = document.getElementById('adm-spr-canvas-wrap');
+    if (!canvas || !wrap || !sprEditorState.img) return;
+
+    const img = sprEditorState.img;
+    const wrapWidth = wrap.clientWidth || 800;
+    const viewH = 500;
+
+    // Zoom so selection fills ~50% of the viewport
+    const margin = 2.0;
+    const zoomX = wrapWidth / (selW * margin);
+    const zoomY = viewH / (selH * margin);
+    const zoom = Math.min(zoomX, zoomY, 5);
+
+    const fullScale = wrapWidth / img.width;
+    sprEditorState.zoom = Math.max(fullScale, zoom);
+
+    // Center selection in the viewport
+    const offsetX = wrapWidth / 2 - (selX + selW / 2) * sprEditorState.zoom;
+    const offsetY = viewH / 2 - (selY + selH / 2) * sprEditorState.zoom;
+    sprEditorState.offsetX = offsetX;
+    sprEditorState.offsetY = offsetY;
+
+    canvas.width = Math.max(wrapWidth, img.width * sprEditorState.zoom + Math.abs(offsetX));
+    canvas.height = Math.max(viewH, img.height * sprEditorState.zoom + Math.abs(offsetY));
+
+    drawSprEditor();
+    updateSelectionOverlay();
 }
 
 function drawSprEditor() {
@@ -1225,7 +1255,7 @@ function initSpriteEditor() {
         const mouseY = e.clientY - rect.top;
 
         const prevZoom = sprEditorState.zoom;
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const delta = e.deltaY > 0 ? 0.95 : 1.05;
         sprEditorState.zoom = Math.max(0.1, Math.min(5, prevZoom * delta));
 
         // Zoom toward mouse position
