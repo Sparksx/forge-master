@@ -68,20 +68,28 @@ export function buildItemCard(item, compareWith) {
     const fragment = document.createDocumentFragment();
     const tierDef = TIERS[(item.tier || 1) - 1];
 
-    const tierDiv = createElement('div', 'forged-tier', tierDef.name);
-    tierDiv.style.color = tierDef.color;
-
-    // Show sprite image if the item has sprite data
+    // Header row: sprite on left, rarity + name on right
     const spriteCSS = getSpriteStyle(item.type, item.sprite);
+    const displayName = item.name || `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`;
+
+    const headerRow = createElement('div', 'item-card-header');
+
     if (spriteCSS) {
         const spriteDiv = createElement('div', 'item-sprite');
         spriteDiv.style.cssText = spriteCSS;
-        fragment.appendChild(spriteDiv);
+        headerRow.appendChild(spriteDiv);
     }
 
-    // Show the template name if available, otherwise fall back to generic type
-    const displayName = item.name || `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`;
+    const headerInfo = createElement('div', 'item-card-header-info');
+    const tierDiv = createElement('div', 'forged-tier', tierDef.name);
+    tierDiv.style.color = tierDef.color;
     const typeDiv = createElement('div', 'forged-type', displayName);
+    headerInfo.append(tierDiv, typeDiv);
+    headerRow.appendChild(headerInfo);
+
+    fragment.appendChild(headerRow);
+
+    // Stats section
     const levelDiv = createElement('div', 'forged-level', `Level ${item.level}`);
     const statLabel = item.statType === 'health' ? '\u2764\uFE0F Health' : '\u2694\uFE0F Damage';
     const statDiv = createElement('div', 'forged-stat', `${statLabel}: +${formatNumber(item.stats)}`);
@@ -91,7 +99,7 @@ export function buildItemCard(item, compareWith) {
         else if (item.stats < compareWith.stats) statDiv.classList.add('stat-worse');
     }
 
-    fragment.append(tierDiv, typeDiv, levelDiv, statDiv);
+    fragment.append(levelDiv, statDiv);
 
     const bonusDivs = buildBonusLines(item, compareWith);
     bonusDivs.forEach(div => fragment.appendChild(div));
