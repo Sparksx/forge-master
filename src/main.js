@@ -371,7 +371,12 @@ async function startGame() {
     startCombat();
 
     // Connect socket and init chat/PvP
-    connectSocket();
+    connectSocket({
+        onReconnect: () => {
+            refreshChatSocket();
+            refreshPvpSocket();
+        },
+    });
     initChat();
     initPvp();
 
