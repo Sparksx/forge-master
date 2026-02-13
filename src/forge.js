@@ -50,11 +50,14 @@ export function createItem(type, level, tier = 1) {
         bonuses,
     };
 
-    // Assign a template (name + skin) if one exists for this type/tier
+    // Assign a template (name + skin + sprite) if one exists for this type/tier
     const template = pickTemplate(type, tier);
     if (template) {
         item.name = template.name;
         item.skin = template.skin;
+        if (template.spriteCol != null) {
+            item.spriteCol = template.spriteCol;
+        }
     }
 
     return item;

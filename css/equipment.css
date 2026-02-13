@@ -91,3 +91,24 @@
     color: var(--text-secondary);
     font-size: clamp(0.75em, 1vw, 0.95em);
 }
+
+/* ── Equipment Sprite ── */
+
+.slot-icon.has-sprite {
+    font-size: 0;           /* hide the emoji text */
+    width: clamp(28px, 5vw, 40px);
+    height: clamp(28px, 5vw, 40px);
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+/* Sprite inside item cards (decision modal, item detail, etc.) */
+.item-sprite {
+    width: clamp(40px, 7vw, 64px);
+    height: clamp(40px, 7vw, 64px);
+    margin: 0 auto 4px;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}

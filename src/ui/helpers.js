@@ -1,4 +1,5 @@
 import { BONUS_STATS, TIERS, EQUIPMENT_ICONS } from '../config.js';
+import { getSpriteStyle } from '../equipment-templates.js';
 
 export function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -69,6 +70,14 @@ export function buildItemCard(item, compareWith) {
 
     const tierDiv = createElement('div', 'forged-tier', tierDef.name);
     tierDiv.style.color = tierDef.color;
+
+    // Show sprite image if the item has sprite data
+    const spriteCSS = getSpriteStyle(item.type, item.tier, item.spriteCol);
+    if (spriteCSS) {
+        const spriteDiv = createElement('div', 'item-sprite');
+        spriteDiv.style.cssText = spriteCSS;
+        fragment.appendChild(spriteDiv);
+    }
 
     // Show the template name if available, otherwise fall back to generic type
     const displayName = item.name || `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`;

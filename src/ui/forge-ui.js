@@ -17,6 +17,7 @@ import { gameEvents, EVENTS } from '../events.js';
 import { t } from '../i18n/i18n.js';
 import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast, animateGoldToward, initGoldAnimation } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
+import { getSpriteStyle } from '../equipment-templates.js';
 
 let forgeTimerInterval = null;
 let decisionModalCallback = null;
@@ -119,6 +120,21 @@ function renderSingleSlot(type) {
     slotElement.textContent = '';
 
     const slotParent = slotElement.closest('.equipment-slot');
+
+    // Update the slot icon: show sprite if available, else keep emoji
+    const slotIcon = slotParent.querySelector('.slot-icon');
+    if (slotIcon) {
+        const spriteCSS = item ? getSpriteStyle(item.type, item.tier, item.spriteCol) : '';
+        if (spriteCSS) {
+            slotIcon.classList.add('has-sprite');
+            slotIcon.style.cssText = spriteCSS;
+            slotIcon.textContent = '';
+        } else {
+            slotIcon.classList.remove('has-sprite');
+            slotIcon.style.cssText = '';
+            slotIcon.textContent = EQUIPMENT_ICONS[type] || '';
+        }
+    }
 
     if (item) {
         const tierDef = TIERS[(item.tier || 1) - 1];
