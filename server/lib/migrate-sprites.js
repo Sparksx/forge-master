@@ -12,27 +12,18 @@ import prisma from './prisma.js';
 
 export async function migrateSpritesIfNeeded() {
     try {
-        // Check if ItemTemplate still has the old spriteX column
-        // If it doesn't, migration is either done or not needed
-        const items = await prisma.$queryRaw`
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'ItemTemplate' AND column_name = 'spriteX'
-        `;
-
-        if (items.length === 0) {
-            // Old columns already removed, nothing to migrate
-            return;
-        }
-
-        // Check if any items need migration (have spriteX but spriteId is null or default)
-        const itemsToMigrate = await prisma.$queryRaw`
-            SELECT id, type, skin, name, "spriteX", "spriteY", "spriteW", "spriteH", "spriteSheetId"
-            FROM "ItemTemplate"
-            WHERE "spriteId" IS NULL OR "spriteId" = 0
-        `;
+        // Find items that have old-style inline coordinates but no sprite reference
+        const itemsToMigrate = await prisma.itemTemplate.findMany({
+            where: {
+                spriteId: null,
+                spriteX: { not: null },
+                spriteY: { not: null },
+                spriteW: { not: null },
+                spriteH: { not: null },
+            },
+        });
 
         if (itemsToMigrate.length === 0) {
-            console.log('[Migration] No items need sprite migration. Skipping.');
             return;
         }
 
@@ -51,19 +42,21 @@ export async function migrateSpritesIfNeeded() {
                 },
             });
 
-            // Update the ItemTemplate to reference the new sprite
-            await prisma.$executeRaw`
-                UPDATE "ItemTemplate" SET "spriteId" = ${sprite.id} WHERE id = ${item.id}
-            `;
+            // Link the item to the new sprite and clear inline coordinates
+            await prisma.itemTemplate.update({
+                where: { id: item.id },
+                data: {
+                    spriteId: sprite.id,
+                    spriteX: null,
+                    spriteY: null,
+                    spriteW: null,
+                    spriteH: null,
+                },
+            });
         }
 
         console.log(`[Migration] Successfully migrated ${itemsToMigrate.length} items to Sprite table.`);
     } catch (err) {
-        // Non-fatal: if the columns don't exist yet, migration isn't needed
-        if (err.code === '42703' || err.message?.includes('column') || err.message?.includes('does not exist')) {
-            console.log('[Migration] Sprite migration not applicable to current schema. Skipping.');
-            return;
-        }
         console.error('[Migration] Sprite migration error (non-fatal):', err.message);
     }
 }
