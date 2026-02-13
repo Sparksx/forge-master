@@ -10,7 +10,7 @@ function isValidItem(item) {
     if (item === null) return true;
     if (typeof item !== 'object' || Array.isArray(item)) return false;
     if (typeof item.level !== 'number' || item.level < 1) return false;
-    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > 6) return false;
+    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > 7) return false;
     if (typeof item.type !== 'string' || !VALID_SLOTS.includes(item.type)) return false;
     if (item.bonuses !== undefined) {
         if (!Array.isArray(item.bonuses)) return false;
