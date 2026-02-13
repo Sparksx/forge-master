@@ -44,9 +44,26 @@ export function clearTokens() {
     }
 }
 
+// Mutex: only one refresh request in flight at a time.
+// Concurrent callers share the same pending promise to avoid
+// rotating the refresh token twice (which revokes the first).
+let refreshPromise = null;
+
 export async function refreshAccessToken() {
     if (!refreshToken) return false;
 
+    // If a refresh is already in flight, wait for it instead of starting a new one
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = _doRefresh();
+    try {
+        return await refreshPromise;
+    } finally {
+        refreshPromise = null;
+    }
+}
+
+async function _doRefresh() {
     try {
         const { opts, clear } = withTimeout({
             method: 'POST',

@@ -8,7 +8,6 @@ import { getAccessToken, refreshAccessToken } from './api.js';
 
 let socket = null;
 let onReconnectCallback = null;
-let refreshingToken = false;
 let hasConnectedOnce = false;
 
 export function connectSocket({ onReconnect } = {}) {
@@ -43,19 +42,13 @@ export function connectSocket({ onReconnect } = {}) {
 
     socket.on('connect_error', async (err) => {
         console.error('Socket connection error:', err.message);
-        // If auth-related, refresh the token before the next attempt
-        if (!refreshingToken) {
-            refreshingToken = true;
-            try {
-                const refreshed = await refreshAccessToken();
-                if (refreshed) {
-                    const freshToken = getAccessToken();
-                    if (freshToken && socket) {
-                        socket.auth = { token: freshToken };
-                    }
-                }
-            } finally {
-                refreshingToken = false;
+        // Refresh the token before the next reconnection attempt.
+        // refreshAccessToken() has an internal mutex so concurrent calls are safe.
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            const freshToken = getAccessToken();
+            if (freshToken && socket) {
+                socket.auth = { token: freshToken };
             }
         }
     });
