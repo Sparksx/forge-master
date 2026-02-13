@@ -7,6 +7,16 @@ let refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('f
 let onAuthLost = null; // callback when auth is completely lost
 const FETCH_TIMEOUT = 10000; // 10s timeout for API requests
 
+// Cross-tab sync: when another tab rotates the refresh token via setTokens(),
+// localStorage fires a 'storage' event in all OTHER tabs. Keep in-memory copy in sync.
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'fm_refresh_token') {
+            refreshToken = e.newValue;
+        }
+    });
+}
+
 function withTimeout(options, timeoutMs = FETCH_TIMEOUT) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -44,9 +54,26 @@ export function clearTokens() {
     }
 }
 
+// Mutex: only one refresh request in flight at a time.
+// Concurrent callers share the same pending promise to avoid
+// rotating the refresh token twice (which revokes the first).
+let refreshPromise = null;
+
 export async function refreshAccessToken() {
     if (!refreshToken) return false;
 
+    // If a refresh is already in flight, wait for it instead of starting a new one
+    if (refreshPromise) return refreshPromise;
+
+    refreshPromise = _doRefresh();
+    try {
+        return await refreshPromise;
+    } finally {
+        refreshPromise = null;
+    }
+}
+
+async function _doRefresh() {
     try {
         const { opts, clear } = withTimeout({
             method: 'POST',

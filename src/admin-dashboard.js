@@ -6,7 +6,7 @@
 import '../css/base.css';
 import '../css/admin-dashboard.css';
 
-import { setTokens, apiFetch, getAccessToken, getStoredRefreshToken, clearTokens } from './api.js';
+import { apiFetch, getAccessToken, getStoredRefreshToken, refreshAccessToken } from './api.js';
 import { io } from 'socket.io-client';
 
 // ─── State ───────────────────────────────────────────────────────
@@ -22,19 +22,10 @@ async function restoreSession() {
     if (!storedRefresh) return null;
 
     try {
-        const res = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: storedRefresh }),
-        });
-
-        if (!res.ok) {
-            if (res.status === 401 || res.status === 403) clearTokens();
-            return null;
-        }
-
-        const data = await res.json();
-        setTokens(data.accessToken, data.refreshToken);
+        // Use the shared refreshAccessToken() which has a mutex to prevent
+        // concurrent rotation with the game tab (same localStorage tokens).
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) return null;
 
         const meRes = await apiFetch('/api/auth/me');
         if (!meRes.ok) return null;
