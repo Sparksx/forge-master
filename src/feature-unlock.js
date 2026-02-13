@@ -1,69 +1,70 @@
 import { gameEvents, EVENTS } from './events.js';
 import { getEquipment, getForgeLevel, getCombatProgress } from './state.js';
 import { showToast } from './ui/helpers.js';
+import { t } from './i18n/i18n.js';
 
 // Feature definitions: id, unlock condition, UI selectors, and unlock message
 const FEATURES = [
     {
         id: 'forgeUpgrade',
         label: 'Forge Upgrade',
-        toast: 'Forge Upgrade unlocked! Level up your forge for better items.',
+        toastKey: 'featureUnlock.forgeUpgrade',
         condition: () => countEquipped() >= 2,
         selectors: ['#forge-upgrade-btn'],
     },
     {
         id: 'shop',
         label: 'Shop',
-        toast: 'Rewards unlocked! Claim daily rewards and milestones.',
+        toastKey: 'featureUnlock.shop',
         condition: () => getOverallSubWave() >= 5,
         selectors: ['.nav-tab[data-tab="shop"]'],
     },
     {
         id: 'upgrade',
         label: 'Upgrade',
-        toast: 'Technology Research unlocked! Spend essence to get stronger.',
+        toastKey: 'featureUnlock.upgrade',
         condition: () => getOverallSubWave() >= 10,
         selectors: ['.nav-tab[data-tab="upgrade"]', '.sub-tab[data-subtab="techs"]'],
     },
     {
         id: 'skills',
         label: 'Skills',
-        toast: 'Skills unlocked! Forge powerful skills from combat shards.',
+        toastKey: 'featureUnlock.skills',
         condition: () => getOverallSubWave() >= 20,
         selectors: ['.sub-tab[data-subtab="skills"]'],
     },
     {
         id: 'autoForge',
         label: 'Auto Forge',
-        toast: 'Auto Forge unlocked! Let the forge work for you.',
+        toastKey: 'featureUnlock.autoForge',
         condition: () => getForgeLevel() >= 3,
         selectors: ['#auto-action-btn'],
     },
     {
         id: 'diamonds',
         label: 'Diamonds',
-        toast: 'Diamond shop available!',
+        toastKey: 'featureUnlock.diamonds',
         condition: () => getForgeLevel() >= 3 || getOverallSubWave() >= 30,
         selectors: ['#diamond-display'],
     },
     {
         id: 'chat',
         label: 'Chat',
-        toast: 'Global Chat unlocked! Chat with other players.',
+        toastKey: 'featureUnlock.chat',
         condition: () => getOverallSubWave() >= 20,
         selectors: ['#chat-preview'],
     },
     {
         id: 'achievements',
         label: 'Achievements',
-        toast: 'Milestones unlocked! Track your achievements.',
+        toastKey: 'featureUnlock.achievements',
         condition: () => getOverallSubWave() >= 10,
         selectors: ['#achievements-fab'],
     },
     {
         id: 'pvp',
         label: 'PvP Arena',
-        toast: 'PvP Arena unlocked! Battle other players!',
+        toastKey: 'featureUnlock.pvp',
         condition: () => getOverallSubWave() >= 40,
         selectors: ['.nav-tab[data-tab="pvp"]'],
     },
@@ -128,7 +129,7 @@ export function checkUnlocks() {
 
             // Only show toast if this wasn't already unlocked when the game loaded
             if (!initiallyUnlocked.has(feature.id)) {
-                showToast(feature.toast, 'unlock', 3000);
+                showToast(t(feature.toastKey), 'unlock', 3000);
             }
         }
     }

@@ -66,4 +66,6 @@ export const EVENTS = {
     // Skill forge
     SKILL_FORGED: 'skill:forged',
     SKILL_SHARDS_CHANGED: 'skill:shards_changed',
+    // Locale
+    LOCALE_CHANGED: 'locale:changed',
 };

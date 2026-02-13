@@ -3,6 +3,7 @@
  */
 
 import { setTokens, clearTokens, apiFetch, getStoredRefreshToken, setAuthLostCallback } from './api.js';
+import { t } from './i18n/i18n.js';
 
 let currentUser = null;
 let onAuthSuccess = null; // callback(user) when user logs in
@@ -78,7 +79,7 @@ export function initAuth() {
 
         const btn = document.getElementById('guest-play-btn');
         btn.disabled = true;
-        btn.textContent = 'Creating account...';
+        btn.textContent = t('auth.creatingAccount');
 
         try {
             const res = await fetch('/api/auth/guest', {
@@ -88,9 +89,9 @@ export function initAuth() {
             const data = await res.json();
 
             if (!res.ok) {
-                errorEl.textContent = data.error || 'Failed to create guest account';
+                errorEl.textContent = data.error || t('auth.failedGuest');
                 btn.disabled = false;
-                btn.textContent = 'Play Now';
+                btn.textContent = t('auth.playNow');
                 return;
             }
 
@@ -99,9 +100,9 @@ export function initAuth() {
             hideAuthScreen();
             if (onAuthSuccess) onAuthSuccess(currentUser);
         } catch (err) {
-            errorEl.textContent = 'Network error';
+            errorEl.textContent = t('auth.networkError');
             btn.disabled = false;
-            btn.textContent = 'Play Now';
+            btn.textContent = t('auth.playNow');
         }
     });
 
@@ -109,7 +110,7 @@ export function initAuth() {
     document.getElementById('discord-login-btn')?.addEventListener('click', () => {
         if (!DISCORD_CLIENT_ID) {
             const errorEl = document.getElementById('guest-error');
-            errorEl.textContent = 'Discord login is not configured';
+            errorEl.textContent = t('auth.discordNotConfigured');
             return;
         }
         const params = new URLSearchParams({
@@ -130,7 +131,7 @@ export function initAuth() {
     document.getElementById('google-login-btn')?.addEventListener('click', () => {
         if (!GOOGLE_CLIENT_ID) {
             const errorEl = document.getElementById('guest-error');
-            errorEl.textContent = 'Google login is not configured';
+            errorEl.textContent = t('auth.googleNotConfigured');
             return;
         }
         // If GSI is loaded, trigger the prompt; otherwise redirect with standard OAuth
@@ -165,7 +166,7 @@ export function initAuth() {
             const data = await res.json();
 
             if (!res.ok) {
-                errorEl.textContent = data.error || data.errors?.[0]?.msg || 'Login failed';
+                errorEl.textContent = data.error || data.errors?.[0]?.msg || t('auth.loginFailed');
                 return;
             }
 
@@ -174,7 +175,7 @@ export function initAuth() {
             hideAuthScreen();
             if (onAuthSuccess) onAuthSuccess(currentUser);
         } catch (err) {
-            errorEl.textContent = 'Network error';
+            errorEl.textContent = t('auth.networkError');
         }
     });
 
@@ -196,7 +197,7 @@ export function initAuth() {
             const data = await res.json();
 
             if (!res.ok) {
-                errorEl.textContent = data.error || data.errors?.[0]?.msg || 'Registration failed';
+                errorEl.textContent = data.error || data.errors?.[0]?.msg || t('auth.registrationFailed');
                 return;
             }
 
@@ -205,7 +206,7 @@ export function initAuth() {
             hideAuthScreen();
             if (onAuthSuccess) onAuthSuccess(currentUser);
         } catch (err) {
-            errorEl.textContent = 'Network error';
+            errorEl.textContent = t('auth.networkError');
         }
     });
 
@@ -255,7 +256,7 @@ async function handleGoogleCredential(response) {
         const data = await res.json();
 
         if (!res.ok) {
-            if (errorEl) errorEl.textContent = data.error || 'Google login failed';
+            if (errorEl) errorEl.textContent = data.error || t('auth.loginFailed');
             return;
         }
 
@@ -264,7 +265,7 @@ async function handleGoogleCredential(response) {
         hideAuthScreen();
         if (onAuthSuccess) onAuthSuccess(currentUser);
     } catch (err) {
-        if (errorEl) errorEl.textContent = 'Network error';
+        if (errorEl) errorEl.textContent = t('auth.networkError');
     }
 }
 
@@ -299,7 +300,7 @@ async function handleDiscordCallback(code) {
         const data = await res.json();
 
         if (!res.ok) {
-            if (errorEl) errorEl.textContent = data.error || 'Discord login failed';
+            if (errorEl) errorEl.textContent = data.error || t('auth.loginFailed');
             showAuthScreen();
             return null;
         }
@@ -310,7 +311,7 @@ async function handleDiscordCallback(code) {
         if (onAuthSuccess) onAuthSuccess(currentUser);
         return currentUser;
     } catch (err) {
-        if (errorEl) errorEl.textContent = 'Network error';
+        if (errorEl) errorEl.textContent = t('auth.networkError');
         showAuthScreen();
         return null;
     }
@@ -357,7 +358,7 @@ export function startDiscordLink() {
 
 /** Link Google account to current user via GSI credential */
 export async function linkGoogle() {
-    if (!GOOGLE_CLIENT_ID) return { ok: false, error: 'Google login is not configured' };
+    if (!GOOGLE_CLIENT_ID) return { ok: false, error: t('auth.googleNotConfigured') };
 
     return new Promise((resolve) => {
         if (window.google?.accounts?.id) {
@@ -372,7 +373,7 @@ export async function linkGoogle() {
                         });
                         const data = await res.json();
                         if (!res.ok) {
-                            resolve({ ok: false, error: data.error || 'Google link failed' });
+                            resolve({ ok: false, error: data.error || t('auth.loginFailed') });
                             return;
                         }
                         if (currentUser) {
@@ -382,7 +383,7 @@ export async function linkGoogle() {
                         }
                         resolve({ ok: true });
                     } catch {
-                        resolve({ ok: false, error: 'Network error' });
+                        resolve({ ok: false, error: t('auth.networkError') });
                     }
                 },
                 auto_select: false,

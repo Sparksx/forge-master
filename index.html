@@ -27,15 +27,15 @@
     <!-- Auth Screen (shown before login) -->
     <div class="auth-screen" id="auth-screen" role="main" aria-label="Authentication">
         <div class="auth-container">
-            <h1 class="auth-title">Anvil Legends</h1>
-            <p class="auth-subtitle">Jump in and start forging!</p>
+            <h1 class="auth-title" data-i18n="auth.title">Anvil Legends</h1>
+            <p class="auth-subtitle" data-i18n="auth.subtitle">Jump in and start forging!</p>
 
             <!-- One-click auth buttons (default view) -->
             <div class="auth-oneclick" id="auth-oneclick">
-                <button class="auth-btn auth-btn-guest" id="guest-play-btn" type="button">Play Now</button>
+                <button class="auth-btn auth-btn-guest" id="guest-play-btn" type="button" data-i18n="auth.playNow">Play Now</button>
                 <div class="auth-error" id="guest-error" role="alert" aria-live="polite"></div>
 
-                <div class="auth-divider"><span>or connect with</span></div>
+                <div class="auth-divider"><span data-i18n="auth.orConnectWith">or connect with</span></div>
 
                 <div class="auth-oauth-row">
                     <button class="auth-btn auth-btn-discord" id="discord-login-btn" type="button">
@@ -48,31 +48,31 @@
                     </button>
                 </div>
 
-                <p class="auth-switch">Have an account? <a href="#" id="show-login">Login with password</a></p>
+                <p class="auth-switch"><span data-i18n="auth.haveAccount">Have an account?</span> <a href="#" id="show-login" data-i18n="auth.loginWithPassword">Login with password</a></p>
             </div>
 
             <!-- Login Form (hidden by default) -->
             <form class="auth-form hidden" id="login-form" aria-label="Login form">
                 <label for="login-username" class="sr-only">Username or Email</label>
-                <input type="text" id="login-username" placeholder="Username or Email" required autocomplete="username">
+                <input type="text" id="login-username" placeholder="Username or Email" data-i18n-placeholder="auth.usernameOrEmail" required autocomplete="username">
                 <label for="login-password" class="sr-only">Password</label>
-                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                <input type="password" id="login-password" placeholder="Password" data-i18n-placeholder="auth.password" required autocomplete="current-password">
                 <div class="auth-error" id="login-error" role="alert" aria-live="polite"></div>
-                <button type="submit" class="auth-btn">Login</button>
-                <p class="auth-switch"><a href="#" id="show-oneclick">Back</a> | No account? <a href="#" id="show-register">Register</a></p>
+                <button type="submit" class="auth-btn" data-i18n="auth.login">Login</button>
+                <p class="auth-switch"><a href="#" id="show-oneclick" data-i18n="auth.back">Back</a> | <span data-i18n="auth.noAccount">No account?</span> <a href="#" id="show-register" data-i18n="auth.register">Register</a></p>
             </form>
 
             <!-- Register Form (hidden by default) -->
             <form class="auth-form hidden" id="register-form" aria-label="Register form">
                 <label for="register-username" class="sr-only">Username</label>
-                <input type="text" id="register-username" placeholder="Username" required minlength="3" maxlength="30" autocomplete="username">
+                <input type="text" id="register-username" placeholder="Username" data-i18n-placeholder="auth.usernamePlaceholder" required minlength="3" maxlength="30" autocomplete="username">
                 <label for="register-email" class="sr-only">Email</label>
-                <input type="email" id="register-email" placeholder="Email" required autocomplete="email">
+                <input type="email" id="register-email" placeholder="Email" data-i18n-placeholder="auth.emailPlaceholder" required autocomplete="email">
                 <label for="register-password" class="sr-only">Password</label>
-                <input type="password" id="register-password" placeholder="Password (6+ characters)" required minlength="6" autocomplete="new-password">
+                <input type="password" id="register-password" placeholder="Password (6+ characters)" data-i18n-placeholder="auth.passwordPlaceholder" required minlength="6" autocomplete="new-password">
                 <div class="auth-error" id="register-error" role="alert" aria-live="polite"></div>
-                <button type="submit" class="auth-btn">Register</button>
-                <p class="auth-switch"><a href="#" id="show-oneclick-from-register">Back</a> | Already have an account? <a href="#" id="show-login-from-register">Login</a></p>
+                <button type="submit" class="auth-btn" data-i18n="auth.register">Register</button>
+                <p class="auth-switch"><a href="#" id="show-oneclick-from-register" data-i18n="auth.back">Back</a> | <span data-i18n="auth.alreadyHaveAccount">Already have an account?</span> <a href="#" id="show-login-from-register" data-i18n="auth.login">Login</a></p>
             </form>
         </div>
     </div>
@@ -85,7 +85,7 @@
                 <button class="header-btn hidden" id="pwa-install-btn" aria-label="Install app" title="Install app">📲</button>
                 <button class="header-btn" id="profile-btn" aria-label="Open profile">👤</button>
                 <div class="header-level" id="header-level" aria-label="Player level">
-                    <span class="header-level-label">Lv.</span>
+                    <span class="header-level-label" data-i18n="header.lv">Lv.</span>
                     <span class="header-level-value" id="header-level-value">1</span>
                     <div class="header-xp-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="100">
                         <div class="header-xp-fill" id="header-xp-fill"></div>
@@ -107,7 +107,7 @@
         <!-- Tab Views -->
         <section class="tab-view" id="view-pvp" role="tabpanel" aria-label="PvP Arena">
             <div class="container">
-                <h1>PvP Arena</h1>
+                <h1 data-i18n="pvp.title">PvP Arena</h1>
                 <div class="pvp-error" id="pvp-error" role="alert" aria-live="polite"></div>
 
                 <!-- Idle: Lobby with player card + leaderboard -->
@@ -120,24 +120,24 @@
                             </div>
                             <div class="pvp-player-card-stats">
                                 <div class="pvp-stat">
-                                    <span class="pvp-stat-label">ELO</span>
+                                    <span class="pvp-stat-label" data-i18n="pvp.elo">ELO</span>
                                     <span class="pvp-stat-value" id="pvp-my-elo">1000</span>
                                 </div>
                                 <div class="pvp-stat">
-                                    <span class="pvp-stat-label">Power</span>
+                                    <span class="pvp-stat-label" data-i18n="pvp.power">Power</span>
                                     <span class="pvp-stat-value" id="pvp-my-power">0</span>
                                 </div>
                                 <div class="pvp-stat">
-                                    <span class="pvp-stat-label">W / L</span>
+                                    <span class="pvp-stat-label" data-i18n="pvp.wl">W / L</span>
                                     <span class="pvp-stat-value" id="pvp-my-record">0 / 0</span>
                                 </div>
                             </div>
                         </div>
 
-                        <button class="pvp-btn pvp-queue-btn" id="pvp-queue-btn">Find Match</button>
+                        <button class="pvp-btn pvp-queue-btn" id="pvp-queue-btn" data-i18n="pvp.findMatch">Find Match</button>
 
                         <div class="pvp-leaderboard" id="pvp-leaderboard">
-                            <h3 class="pvp-leaderboard-title">Leaderboard</h3>
+                            <h3 class="pvp-leaderboard-title" data-i18n="pvp.leaderboard">Leaderboard</h3>
                             <div class="pvp-leaderboard-list" id="pvp-leaderboard-list"></div>
                         </div>
                     </div>
@@ -147,9 +147,9 @@
                 <div class="pvp-section hidden" id="pvp-queue-section">
                     <div class="pvp-queue-content">
                         <div class="pvp-spinner" role="status" aria-label="Searching for opponent"></div>
-                        <p>Searching for opponent...</p>
+                        <p data-i18n="pvp.searching">Searching for opponent...</p>
                         <p class="pvp-queue-power-range" id="pvp-queue-power-range"></p>
-                        <button class="pvp-btn pvp-cancel-btn" id="pvp-cancel-btn">Cancel</button>
+                        <button class="pvp-btn pvp-cancel-btn" id="pvp-cancel-btn" data-i18n="pvp.cancel">Cancel</button>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@
                 <div class="pvp-section hidden" id="pvp-fight-section">
                     <div class="pvp-arena" role="region" aria-label="PvP combat">
                         <div class="pvp-fighter pvp-you">
-                            <div class="pvp-fighter-label">You</div>
+                            <div class="pvp-fighter-label" data-i18n="pvp.you">You</div>
                             <div class="hp-bar-container" role="progressbar" aria-label="Your health" aria-valuemin="0" aria-valuemax="100">
                                 <div class="hp-bar hp-bar-player" id="pvp-your-hp"></div>
                                 <span class="hp-text" id="pvp-your-hp-text"></span>
@@ -182,9 +182,9 @@
                     </div>
 
                     <div class="pvp-actions" role="group" aria-label="Combat actions">
-                        <button class="pvp-action-btn" data-action="attack">Attack</button>
-                        <button class="pvp-action-btn" data-action="defend">Defend</button>
-                        <button class="pvp-action-btn" data-action="special">Special</button>
+                        <button class="pvp-action-btn" data-action="attack" data-i18n="pvp.attack">Attack</button>
+                        <button class="pvp-action-btn" data-action="defend" data-i18n="pvp.defend">Defend</button>
+                        <button class="pvp-action-btn" data-action="special" data-i18n="pvp.special">Special</button>
                     </div>
 
                     <div class="pvp-combat-log" id="pvp-combat-log" role="log" aria-label="Combat log" aria-live="polite"></div>
@@ -195,7 +195,7 @@
                     <div class="pvp-result-content">
                         <h2 class="pvp-result-title" id="pvp-result-title">Victory!</h2>
                         <div class="pvp-rating-change" id="pvp-rating-change" aria-live="polite"></div>
-                        <button class="pvp-btn" id="pvp-back-btn">Back to Lobby</button>
+                        <button class="pvp-btn" id="pvp-back-btn" data-i18n="pvp.backToLobby">Back to Lobby</button>
                     </div>
                 </div>
             </div>
@@ -226,7 +226,7 @@
                     <!-- Player Side -->
                     <div class="combatant combatant-player" id="combatant-player">
                         <div class="combatant-emoji" id="player-emoji" aria-hidden="true">🧙</div>
-                        <div class="combatant-name">You</div>
+                        <div class="combatant-name" data-i18n="combat.you">You</div>
                         <div class="hp-bar-container" role="progressbar" aria-label="Player health" aria-valuemin="0" aria-valuemax="100">
                             <div class="hp-bar hp-bar-player" id="player-hp-bar"></div>
                             <span class="hp-text" id="player-hp-text">100 / 100</span>
@@ -259,56 +259,56 @@
                         <div class="equipment-slot" data-type="hat" role="listitem" tabindex="0" aria-label="Hat slot">
                             <div class="slot-icon" aria-hidden="true">🎩</div>
                             <div class="slot-content" id="slot-hat">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="necklace" role="listitem" tabindex="0" aria-label="Necklace slot">
                             <div class="slot-icon" aria-hidden="true">📿</div>
                             <div class="slot-content" id="slot-necklace">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="armor" role="listitem" tabindex="0" aria-label="Armor slot">
                             <div class="slot-icon" aria-hidden="true">🛡️</div>
                             <div class="slot-content" id="slot-armor">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="weapon" role="listitem" tabindex="0" aria-label="Weapon slot">
                             <div class="slot-icon" aria-hidden="true">⚔️</div>
                             <div class="slot-content" id="slot-weapon">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="gloves" role="listitem" tabindex="0" aria-label="Gloves slot">
                             <div class="slot-icon" aria-hidden="true">🧤</div>
                             <div class="slot-content" id="slot-gloves">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="ring" role="listitem" tabindex="0" aria-label="Ring slot">
                             <div class="slot-icon" aria-hidden="true">💍</div>
                             <div class="slot-content" id="slot-ring">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="belt" role="listitem" tabindex="0" aria-label="Belt slot">
                             <div class="slot-icon" aria-hidden="true">📿</div>
                             <div class="slot-content" id="slot-belt">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
 
                         <div class="equipment-slot" data-type="boots" role="listitem" tabindex="0" aria-label="Boots slot">
                             <div class="slot-icon" aria-hidden="true">👢</div>
                             <div class="slot-content" id="slot-boots">
-                                <span class="empty-slot">Empty</span>
+                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
                             </div>
                         </div>
                     </div>
@@ -316,18 +316,18 @@
 
                 <!-- Action Row -->
                 <div class="action-row" role="toolbar" aria-label="Forge actions">
-                    <button class="forge-btn" id="forge-btn">⚒️ Forge</button>
-                    <button class="action-icon-btn forge-level-btn" id="forge-upgrade-btn" title="Forge Upgrade" aria-label="Forge upgrade level">
+                    <button class="forge-btn" id="forge-btn">⚒️ <span data-i18n="home.forge">Forge</span></button>
+                    <button class="action-icon-btn forge-level-btn" id="forge-upgrade-btn" title="Forge Upgrade" data-i18n-title="home.forgeUpgrade" aria-label="Forge upgrade level">
                         <span class="forge-btn-level" id="forge-level">1</span>
                     </button>
-                    <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge" aria-label="Toggle auto forge">🤖</button>
+                    <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge" data-i18n-title="home.autoForge" aria-label="Toggle auto forge">🤖</button>
                 </div>
 
                 <!-- Chat Preview (2 lines, click to open full chat) -->
                 <div class="chat-preview" id="chat-preview" role="button" tabindex="0" aria-label="Open chat">
-                    <div class="chat-preview-label" aria-hidden="true">💬 Chat</div>
+                    <div class="chat-preview-label" aria-hidden="true">💬 <span data-i18n="nav.home">Chat</span></div>
                     <div class="chat-preview-messages" id="chat-preview-messages">
-                        <div class="chat-preview-empty">No messages yet</div>
+                        <div class="chat-preview-empty" data-i18n="chat.noMessages">No messages yet</div>
                     </div>
                 </div>
             </div>
@@ -335,16 +335,16 @@
 
         <section class="tab-view" id="view-upgrade" role="tabpanel" aria-label="Upgrade">
             <div class="container">
-                <h1>⬆️ Upgrade</h1>
+                <h1>⬆️ <span data-i18n="nav.upgrade">Upgrade</span></h1>
                 <div class="sub-tab-nav" id="upgrade-sub-nav" role="tablist" aria-label="Upgrade categories">
-                    <button class="sub-tab active" data-subtab="skills" role="tab" aria-selected="true" aria-controls="subtab-skills">⚡ Skills</button>
+                    <button class="sub-tab active" data-subtab="skills" role="tab" aria-selected="true" aria-controls="subtab-skills">⚡ <span data-i18n-key="skills">Skills</span></button>
                     <button class="sub-tab" data-subtab="pets" role="tab" aria-selected="false" aria-controls="subtab-pets">🐾 Pets</button>
                     <button class="sub-tab" data-subtab="techs" role="tab" aria-selected="false" aria-controls="subtab-techs">🔧 Techs</button>
                 </div>
                 <div class="sub-tab-content active" id="subtab-skills" role="tabpanel" aria-labelledby="subtab-skills">
                 </div>
                 <div class="sub-tab-content" id="subtab-pets" role="tabpanel" aria-labelledby="subtab-pets">
-                    <div class="placeholder-content"><p>Pets coming soon...</p></div>
+                    <div class="placeholder-content"><p>Pets coming soon...</p></div><!-- Pets not translatable yet -->
                 </div>
                 <div class="sub-tab-content" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
                     <div class="tech-tree-container">
@@ -370,8 +370,8 @@
 
         <section class="tab-view" id="view-shop" role="tabpanel" aria-label="Rewards">
             <div class="container">
-                <h1>🎁 Rewards</h1>
-                <p class="shop-subtitle">Earn gold through daily rewards and milestones!</p>
+                <h1>🎁 <span data-i18n="nav.shop">Shop</span></h1>
+                <p class="shop-subtitle" data-i18n="shop.freeRewards">Earn gold through daily rewards and milestones!</p>
                 <div class="shop-offers" id="shop-offers" role="list" aria-label="Reward offers">
                     <!-- Dynamically rendered by shop.js -->
                 </div>
@@ -382,23 +382,23 @@
         <nav class="bottom-nav" id="bottom-nav" role="tablist" aria-label="Main navigation">
             <button class="nav-tab" data-tab="pvp" role="tab" aria-selected="false" aria-controls="view-pvp">
                 <span class="nav-icon" aria-hidden="true">⚔️</span>
-                <span class="nav-label">PvP</span>
+                <span class="nav-label" data-i18n="nav.pvp">PvP</span>
             </button>
             <button class="nav-tab" data-tab="dungeon" role="tab" aria-selected="false" aria-controls="view-dungeon">
                 <span class="nav-icon" aria-hidden="true">🏰</span>
-                <span class="nav-label">Dungeon</span>
+                <span class="nav-label" data-i18n="nav.dungeon">Dungeon</span>
             </button>
             <button class="nav-tab active" data-tab="home" role="tab" aria-selected="true" aria-controls="view-home">
                 <span class="nav-icon" aria-hidden="true">🏠</span>
-                <span class="nav-label">Home</span>
+                <span class="nav-label" data-i18n="nav.home">Home</span>
             </button>
             <button class="nav-tab" data-tab="upgrade" role="tab" aria-selected="false" aria-controls="view-upgrade">
                 <span class="nav-icon" aria-hidden="true">⬆️</span>
-                <span class="nav-label">Upgrade</span>
+                <span class="nav-label" data-i18n="nav.upgrade">Upgrade</span>
             </button>
             <button class="nav-tab" data-tab="shop" role="tab" aria-selected="false" aria-controls="view-shop">
                 <span class="nav-icon" aria-hidden="true">🛒</span>
-                <span class="nav-label">Shop</span>
+                <span class="nav-label" data-i18n="nav.shop">Shop</span>
             </button>
         </nav>
 
@@ -416,21 +416,21 @@
         <!-- Full-page Chat Overlay -->
         <div class="chat-fullpage" id="chat-panel" role="dialog" aria-label="Chat" aria-modal="true">
             <div class="chat-header">
-                <span>💬 Chat</span>
+                <span>💬 <span data-i18n="chat.send">Chat</span></span>
                 <button class="chat-close-btn" id="chat-close" aria-label="Close chat">✕</button>
             </div>
             <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
             <div class="chat-input-row">
                 <label for="chat-input" class="sr-only">Type a message</label>
-                <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." maxlength="500" autocomplete="off">
-                <button class="chat-send-btn" id="chat-send">Send</button>
+                <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." data-i18n-placeholder="chat.typeMessage" maxlength="500" autocomplete="off">
+                <button class="chat-send-btn" id="chat-send" data-i18n="chat.send">Send</button>
             </div>
         </div>
 
         <!-- Modal for Equip/Sell Decision -->
         <div class="modal" id="decision-modal" role="dialog" aria-label="Equipment decision" aria-modal="true">
             <div class="modal-content">
-                <h2>New Equipment Forged!</h2>
+                <h2 data-i18n="forge.newEquipment">New Equipment Forged!</h2>
                 <div id="forged-item-info"></div>
             </div>
         </div>
@@ -438,7 +438,7 @@
         <!-- Modal for Item Details -->
         <div class="modal" id="item-detail-modal" role="dialog" aria-label="Equipment details" aria-modal="true">
             <div class="modal-content">
-                <h2>Equipment Details</h2>
+                <h2 data-i18n="forge.empty">Equipment Details</h2>
                 <div id="item-detail-info"></div>
                 <div class="modal-buttons">
                     <button class="btn btn-equip" id="item-detail-close">Close</button>
@@ -466,8 +466,8 @@
         <div class="modal" id="profile-modal" role="dialog" aria-label="Player profile" aria-modal="true">
             <div class="modal-content">
                 <div class="profile-tabs" role="tablist" aria-label="Profile sections">
-                    <button class="profile-tab active" data-profile-tab="profile" role="tab" aria-selected="true">Profile</button>
-                    <button class="profile-tab" data-profile-tab="settings" role="tab" aria-selected="false">Settings</button>
+                    <button class="profile-tab active" data-profile-tab="profile" role="tab" aria-selected="true" data-i18n="profile.profile">Profile</button>
+                    <button class="profile-tab" data-profile-tab="settings" role="tab" aria-selected="false" data-i18n="profile.settings">Settings</button>
                 </div>
                 <div class="profile-tab-content active" id="profile-tab-profile">
                     <div id="profile-info"></div>

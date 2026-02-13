@@ -4,6 +4,8 @@ import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT } from '../monsters.js';
 import { createElement, formatNumber } from './helpers.js';
 import { getSkillById, getSkillCooldown, getSkillTier } from '../skills-config.js';
 import { canActivateSkill, activateSkill, getCooldownRemaining, getSkillLevel, isEffectActive } from '../skills.js';
+import { t } from '../i18n/i18n.js';
+import { gameEvents, EVENTS } from '../events.js';
 
 let renderedMonsterCount = 0;
 
@@ -121,7 +123,7 @@ export function updateCombatInfo(data) {
 export function updateWaveDisplay() {
     const { currentWave, currentSubWave } = getCombatProgress();
     const waveLabel = document.getElementById('wave-label');
-    if (waveLabel) waveLabel.textContent = `Wave ${getWaveLabel(currentWave, currentSubWave)}`;
+    if (waveLabel) waveLabel.textContent = `${t('combat.wave')} ${getWaveLabel(currentWave, currentSubWave)}`;
 
     const progressFill = document.getElementById('wave-progress-fill');
     if (progressFill) {
@@ -324,3 +326,5 @@ export function updateSkillHUD() {
         }
     });
 }
+
+gameEvents.on(EVENTS.LOCALE_CHANGED, updateWaveDisplay);

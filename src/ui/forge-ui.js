@@ -14,6 +14,7 @@ import {
 } from '../state.js';
 import { calculateStats, calculatePowerScore, forgeEquipment } from '../forge.js';
 import { gameEvents, EVENTS } from '../events.js';
+import { t } from '../i18n/i18n.js';
 import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast, animateGoldToward, initGoldAnimation } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
 
@@ -58,7 +59,8 @@ const autoForge = {
 export function showForgeToast(item) {
     const tierDef = TIERS[(item.tier || 1) - 1];
     const icon = EQUIPMENT_ICONS[item.type] || '';
-    showToast(`${icon} ${tierDef.name} ${capitalizeFirst(item.type)} forged!`, 'forge');
+    const tierName = t('tiers.' + tierDef.name.toLowerCase());
+    showToast(t('forge.forged', { icon, tier: tierName, type: capitalizeFirst(item.type) }), 'forge');
 }
 
 export function showSellToast({ item, goldEarned }) {
@@ -128,7 +130,7 @@ function renderSingleSlot(type) {
     } else {
         slotParent.style.borderColor = '#e0e0e0';
         slotParent.style.borderWidth = '1px';
-        const emptySpan = createElement('span', 'empty-slot', 'Empty');
+        const emptySpan = createElement('span', 'empty-slot', t('forge.empty'));
         slotElement.appendChild(emptySpan);
     }
 }
@@ -166,10 +168,10 @@ function buildSideBySideChances(currentChances, nextChances) {
 
     const header = createElement('div', 'forge-compare-row forge-compare-header');
     header.append(
-        createElement('span', 'forge-compare-cell forge-compare-name', 'Tier'),
-        createElement('span', 'forge-compare-cell forge-compare-cur', 'Current'),
+        createElement('span', 'forge-compare-cell forge-compare-name', ''),
+        createElement('span', 'forge-compare-cell forge-compare-cur', t('forge.currentItem')),
         createElement('span', 'forge-compare-cell forge-compare-arrow', ''),
-        createElement('span', 'forge-compare-cell forge-compare-next', 'Next')
+        createElement('span', 'forge-compare-cell forge-compare-next', t('forge.newItem'))
     );
     table.appendChild(header);
 
@@ -177,7 +179,7 @@ function buildSideBySideChances(currentChances, nextChances) {
         if (currentChances[i] <= 0 && (!nextChances || !nextChances[i] || nextChances[i] <= 0)) return;
         const row = createElement('div', 'forge-compare-row');
 
-        const name = createElement('span', 'forge-compare-cell forge-compare-name', tier.name);
+        const name = createElement('span', 'forge-compare-cell forge-compare-name', t('tiers.' + tier.name.toLowerCase()));
         name.style.color = tier.color;
 
         const curPct = createElement('span', 'forge-compare-cell forge-compare-cur', `${currentChances[i]}%`);
@@ -259,14 +261,14 @@ function renderForgeUpgradeContent() {
     const isUpgrading = !!upgradeState;
     const isMaxLevel = forgeLevel >= MAX_FORGE_LEVEL;
 
-    const levelDisplay = createElement('div', 'forge-level-display', `Level ${forgeLevel}`);
+    const levelDisplay = createElement('div', 'forge-level-display', t('forge.forgeLevel', { level: forgeLevel }));
     info.appendChild(levelDisplay);
 
     const nextChances = !isMaxLevel ? FORGE_LEVELS[forgeLevel].chances : null;
     info.appendChild(buildSideBySideChances(currentChances, nextChances));
 
     if (isMaxLevel) {
-        info.appendChild(createElement('div', 'forge-section-max', 'Max level reached!'));
+        info.appendChild(createElement('div', 'forge-section-max', t('forge.maxLevel')));
         return;
     }
 
@@ -294,7 +296,7 @@ function renderForgeUpgradeContent() {
         const cost = getForgeUpgradeCost();
         const time = FORGE_LEVELS[forgeLevel].time;
         const upgradeBtn = createElement('button', 'btn btn-upgrade-forge',
-            `\u2B06\uFE0F Upgrade (${formatNumber(cost)}g \u00B7 ${formatTime(time)})`);
+            `\u2B06\uFE0F ${t('forge.upgradeCost', { cost: formatNumber(cost) })} \u00B7 ${formatTime(time)}`);
         upgradeBtn.id = 'upgrade-forge-btn';
         const canAfford = getGold() >= cost;
         upgradeBtn.disabled = !canAfford;
@@ -350,7 +352,7 @@ export function showDecisionModal(item, onClose) {
 
         const topHeader = createElement('div', 'decision-header');
         const topLabel = createElement('div', 'decision-label decision-label-equipped',
-            topItem ? '⚔️ Équipé' : `${EQUIPMENT_ICONS[slotType]} Emplacement vide`);
+            topItem ? `⚔️ ${t('forge.equipped')}` : `${EQUIPMENT_ICONS[slotType]} ${t('forge.emptySlot')}`);
         topHeader.appendChild(topLabel);
 
         if (powerDiffShown !== null) {
@@ -369,7 +371,7 @@ export function showDecisionModal(item, onClose) {
             topSection.appendChild(topCard);
         } else {
             const emptyDiv = createElement('div', 'decision-empty');
-            emptyDiv.textContent = 'Aucun équipement dans cet emplacement';
+            emptyDiv.textContent = t('forge.noEquipment');
             topSection.appendChild(emptyDiv);
         }
 
@@ -379,7 +381,7 @@ export function showDecisionModal(item, onClose) {
         const bottomSection = createElement('div', 'decision-section decision-bottom');
 
         const bottomLabel = createElement('div', 'decision-label decision-label-new',
-            hasSwapped ? '📦 Ancien' : '✨ Nouveau');
+            hasSwapped ? `📦 ${t('forge.old')}` : `✨ ${t('forge.newItem')}`);
         bottomSection.appendChild(bottomLabel);
 
         const bottomCard = createElement('div', 'decision-card');
@@ -392,7 +394,7 @@ export function showDecisionModal(item, onClose) {
         // Equip button
         const powerDiff = calculateEquipPowerDiff(bottomItem);
         const sign = powerDiff >= 0 ? '+' : '-';
-        const equipLabel = `🔄 Équiper (${sign}${formatCompact(Math.abs(powerDiff))} ⚡)`;
+        const equipLabel = `🔄 ${t('forge.equip')} (${sign}${formatCompact(Math.abs(powerDiff))} ⚡)`;
         const equipBtn = createElement('button', 'btn decision-btn-equip', equipLabel);
         if (powerDiff > 0) equipBtn.classList.add('equip-upgrade');
         if (powerDiff < 0) equipBtn.classList.add('equip-downgrade');
@@ -406,7 +408,7 @@ export function showDecisionModal(item, onClose) {
         // Sell button
         const sellValue = getSellValue(bottomItem);
         const sellBtn = createElement('button', 'btn decision-btn-sell',
-            `💰 Vendre · ${formatNumber(sellValue)}g`);
+            `💰 ${t('forge.sell', { amount: formatNumber(sellValue) })}`);
         sellBtn.addEventListener('click', handleSell);
         actionsContainer.appendChild(sellBtn);
 
@@ -474,14 +476,14 @@ export function showDecisionModal(item, onClose) {
         const overlay = createElement('div', 'decision-confirm-overlay');
         const box = createElement('div', 'decision-confirm-box');
 
-        const title = createElement('div', 'decision-confirm-title', '⚠️ Confirmer la vente');
+        const title = createElement('div', 'decision-confirm-title', `⚠️ ${t('forge.sellConfirmTitle')}`);
         const msg = createElement('div', 'decision-confirm-msg',
-            'Cet item a un tier supérieur à celui équipé. Êtes-vous sûr de vouloir le vendre ?');
+            t('forge.sellConfirmMsg'));
 
         const btns = createElement('div', 'decision-confirm-btns');
-        const cancelBtn = createElement('button', 'btn decision-confirm-cancel', 'Annuler');
+        const cancelBtn = createElement('button', 'btn decision-confirm-cancel', t('forge.cancel'));
         cancelBtn.addEventListener('click', () => overlay.remove());
-        const confirmBtn = createElement('button', 'btn decision-confirm-yes', 'Confirmer la vente');
+        const confirmBtn = createElement('button', 'btn decision-confirm-yes', t('forge.sellConfirmYes'));
         confirmBtn.addEventListener('click', () => { overlay.remove(); doSell(); });
 
         btns.append(cancelBtn, confirmBtn);
@@ -548,7 +550,7 @@ function tryAutoEquip(item) {
     if (!currentEquipped) {
         // Empty slot — always equip
         equipItem(item);
-        showToast(`🔄 Auto-équipé: ${EQUIPMENT_ICONS[item.type] || ''} Lv.${item.level}`, 'forge');
+        showToast(`🔄 ${t('forge.autoEquipped', { icon: EQUIPMENT_ICONS[item.type] || '', level: item.level })}`, 'forge');
         return true;
     }
 
@@ -564,7 +566,7 @@ function tryAutoEquip(item) {
     if (newPower > currentPower) {
         equipItem(item);
         const diff = newPower - currentPower;
-        showToast(`🔄 Auto-équipé: ${EQUIPMENT_ICONS[item.type] || ''} Lv.${item.level} (+${formatCompact(diff)} ⚡)`, 'forge');
+        showToast(`🔄 ${t('forge.autoEquippedDiff', { icon: EQUIPMENT_ICONS[item.type] || '', level: item.level, diff: formatCompact(diff) })}`, 'forge');
         return true;
     }
 
@@ -652,7 +654,7 @@ function showAutoForgeModal() {
     const smartFilterLevel = getTechEffect('smartFilter');
     const hasAutoEquip = getTechEffect('autoEquip') >= 1;
 
-    info.appendChild(createElement('div', 'auto-forge-desc', 'Sélectionnez les tiers à garder. Le reste sera auto-vendu.'));
+    info.appendChild(createElement('div', 'auto-forge-desc', t('autoForge.selectTiersDesc')));
 
     const tierList = createElement('div', 'auto-forge-tiers');
     const forgeLevel = getForgeLevel();
@@ -667,7 +669,7 @@ function showAutoForgeModal() {
         if (chances[i] > 0 && tier.id >= 2) checkbox.checked = true;
         if (chances[i] <= 0) { checkbox.disabled = true; row.classList.add('auto-forge-tier-disabled'); }
 
-        const label = createElement('span', 'auto-forge-tier-name', `${tier.name} (${chances[i]}%)`);
+        const label = createElement('span', 'auto-forge-tier-name', `${t('tiers.' + tier.name.toLowerCase())} (${chances[i]}%)`);
         label.style.color = tier.color;
 
         row.append(checkbox, label);
@@ -679,12 +681,12 @@ function showAutoForgeModal() {
     // === Smart Filter section (only if tech researched) ===
     if (smartFilterLevel >= 1) {
         const filterSection = createElement('div', 'auto-forge-filter-section');
-        const filterTitle = createElement('div', 'auto-forge-filter-title', '🧠 Filtre Intelligent');
+        const filterTitle = createElement('div', 'auto-forge-filter-title', `🧠 ${t('autoForge.smartFilter')}`);
         filterSection.appendChild(filterTitle);
 
         // Niv.1: Minimum level filter
         const levelRow = createElement('div', 'auto-forge-filter-row');
-        const levelLabel = createElement('label', 'auto-forge-filter-label', 'Niveau min :');
+        const levelLabel = createElement('label', 'auto-forge-filter-label', t('autoForge.minLevelLabel'));
         const levelInput = document.createElement('input');
         levelInput.type = 'number';
         levelInput.className = 'auto-forge-filter-input';
@@ -699,7 +701,7 @@ function showAutoForgeModal() {
         // Niv.2: Minimum stats filter
         if (smartFilterLevel >= 2) {
             const statsRow = createElement('div', 'auto-forge-filter-row');
-            const statsLabel = createElement('label', 'auto-forge-filter-label', 'Stat principale min :');
+            const statsLabel = createElement('label', 'auto-forge-filter-label', t('autoForge.minStatLabel'));
             const statsInput = document.createElement('input');
             statsInput.type = 'number';
             statsInput.className = 'auto-forge-filter-input';
@@ -714,7 +716,7 @@ function showAutoForgeModal() {
 
         // Niv.3: Slot type filter
         if (smartFilterLevel >= 3) {
-            const slotTitle = createElement('div', 'auto-forge-filter-subtitle', 'Slots à garder :');
+            const slotTitle = createElement('div', 'auto-forge-filter-subtitle', t('autoForge.slotsToKeepLabel'));
             filterSection.appendChild(slotTitle);
 
             const slotList = createElement('div', 'auto-forge-slot-list');
@@ -740,11 +742,11 @@ function showAutoForgeModal() {
     // Auto-equip indicator (if tech is active)
     if (hasAutoEquip) {
         const equipRow = createElement('div', 'auto-forge-equip-row');
-        equipRow.textContent = '🔄 Auto-équipement actif — les items strictement meilleurs seront équipés automatiquement';
+        equipRow.textContent = `🔄 ${t('autoForge.autoEquipActive')}`;
         info.appendChild(equipRow);
     }
 
-    const startBtn = createElement('button', 'btn btn-start-auto', '\u25B6 Lancer l\'Auto Forge');
+    const startBtn = createElement('button', 'btn btn-start-auto', `\u25B6 ${t('autoForge.startAutoForge')}`);
     startBtn.addEventListener('click', () => {
         const selected = new Set();
         tierList.querySelectorAll('.auto-forge-checkbox:checked').forEach(cb => {
@@ -817,3 +819,6 @@ export function updateUI() {
     updateEquipmentSlots();
     updateForgeInfo();
 }
+
+// Re-render translatable UI when locale changes
+gameEvents.on(EVENTS.LOCALE_CHANGED, () => { updateEquipmentSlots(); });
