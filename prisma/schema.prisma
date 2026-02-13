@@ -126,6 +126,33 @@ model AuditLog {
   @@index([targetId])
 }
 
+model SpriteSheet {
+  id       Int            @id @default(autoincrement())
+  type     String         @unique @db.VarChar(30) // hat, weapon, armor, necklace, ring, gloves, belt, boots
+  file     String         @db.VarChar(200)         // /assets/helmets.png
+  width    Int
+  height   Int
+  items    ItemTemplate[]
+}
+
+model ItemTemplate {
+  id            Int         @id @default(autoincrement())
+  type          String      @db.VarChar(30)   // hat, weapon, armor, etc.
+  tier          Int                            // 1-7
+  skin          String      @unique @db.VarChar(50)
+  name          String      @db.VarChar(100)
+  spriteX       Int
+  spriteY       Int
+  spriteW       Int
+  spriteH       Int
+  spriteSheetId Int
+  spriteSheet   SpriteSheet @relation(fields: [spriteSheetId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([type, tier])
+}
+
 model Purchase {
   id              Int      @id @default(autoincrement())
   userId          Int

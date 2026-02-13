@@ -850,3 +850,330 @@ body {
         max-width: 100%;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Equipment Management Section
+   ═══════════════════════════════════════════════════════════════════ */
+
+.adm-equip-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.adm-equip-filters select {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+/* Equipment cards grid */
+.adm-equip-type-group {
+    margin-bottom: 24px;
+}
+
+.adm-equip-type-title {
+    font-family: var(--font-display);
+    color: var(--gold);
+    font-size: 1.1em;
+    text-transform: capitalize;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.adm-equip-tier-group {
+    margin-bottom: 16px;
+}
+
+.adm-equip-tier-title {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.adm-equip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.adm-equip-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.2s;
+}
+
+.adm-equip-card:hover {
+    border-color: var(--gold);
+}
+
+.adm-equip-card-sprite {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.adm-equip-card-info {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.adm-equip-card-name {
+    font-weight: 600;
+    font-size: 0.85em;
+    color: var(--text-primary);
+}
+
+.adm-equip-card-skin {
+    font-size: 0.75em;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.adm-equip-card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.adm-btn-sm {
+    padding: 4px 10px !important;
+    font-size: 0.78em !important;
+}
+
+/* ─── Equipment Edit Modal ────────────────────────────────────── */
+
+.adm-equip-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 40px 16px;
+}
+
+.adm-equip-modal.hidden {
+    display: none !important;
+}
+
+.adm-equip-modal-content {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 900px;
+    padding: 24px;
+}
+
+.adm-equip-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.adm-equip-modal-header h3 {
+    font-family: var(--font-display);
+    color: var(--gold);
+    font-size: 1.2em;
+}
+
+.adm-equip-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.8em;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.adm-equip-modal-close:hover {
+    color: var(--text-primary);
+}
+
+/* ─── Equipment Form ──────────────────────────────────────────── */
+
+.adm-equip-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.adm-equip-form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.adm-equip-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.adm-equip-field label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.adm-equip-field input,
+.adm-equip-field select {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.9em;
+}
+
+.adm-equip-field input:focus,
+.adm-equip-field select:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+.adm-equip-sprite-inputs {
+    flex-wrap: nowrap;
+}
+
+.adm-equip-sprite-inputs .adm-equip-field {
+    min-width: 80px;
+}
+
+.adm-equip-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+
+/* ─── Interactive Sprite Editor ───────────────────────────────── */
+
+.adm-sprite-editor {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.adm-sprite-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.adm-sprite-editor-header h4 {
+    color: var(--gold);
+    font-size: 0.95em;
+    font-family: var(--font-display);
+}
+
+.adm-sprite-coords {
+    font-family: monospace;
+    font-size: 0.82em;
+    color: var(--text-muted);
+    background: var(--bg-dark);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.adm-sprite-canvas-wrap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-top: 8px;
+    cursor: crosshair;
+    max-height: 500px;
+    overflow-y: auto;
+    background: repeating-conic-gradient(
+        rgba(255, 255, 255, 0.03) 0% 25%,
+        rgba(0, 0, 0, 0.03) 0% 50%
+    ) 50% / 16px 16px;
+}
+
+.adm-sprite-canvas-wrap canvas {
+    display: block;
+}
+
+.adm-sprite-selection {
+    position: absolute;
+    border: 2px solid #ff6b35;
+    background: rgba(255, 107, 53, 0.15);
+    pointer-events: none;
+    display: none;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Sprite Preview ──────────────────────────────────────────── */
+
+.adm-sprite-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.adm-sprite-preview-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.adm-sprite-preview {
+    width: 80px;
+    height: 80px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* ─── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+    .adm-equip-form-row {
+        flex-direction: column;
+    }
+
+    .adm-equip-sprite-inputs {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .adm-equip-sprite-inputs .adm-equip-field {
+        flex: 1 1 45%;
+    }
+
+    .adm-equip-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .adm-equip-modal {
+        padding: 16px 8px;
+    }
+
+    .adm-equip-modal-content {
+        padding: 16px;
+    }
+}

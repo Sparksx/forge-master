@@ -44,6 +44,10 @@
                     <span class="adm-nav-icon">&#x1F4CB;</span>
                     <span class="adm-nav-label">Logs</span>
                 </button>
+                <button class="adm-nav-item" data-section="equipment">
+                    <span class="adm-nav-icon">&#x2694;</span>
+                    <span class="adm-nav-label">Equipements</span>
+                </button>
                 <button class="adm-nav-item" data-section="broadcast">
                     <span class="adm-nav-icon">&#x1F4E2;</span>
                     <span class="adm-nav-label">Annonce</span>
@@ -74,6 +78,10 @@
             <button class="adm-mobile-nav-item" data-section="logs">
                 <span class="adm-nav-icon">&#x1F4CB;</span>
                 <span>Logs</span>
+            </button>
+            <button class="adm-mobile-nav-item" data-section="equipment">
+                <span class="adm-nav-icon">&#x2694;</span>
+                <span>Equip.</span>
             </button>
             <button class="adm-mobile-nav-item" data-section="broadcast">
                 <span class="adm-nav-icon">&#x1F4E2;</span>
@@ -114,6 +122,140 @@
                 </div>
                 <div id="adm-logs-content">
                     <p class="adm-loading">Chargement des logs...</p>
+                </div>
+            </section>
+
+            <!-- Equipment Section -->
+            <section class="adm-section" id="section-equipment">
+                <div class="adm-section-header">
+                    <h2>Gestion des Equipements</h2>
+                    <button class="adm-btn adm-btn-primary" id="adm-equip-add-btn">+ Nouvel Equipement</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="adm-equip-filters">
+                    <select id="adm-equip-filter-type">
+                        <option value="">Tous les types</option>
+                        <option value="hat">Hat</option>
+                        <option value="weapon">Weapon</option>
+                        <option value="armor">Armor</option>
+                        <option value="necklace">Necklace</option>
+                        <option value="ring">Ring</option>
+                        <option value="gloves">Gloves</option>
+                        <option value="belt">Belt</option>
+                        <option value="boots">Boots</option>
+                    </select>
+                    <select id="adm-equip-filter-tier">
+                        <option value="">Tous les tiers</option>
+                        <option value="1">Tier 1</option>
+                        <option value="2">Tier 2</option>
+                        <option value="3">Tier 3</option>
+                        <option value="4">Tier 4</option>
+                        <option value="5">Tier 5</option>
+                        <option value="6">Tier 6</option>
+                        <option value="7">Tier 7</option>
+                    </select>
+                </div>
+
+                <!-- Equipment list -->
+                <div id="adm-equip-list">
+                    <p class="adm-loading">Chargement des equipements...</p>
+                </div>
+
+                <!-- Equipment edit modal (inline) -->
+                <div class="adm-equip-modal hidden" id="adm-equip-modal">
+                    <div class="adm-equip-modal-content">
+                        <div class="adm-equip-modal-header">
+                            <h3 id="adm-equip-modal-title">Nouvel Equipement</h3>
+                            <button class="adm-equip-modal-close" id="adm-equip-modal-close">&times;</button>
+                        </div>
+
+                        <form id="adm-equip-form" class="adm-equip-form">
+                            <input type="hidden" id="adm-equip-id">
+
+                            <div class="adm-equip-form-row">
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-type">Type</label>
+                                    <select id="adm-equip-type" required>
+                                        <option value="hat">Hat</option>
+                                        <option value="weapon">Weapon</option>
+                                        <option value="armor">Armor</option>
+                                        <option value="necklace">Necklace</option>
+                                        <option value="ring">Ring</option>
+                                        <option value="gloves">Gloves</option>
+                                        <option value="belt">Belt</option>
+                                        <option value="boots">Boots</option>
+                                    </select>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-tier">Tier</label>
+                                    <select id="adm-equip-tier" required>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="adm-equip-form-row">
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-skin">Skin (identifiant unique)</label>
+                                    <input type="text" id="adm-equip-skin" placeholder="ex: fire_sword" required maxlength="50">
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-name">Nom affiche</label>
+                                    <input type="text" id="adm-equip-name" placeholder="ex: Inferno Greatsword" required maxlength="100">
+                                </div>
+                            </div>
+
+                            <!-- Sprite coordinates (can be set manually or via interactive editor) -->
+                            <div class="adm-equip-form-row adm-equip-sprite-inputs">
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-sx">Sprite X</label>
+                                    <input type="number" id="adm-equip-sx" min="0" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-sy">Sprite Y</label>
+                                    <input type="number" id="adm-equip-sy" min="0" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-sw">Sprite W</label>
+                                    <input type="number" id="adm-equip-sw" min="1" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-equip-sh">Sprite H</label>
+                                    <input type="number" id="adm-equip-sh" min="1" required>
+                                </div>
+                            </div>
+
+                            <!-- Interactive sprite picker -->
+                            <div class="adm-sprite-editor">
+                                <div class="adm-sprite-editor-header">
+                                    <h4>Editeur de Sprite Interactif</h4>
+                                    <span class="adm-sprite-coords" id="adm-sprite-coords">--</span>
+                                </div>
+                                <p class="adm-form-desc">Cliquez et glissez sur l'image pour selectionner la zone du sprite. Utilisez la molette pour zoomer.</p>
+                                <div class="adm-sprite-canvas-wrap" id="adm-sprite-canvas-wrap">
+                                    <canvas id="adm-sprite-canvas"></canvas>
+                                    <div class="adm-sprite-selection" id="adm-sprite-selection"></div>
+                                </div>
+                                <!-- Preview -->
+                                <div class="adm-sprite-preview-row">
+                                    <div class="adm-sprite-preview-label">Apercu:</div>
+                                    <div class="adm-sprite-preview" id="adm-sprite-preview"></div>
+                                </div>
+                            </div>
+
+                            <div class="adm-equip-form-actions">
+                                <button type="submit" class="adm-btn adm-btn-primary" id="adm-equip-save-btn">Enregistrer</button>
+                                <button type="button" class="adm-btn adm-btn-secondary" id="adm-equip-cancel-btn">Annuler</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </section>
 
