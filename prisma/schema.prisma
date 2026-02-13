@@ -133,6 +133,23 @@ model SpriteSheet {
   width    Int
   height   Int
   items    ItemTemplate[]
+  sprites  Sprite[]       @relation("SpriteSheetSprites")
+}
+
+model Sprite {
+  id            Int         @id @default(autoincrement())
+  name          String      @db.VarChar(100)
+  spriteX       Int
+  spriteY       Int
+  spriteW       Int
+  spriteH       Int
+  spriteSheetId Int
+  spriteSheet   SpriteSheet @relation("SpriteSheetSprites", fields: [spriteSheetId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  items         ItemTemplate[]
+
+  @@index([spriteSheetId])
 }
 
 model ItemTemplate {
@@ -141,10 +158,8 @@ model ItemTemplate {
   tier          Int                            // 1-7
   skin          String      @unique @db.VarChar(50)
   name          String      @db.VarChar(100)
-  spriteX       Int
-  spriteY       Int
-  spriteW       Int
-  spriteH       Int
+  spriteId      Int
+  sprite        Sprite      @relation(fields: [spriteId], references: [id])
   spriteSheetId Int
   spriteSheet   SpriteSheet @relation(fields: [spriteSheetId], references: [id])
   createdAt     DateTime    @default(now())

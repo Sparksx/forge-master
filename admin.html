@@ -44,6 +44,10 @@
                     <span class="adm-nav-icon">&#x1F4CB;</span>
                     <span class="adm-nav-label">Logs</span>
                 </button>
+                <button class="adm-nav-item" data-section="sprites">
+                    <span class="adm-nav-icon">&#x1F3A8;</span>
+                    <span class="adm-nav-label">Sprites</span>
+                </button>
                 <button class="adm-nav-item" data-section="equipment">
                     <span class="adm-nav-icon">&#x2694;</span>
                     <span class="adm-nav-label">Equipements</span>
@@ -78,6 +82,10 @@
             <button class="adm-mobile-nav-item" data-section="logs">
                 <span class="adm-nav-icon">&#x1F4CB;</span>
                 <span>Logs</span>
+            </button>
+            <button class="adm-mobile-nav-item" data-section="sprites">
+                <span class="adm-nav-icon">&#x1F3A8;</span>
+                <span>Sprites</span>
             </button>
             <button class="adm-mobile-nav-item" data-section="equipment">
                 <span class="adm-nav-icon">&#x2694;</span>
@@ -125,6 +133,99 @@
                 </div>
             </section>
 
+            <!-- Sprites Section -->
+            <section class="adm-section" id="section-sprites">
+                <div class="adm-section-header">
+                    <h2>Gestion des Sprites</h2>
+                    <button class="adm-btn adm-btn-primary" id="adm-sprite-add-btn">+ Nouveau Sprite</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="adm-equip-filters">
+                    <select id="adm-sprite-filter-sheet">
+                        <option value="">Toutes les feuilles</option>
+                    </select>
+                </div>
+
+                <!-- Sprite list -->
+                <div id="adm-sprite-list">
+                    <p class="adm-loading">Chargement des sprites...</p>
+                </div>
+
+                <!-- Sprite edit modal -->
+                <div class="adm-equip-modal hidden" id="adm-sprite-modal">
+                    <div class="adm-equip-modal-content">
+                        <div class="adm-equip-modal-header">
+                            <h3 id="adm-sprite-modal-title">Nouveau Sprite</h3>
+                            <button class="adm-equip-modal-close" id="adm-sprite-modal-close">&times;</button>
+                        </div>
+
+                        <form id="adm-sprite-form" class="adm-equip-form">
+                            <input type="hidden" id="adm-spr-id">
+
+                            <div class="adm-equip-form-row">
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-name">Nom du Sprite</label>
+                                    <input type="text" id="adm-spr-name" placeholder="ex: Casque de feu" required maxlength="100">
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-sheet">Feuille de Sprite</label>
+                                    <select id="adm-spr-sheet" required></select>
+                                </div>
+                            </div>
+
+                            <!-- Sprite coordinates -->
+                            <div class="adm-equip-form-row adm-equip-sprite-inputs">
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-sx">X</label>
+                                    <input type="number" id="adm-spr-sx" min="0" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-sy">Y</label>
+                                    <input type="number" id="adm-spr-sy" min="0" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-sw">W</label>
+                                    <input type="number" id="adm-spr-sw" min="1" required>
+                                </div>
+                                <div class="adm-equip-field">
+                                    <label for="adm-spr-sh">H</label>
+                                    <input type="number" id="adm-spr-sh" min="1" required>
+                                </div>
+                            </div>
+
+                            <!-- Interactive sprite editor with drag/resize -->
+                            <div class="adm-sprite-editor">
+                                <div class="adm-sprite-editor-header">
+                                    <h4>Editeur de Sprite Interactif</h4>
+                                    <span class="adm-sprite-coords" id="adm-spr-coords">--</span>
+                                </div>
+                                <p class="adm-form-desc">Cliquez et glissez pour selectionner. Deplacez la selection en glissant a l'interieur. Redimensionnez en glissant les coins.</p>
+                                <div class="adm-sprite-canvas-wrap" id="adm-spr-canvas-wrap">
+                                    <canvas id="adm-spr-canvas"></canvas>
+                                    <div class="adm-sprite-selection" id="adm-spr-selection">
+                                        <div class="adm-sprite-handle adm-handle-nw" data-handle="nw"></div>
+                                        <div class="adm-sprite-handle adm-handle-ne" data-handle="ne"></div>
+                                        <div class="adm-sprite-handle adm-handle-sw" data-handle="sw"></div>
+                                        <div class="adm-sprite-handle adm-handle-se" data-handle="se"></div>
+                                    </div>
+                                </div>
+                                <!-- Preview -->
+                                <div class="adm-sprite-preview-row">
+                                    <div class="adm-sprite-preview-label">Apercu:</div>
+                                    <div class="adm-sprite-preview" id="adm-spr-preview"></div>
+                                </div>
+                            </div>
+
+                            <div class="adm-equip-form-actions">
+                                <button type="submit" class="adm-btn adm-btn-primary">Enregistrer</button>
+                                <button type="button" class="adm-btn adm-btn-secondary" id="adm-sprite-cancel-btn">Annuler</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
             <!-- Equipment Section -->
             <section class="adm-section" id="section-equipment">
                 <div class="adm-section-header">
@@ -162,7 +263,7 @@
                     <p class="adm-loading">Chargement des equipements...</p>
                 </div>
 
-                <!-- Equipment edit modal (inline) -->
+                <!-- Equipment edit modal -->
                 <div class="adm-equip-modal hidden" id="adm-equip-modal">
                     <div class="adm-equip-modal-content">
                         <div class="adm-equip-modal-header">
@@ -212,41 +313,15 @@
                                 </div>
                             </div>
 
-                            <!-- Sprite coordinates (can be set manually or via interactive editor) -->
-                            <div class="adm-equip-form-row adm-equip-sprite-inputs">
-                                <div class="adm-equip-field">
-                                    <label for="adm-equip-sx">Sprite X</label>
-                                    <input type="number" id="adm-equip-sx" min="0" required>
-                                </div>
-                                <div class="adm-equip-field">
-                                    <label for="adm-equip-sy">Sprite Y</label>
-                                    <input type="number" id="adm-equip-sy" min="0" required>
-                                </div>
-                                <div class="adm-equip-field">
-                                    <label for="adm-equip-sw">Sprite W</label>
-                                    <input type="number" id="adm-equip-sw" min="1" required>
-                                </div>
-                                <div class="adm-equip-field">
-                                    <label for="adm-equip-sh">Sprite H</label>
-                                    <input type="number" id="adm-equip-sh" min="1" required>
-                                </div>
-                            </div>
-
-                            <!-- Interactive sprite picker -->
-                            <div class="adm-sprite-editor">
-                                <div class="adm-sprite-editor-header">
-                                    <h4>Editeur de Sprite Interactif</h4>
-                                    <span class="adm-sprite-coords" id="adm-sprite-coords">--</span>
-                                </div>
-                                <p class="adm-form-desc">Cliquez et glissez sur l'image pour selectionner la zone du sprite. Utilisez la molette pour zoomer.</p>
-                                <div class="adm-sprite-canvas-wrap" id="adm-sprite-canvas-wrap">
-                                    <canvas id="adm-sprite-canvas"></canvas>
-                                    <div class="adm-sprite-selection" id="adm-sprite-selection"></div>
-                                </div>
-                                <!-- Preview -->
-                                <div class="adm-sprite-preview-row">
+                            <!-- Sprite selector -->
+                            <div class="adm-equip-field">
+                                <label for="adm-equip-sprite-select">Sprite</label>
+                                <select id="adm-equip-sprite-select" required>
+                                    <option value="">-- Selectionner un sprite --</option>
+                                </select>
+                                <div class="adm-sprite-preview-row" style="margin-top:8px;">
                                     <div class="adm-sprite-preview-label">Apercu:</div>
-                                    <div class="adm-sprite-preview" id="adm-sprite-preview"></div>
+                                    <div class="adm-sprite-preview" id="adm-equip-sprite-preview"></div>
                                 </div>
                             </div>
 

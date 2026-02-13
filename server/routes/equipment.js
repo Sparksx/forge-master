@@ -12,6 +12,7 @@ router.get('/templates', async (req, res) => {
         const [spriteSheets, items] = await Promise.all([
             prisma.spriteSheet.findMany(),
             prisma.itemTemplate.findMany({
+                include: { sprite: true },
                 orderBy: [{ type: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
             }),
         ]);
@@ -27,10 +28,13 @@ router.get('/templates', async (req, res) => {
         for (const item of items) {
             if (!templates[item.type]) templates[item.type] = {};
             if (!templates[item.type][item.tier]) templates[item.type][item.tier] = [];
+            const spriteData = item.sprite
+                ? { x: item.sprite.spriteX, y: item.sprite.spriteY, w: item.sprite.spriteW, h: item.sprite.spriteH }
+                : { x: 0, y: 0, w: 0, h: 0 };
             templates[item.type][item.tier].push({
                 skin: item.skin,
                 name: item.name,
-                sprite: { x: item.spriteX, y: item.spriteY, w: item.spriteW, h: item.spriteH },
+                sprite: spriteData,
             });
         }
 
@@ -46,11 +50,11 @@ router.get('/templates', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════
 
 // ─── GET /api/equipment/admin/items ───────────────────────────────
-// List all item templates (with sprite sheet info)
+// List all item templates (with sprite sheet and sprite info)
 router.get('/admin/items', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const items = await prisma.itemTemplate.findMany({
-            include: { spriteSheet: true },
+            include: { spriteSheet: true, sprite: { include: { spriteSheet: true } } },
             orderBy: [{ type: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
         });
         res.json({ items });
@@ -77,7 +81,7 @@ router.get('/admin/sprite-sheets', requireAuth, requireRole('admin'), async (req
 // ─── POST /api/equipment/admin/items ──────────────────────────────
 // Create a new item template
 router.post('/admin/items', requireAuth, requireRole('admin'), async (req, res) => {
-    const { type, tier, skin, name, spriteX, spriteY, spriteW, spriteH } = req.body;
+    const { type, tier, skin, name, spriteId } = req.body;
 
     if (!type || !skin || !name) {
         return res.status(400).json({ error: 'type, skin and name are required' });
@@ -85,8 +89,8 @@ router.post('/admin/items', requireAuth, requireRole('admin'), async (req, res) 
     if (!tier || tier < 1 || tier > 7) {
         return res.status(400).json({ error: 'tier must be between 1 and 7' });
     }
-    if (spriteX == null || spriteY == null || spriteW == null || spriteH == null) {
-        return res.status(400).json({ error: 'Sprite coordinates (spriteX, spriteY, spriteW, spriteH) are required' });
+    if (!spriteId) {
+        return res.status(400).json({ error: 'spriteId is required' });
     }
 
     try {
@@ -96,19 +100,22 @@ router.post('/admin/items', requireAuth, requireRole('admin'), async (req, res) 
             return res.status(400).json({ error: `No sprite sheet found for type "${type}"` });
         }
 
+        // Verify sprite exists
+        const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
+        if (!sprite) {
+            return res.status(400).json({ error: 'Sprite not found' });
+        }
+
         const item = await prisma.itemTemplate.create({
             data: {
                 type,
                 tier: parseInt(tier),
                 skin: skin.trim(),
                 name: name.trim(),
-                spriteX: parseInt(spriteX),
-                spriteY: parseInt(spriteY),
-                spriteW: parseInt(spriteW),
-                spriteH: parseInt(spriteH),
+                spriteId: sprite.id,
                 spriteSheetId: sheet.id,
             },
-            include: { spriteSheet: true },
+            include: { spriteSheet: true, sprite: { include: { spriteSheet: true } } },
         });
 
         await logAudit(req.user.userId, 'create_item', null, { itemId: item.id, skin, type, tier });
@@ -129,7 +136,7 @@ router.put('/admin/items/:id', requireAuth, requireRole('admin'), async (req, re
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid item ID' });
 
-    const { type, tier, skin, name, spriteX, spriteY, spriteW, spriteH } = req.body;
+    const { type, tier, skin, name, spriteId } = req.body;
 
     const data = {};
     if (type !== undefined) data.type = type;
@@ -139,10 +146,13 @@ router.put('/admin/items/:id', requireAuth, requireRole('admin'), async (req, re
     }
     if (skin !== undefined) data.skin = skin.trim();
     if (name !== undefined) data.name = name.trim();
-    if (spriteX !== undefined) data.spriteX = parseInt(spriteX);
-    if (spriteY !== undefined) data.spriteY = parseInt(spriteY);
-    if (spriteW !== undefined) data.spriteW = parseInt(spriteW);
-    if (spriteH !== undefined) data.spriteH = parseInt(spriteH);
+    if (spriteId !== undefined) {
+        const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
+        if (!sprite) {
+            return res.status(400).json({ error: 'Sprite not found' });
+        }
+        data.spriteId = sprite.id;
+    }
 
     // If type changed, update sprite sheet reference
     if (type !== undefined) {
@@ -157,7 +167,7 @@ router.put('/admin/items/:id', requireAuth, requireRole('admin'), async (req, re
         const item = await prisma.itemTemplate.update({
             where: { id },
             data,
-            include: { spriteSheet: true },
+            include: { spriteSheet: true, sprite: { include: { spriteSheet: true } } },
         });
 
         await logAudit(req.user.userId, 'update_item', null, { itemId: id, changes: Object.keys(data) });
