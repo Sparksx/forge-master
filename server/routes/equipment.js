@@ -28,9 +28,15 @@ router.get('/templates', async (req, res) => {
         for (const item of items) {
             if (!templates[item.type]) templates[item.type] = {};
             if (!templates[item.type][item.tier]) templates[item.type][item.tier] = [];
-            const spriteData = item.sprite
-                ? { x: item.sprite.spriteX, y: item.sprite.spriteY, w: item.sprite.spriteW, h: item.sprite.spriteH }
-                : { x: 0, y: 0, w: 0, h: 0 };
+            // Use Sprite relation if available, fallback to inline columns (pre-migration)
+            let spriteData;
+            if (item.sprite) {
+                spriteData = { x: item.sprite.spriteX, y: item.sprite.spriteY, w: item.sprite.spriteW, h: item.sprite.spriteH };
+            } else if (item.spriteX != null) {
+                spriteData = { x: item.spriteX, y: item.spriteY, w: item.spriteW, h: item.spriteH };
+            } else {
+                spriteData = { x: 0, y: 0, w: 0, h: 0 };
+            }
             templates[item.type][item.tier].push({
                 skin: item.skin,
                 name: item.name,
