@@ -10,7 +10,9 @@ export function setupSocket(server) {
         cors: {
             origin: CORS_ORIGIN === '*' ? '*' : CORS_ORIGIN,
             methods: ['GET', 'POST']
-        }
+        },
+        pingInterval: 25000,
+        pingTimeout: 30000,
     });
 
     // Auth middleware for all socket connections

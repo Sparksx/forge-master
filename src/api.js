@@ -44,7 +44,7 @@ export function clearTokens() {
     }
 }
 
-async function refreshAccessToken() {
+export async function refreshAccessToken() {
     if (!refreshToken) return false;
 
     try {

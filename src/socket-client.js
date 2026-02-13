@@ -1,49 +1,78 @@
 /**
  * Socket.io client — connects to server with JWT auth.
+ * Handles automatic reconnection with token refresh.
  */
 
 import { io } from 'socket.io-client';
-import { getAccessToken } from './api.js';
+import { getAccessToken, refreshAccessToken } from './api.js';
 
 let socket = null;
+let onReconnectCallback = null;
+let refreshingToken = false;
+let hasConnectedOnce = false;
 
-export function connectSocket() {
+export function connectSocket({ onReconnect } = {}) {
     if (socket?.connected) return socket;
+
+    if (onReconnect) onReconnectCallback = onReconnect;
 
     const token = getAccessToken();
     if (!token) return null;
+
+    hasConnectedOnce = false;
 
     // In dev, Vite proxy handles the connection. In prod, same origin.
     socket = io({
         auth: { token },
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionAttempts: 10,
+        reconnectionDelayMax: 10000,
+        reconnectionAttempts: Infinity,
     });
 
     socket.on('connect', () => {
-        console.log('Socket connected');
+        if (!hasConnectedOnce) {
+            console.log('Socket connected');
+            hasConnectedOnce = true;
+            return;
+        }
+        // This is a reconnection — re-register listeners and refresh auth
+        console.log('Socket reconnected');
+        onReconnectCallback?.();
     });
 
-    socket.on('connect_error', (err) => {
+    socket.on('connect_error', async (err) => {
         console.error('Socket connection error:', err.message);
-        // If the error is auth-related, update the token for the next reconnection attempt
-        const freshToken = getAccessToken();
-        if (freshToken && socket) {
-            socket.auth = { token: freshToken };
+        // If auth-related, refresh the token before the next attempt
+        if (!refreshingToken) {
+            refreshingToken = true;
+            try {
+                const refreshed = await refreshAccessToken();
+                if (refreshed) {
+                    const freshToken = getAccessToken();
+                    if (freshToken && socket) {
+                        socket.auth = { token: freshToken };
+                    }
+                }
+            } finally {
+                refreshingToken = false;
+            }
         }
     });
 
     socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
-        // If disconnected by the server (e.g. auth expired), refresh auth for reconnect
+        // If disconnected by the server (e.g. auth expired, kick), refresh auth and reconnect
         if (reason === 'io server disconnect') {
-            const freshToken = getAccessToken();
-            if (freshToken && socket) {
-                socket.auth = { token: freshToken };
-                socket.connect();
-            }
+            refreshAccessToken().then((refreshed) => {
+                const freshToken = getAccessToken();
+                if (freshToken && socket) {
+                    socket.auth = { token: freshToken };
+                    socket.connect();
+                }
+            });
         }
+        // For other reasons (transport close, ping timeout), Socket.io auto-reconnects
     });
 
     return socket;
@@ -58,4 +87,5 @@ export function disconnectSocket() {
         socket.disconnect();
         socket = null;
     }
+    onReconnectCallback = null;
 }
