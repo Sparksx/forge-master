@@ -328,25 +328,26 @@
 }
 
 .skills-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     padding-bottom: 16px;
 }
 
 .skill-card {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 4px;
-    padding: 8px 6px;
+    gap: 10px;
+    padding: 8px 10px;
     border: 2px solid var(--border-subtle);
     border-radius: 10px;
     background: var(--bg-card);
     cursor: pointer;
     transition: all 0.2s;
-    text-align: center;
     min-width: 0;
+    position: relative;
+    overflow: hidden;
 }
 
 .skill-card:hover {
@@ -369,34 +370,59 @@
     to { box-shadow: 0 0 10px rgba(74, 144, 217, 0.5); }
 }
 
-.skill-card-type-icon {
-    font-size: 18px;
+.skill-card-icon {
+    font-size: 24px;
     line-height: 1;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+}
+
+.skill-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.skill-card-top-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .skill-card-name {
-    font-size: 11px;
+    font-size: clamp(0.8em, 1.1vw, 0.95em);
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.2;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 100%;
 }
 
-.skill-card-level-row {
+.skill-card-bottom-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+}
+
+.skill-card-type-tag {
     font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
 }
 
 .skill-card-level {
+    font-size: 11px;
     color: var(--text-muted);
+    font-weight: 600;
 }
 
 .skill-card-copies {
+    font-size: 10px;
     color: var(--text-muted);
 }
 
@@ -410,6 +436,79 @@
     font-weight: 700;
 }
 
+.skill-card-equipped-badge {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent-purple);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(156, 106, 255, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+/* ── Skill Tier Visual Effects (like equipment) ────────── */
+
+.skill-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9px;
+    pointer-events: none;
+}
+
+.skill-card.skill-tier-common::before  { background: radial-gradient(ellipse at left, rgba(157,157,157,0.06) 0%, transparent 70%); }
+.skill-card.skill-tier-uncommon::before { background: radial-gradient(ellipse at left, rgba(30,255,0,0.08) 0%, transparent 70%); }
+.skill-card.skill-tier-rare::before    { background: radial-gradient(ellipse at left, rgba(0,112,221,0.10) 0%, transparent 70%); }
+.skill-card.skill-tier-epic::before    { background: radial-gradient(ellipse at left, rgba(163,53,238,0.10) 0%, transparent 70%); }
+.skill-card.skill-tier-legendary::before { background: radial-gradient(ellipse at left, rgba(255,128,0,0.12) 0%, transparent 70%); }
+.skill-card.skill-tier-mythic::before  { background: radial-gradient(ellipse at left, rgba(255,0,0,0.12) 0%, transparent 70%); }
+.skill-card.skill-tier-divine::before  { background: radial-gradient(ellipse at left, rgba(255,215,0,0.14) 0%, transparent 70%); }
+
+/* Shimmer sweep for Legendary+ */
+.skill-card::after {
+    content: '';
+    position: absolute;
+    inset: -50% -50%;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.12) 45%,
+        rgba(255, 255, 255, 0.20) 50%,
+        rgba(255, 255, 255, 0.12) 55%,
+        transparent 60%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-100%);
+    border-radius: 10px;
+}
+
+.skill-card.skill-tier-legendary::after,
+.skill-card.skill-tier-mythic::after,
+.skill-card.skill-tier-divine::after {
+    opacity: 1;
+    animation: shimmerSweep 3s ease-in-out infinite;
+}
+
+.skill-card.skill-tier-mythic::after {
+    animation-duration: 2.5s;
+}
+
+.skill-card.skill-tier-divine::after {
+    animation-duration: 2s;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 215, 0, 0.12) 45%,
+        rgba(255, 215, 0, 0.25) 50%,
+        rgba(255, 215, 0, 0.12) 55%,
+        transparent 60%
+    );
+}
 
 /* ── Skill Detail Modal ───────────────────────────────── */
 

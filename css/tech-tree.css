@@ -121,16 +121,16 @@
 
 .tech-branch-nav {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     flex-shrink: 0;
-    overflow-x: auto;
     padding-bottom: 2px;
 }
 
 .tech-branch-tab {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 2px;
+    flex: 1 1 auto;
+    min-width: 60px;
+    padding: 6px 6px;
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
     background: var(--bg-card);
@@ -361,4 +361,37 @@
     color: var(--text-muted);
     cursor: not-allowed;
     transform: none !important;
+}
+
+/* ── Inline Progress (on active tech card) ─── */
+
+.tech-card-inline-progress {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tech-card-inline-progress .research-progress-bar {
+    height: 6px;
+}
+
+.tech-card-inline-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.tech-inline-timer {
+    font-size: clamp(0.8em, 1.1vw, 0.9em);
+    font-weight: 600;
+    color: var(--accent-purple);
+}
+
+.tech-inline-speed-btn {
+    font-size: clamp(0.7em, 0.9vw, 0.8em) !important;
+    padding: 3px 8px !important;
+    flex: 0 !important;
+    white-space: nowrap;
 }

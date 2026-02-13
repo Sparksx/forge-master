@@ -86,6 +86,18 @@ export function startResearch(techId) {
 
     const duration = getResearchTime(techId, nextLevel);
 
+    // Admin mode: instant completion
+    if (typeof window !== 'undefined' && window.__adminMode) {
+        if (!research.active) {
+            completeResearch(techId, nextLevel);
+            gameEvents.emit(EVENTS.RESEARCH_STARTED, { techId, level: nextLevel });
+            return true;
+        }
+        // If something is active, still complete instantly
+        completeResearch(techId, nextLevel);
+        return true;
+    }
+
     // If nothing is active, start now
     if (!research.active) {
         setResearchActive({

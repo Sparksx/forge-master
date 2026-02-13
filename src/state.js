@@ -332,8 +332,8 @@ export function startForgeUpgrade() {
     const duration = getForgeUpgradeTime();
     gameState.gold -= cost;
 
-    if (duration === 0) {
-        // Instant upgrade (level 1 has time=0, but cost=0 so it's the initial state)
+    if (duration === 0 || (typeof window !== 'undefined' && window.__adminMode)) {
+        // Instant upgrade (level 1 has time=0, admin mode, or initial state)
         gameState.forgeLevel += 1;
         saveGame();
         gameEvents.emit(EVENTS.FORGE_UPGRADED, gameState.forgeLevel);
