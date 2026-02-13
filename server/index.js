@@ -12,10 +12,11 @@ import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payment.js';
 import equipmentRoutes from './routes/equipment.js';
 import prisma from './lib/prisma.js';
+import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 
-// Sync Prisma schema to database on startup (non-fatal)
+// Sync Prisma schema to database and regenerate client on startup (non-fatal)
 try {
-    execSync('./node_modules/.bin/prisma db push --accept-data-loss --skip-generate', { stdio: 'inherit' });
+    execSync('./node_modules/.bin/prisma db push --accept-data-loss', { stdio: 'inherit' });
 } catch (err) {
     console.error('Prisma db push failed (non-fatal):', err.message);
 }
@@ -65,6 +66,9 @@ app.get('{*path}', (req, res, next) => {
 
 server.listen(PORT, async () => {
     console.log(`Anvil Legends server running on port ${PORT} (${NODE_ENV})`);
+
+    // Seed equipment templates into DB if tables are empty (first run)
+    await seedEquipmentIfEmpty();
 
     // Cleanup expired refresh tokens on startup
     try {

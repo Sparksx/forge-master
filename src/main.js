@@ -203,8 +203,8 @@ function showForgedBatch(items) {
 
 // Start the game after successful auth
 async function startGame() {
-    // Load equipment templates from DB (non-blocking, falls back to hardcoded)
-    loadTemplatesFromAPI();
+    // Load equipment templates from DB (falls back to hardcoded if API unavailable)
+    await loadTemplatesFromAPI();
 
     // Load game state from server if authenticated, otherwise localStorage
     if (getAccessToken()) {
