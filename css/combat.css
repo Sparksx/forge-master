@@ -116,6 +116,14 @@
     transition: transform 0.15s ease;
 }
 
+.combatant-emoji.has-sprite {
+    font-size: 0;
+    width: clamp(48px, 10vw, 80px);
+    height: clamp(60px, 13vw, 100px);
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+}
+
 .combatant-name {
     font-size: clamp(0.65em, 1vw, 0.85em);
     font-weight: 700;
@@ -167,6 +175,14 @@
     filter: drop-shadow(0 1px 6px rgba(0,0,0,0.5));
     flex-shrink: 0;
     transition: transform 0.15s ease;
+}
+
+.monster-row-emoji.has-sprite {
+    font-size: 0;
+    width: clamp(28px, 6vw, 44px);
+    height: clamp(32px, 7vw, 52px);
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
 }
 
 .monster-row-info {

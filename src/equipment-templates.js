@@ -418,10 +418,17 @@ export function getSpriteStyle(type, sprite) {
     const sheet = SPRITE_SHEETS[type];
     if (!sheet || !sprite) return '';
 
-    const sizeX = (sheet.width / sprite.w) * 100;
-    const sizeY = (sheet.height / sprite.h) * 100;
-    const posX  = sprite.w > 1 ? (sprite.x / (sheet.width  - sprite.w)) * 100 : 0;
-    const posY  = sprite.h > 1 ? (sprite.y / (sheet.height - sprite.h)) * 100 : 0;
+    // Add padding around the sprite region to avoid tight cropping of artwork edges
+    const pad = 8;
+    const x = Math.max(0, sprite.x - pad);
+    const y = Math.max(0, sprite.y - pad);
+    const w = Math.min(sheet.width - x, sprite.w + pad * 2);
+    const h = Math.min(sheet.height - y, sprite.h + pad * 2);
+
+    const sizeX = (sheet.width / w) * 100;
+    const sizeY = (sheet.height / h) * 100;
+    const posX  = w < sheet.width  ? (x / (sheet.width  - w)) * 100 : 0;
+    const posY  = h < sheet.height ? (y / (sheet.height - h)) * 100 : 0;
 
     return `background-image: url(${sheet.file}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
 }

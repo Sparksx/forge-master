@@ -9,29 +9,46 @@ import { getTechEffect } from './state.js';
 export const WAVE_COUNT = 10;
 export const SUB_WAVE_COUNT = 10;
 
-// Monster themes per wave (emoji, name prefix, color)
+// Monster sprite sheet: 1536×1024, 7 columns × 4 rows
+// Each sprite cell ≈ 219×256 px
+const MONSTER_COLS = 7;
+const MONSTER_CELL_W = 1536 / MONSTER_COLS; // ≈219.4
+const MONSTER_CELL_H = 1024 / 4;            // 256
+
+/** Return CSS background style for a monster sprite at (col, row). */
+export function getMonsterSpriteStyle(col, row) {
+    const x = col * MONSTER_CELL_W;
+    const y = row * MONSTER_CELL_H;
+    const sizeX = (1536 / MONSTER_CELL_W) * 100;  // 700%
+    const sizeY = (1024 / MONSTER_CELL_H) * 100;  // 400%
+    const posX = col / (MONSTER_COLS - 1) * 100;
+    const posY = row / 3 * 100;
+    return `background-image:url(/assets/monsters.png);background-size:${sizeX}% ${sizeY}%;background-position:${posX}% ${posY}%;`;
+}
+
+// Monster themes per wave (emoji kept as fallback, sprite col/row into monsters.png)
 export const WAVE_THEMES = [
-    { emoji: '🐀', name: 'Rat',        color: '#8d6e63' },  // Wave 1
-    { emoji: '🐺', name: 'Wolf',       color: '#78909c' },  // Wave 2
-    { emoji: '🕷️', name: 'Spider',     color: '#6d4c41' },  // Wave 3
-    { emoji: '👹', name: 'Ogre',       color: '#e65100' },  // Wave 4
-    { emoji: '💀', name: 'Skeleton',   color: '#eceff1' },  // Wave 5
-    { emoji: '🧟', name: 'Zombie',     color: '#558b2f' },  // Wave 6
-    { emoji: '👻', name: 'Wraith',     color: '#7e57c2' },  // Wave 7
-    { emoji: '🐉', name: 'Drake',      color: '#c62828' },  // Wave 8
-    { emoji: '😈', name: 'Demon',      color: '#d50000' },  // Wave 9
-    { emoji: '🔥', name: 'Infernal',   color: '#ff6f00' },  // Wave 10
+    { emoji: '🐀', name: 'Rat',        color: '#8d6e63',  sprite: [0, 0] },  // Slime
+    { emoji: '🐺', name: 'Wolf',       color: '#78909c',  sprite: [3, 1] },  // Werewolf
+    { emoji: '🕷️', name: 'Spider',     color: '#6d4c41',  sprite: [0, 2] },  // Spider
+    { emoji: '👹', name: 'Ogre',       color: '#e65100',  sprite: [3, 0] },  // Orc
+    { emoji: '💀', name: 'Skeleton',   color: '#eceff1',  sprite: [2, 0] },  // Skeleton
+    { emoji: '🧟', name: 'Zombie',     color: '#558b2f',  sprite: [5, 1] },  // Green orc
+    { emoji: '👻', name: 'Wraith',     color: '#7e57c2',  sprite: [4, 1] },  // Ghost
+    { emoji: '🐉', name: 'Drake',      color: '#c62828',  sprite: [5, 2] },  // Red dragon
+    { emoji: '😈', name: 'Demon',      color: '#d50000',  sprite: [4, 0] },  // Imp
+    { emoji: '🔥', name: 'Infernal',   color: '#ff6f00',  sprite: [5, 0] },  // Fire elemental
     // Extended waves (unlocked by Wave Breaker tech)
-    { emoji: '🦇', name: 'Abyssal Bat', color: '#4a148c' }, // Wave 11
-    { emoji: '🐙', name: 'Kraken',     color: '#0d47a1' },  // Wave 12
-    { emoji: '🧊', name: 'Frost Giant', color: '#4fc3f7' }, // Wave 13
-    { emoji: '⚡', name: 'Thunder God', color: '#ffd600' }, // Wave 14
-    { emoji: '🌑', name: 'Void Walker', color: '#37474f' }, // Wave 15
-    { emoji: '☄️', name: 'Meteor',      color: '#ff3d00' }, // Wave 16
-    { emoji: '🌪️', name: 'Tempest',     color: '#80cbc4' }, // Wave 17
-    { emoji: '💎', name: 'Crystal Titan', color: '#e1bee7' }, // Wave 18
-    { emoji: '🌋', name: 'Magma Lord',  color: '#bf360c' }, // Wave 19
-    { emoji: '👁️', name: 'Eldritch',    color: '#880e4f' }, // Wave 20
+    { emoji: '🦇', name: 'Abyssal Bat', color: '#4a148c', sprite: [2, 1] },  // Dark panther
+    { emoji: '🐙', name: 'Kraken',     color: '#0d47a1',  sprite: [1, 1] },  // Treant
+    { emoji: '🧊', name: 'Frost Giant', color: '#4fc3f7',  sprite: [6, 0] },  // Ice elemental
+    { emoji: '⚡', name: 'Thunder God', color: '#ffd600',  sprite: [0, 1] },  // Golem
+    { emoji: '🌑', name: 'Void Walker', color: '#37474f',  sprite: [6, 2] },  // Dark reaper
+    { emoji: '☄️', name: 'Meteor',      color: '#ff3d00',  sprite: [2, 3] },  // Skeleton pirate
+    { emoji: '🌪️', name: 'Tempest',     color: '#80cbc4',  sprite: [6, 3] },  // Witch
+    { emoji: '💎', name: 'Crystal Titan', color: '#e1bee7', sprite: [1, 3] }, // Ice crystal
+    { emoji: '🌋', name: 'Magma Lord',  color: '#bf360c',  sprite: [0, 3] },  // Dark knight
+    { emoji: '👁️', name: 'Eldritch',    color: '#880e4f',  sprite: [1, 2] },  // Mushroom
 ];
 
 /** Get the current max wave count (base 10 + waveBreaker tech bonus) */
@@ -91,6 +108,7 @@ export function getMonsterForWave(wave, subWave) {
         name: `${theme.name} ${subName}`,
         emoji: theme.emoji,
         color: theme.color,
+        sprite: theme.sprite,
         maxHP: hp,
         damage,
         attackSpeed,

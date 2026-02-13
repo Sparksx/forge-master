@@ -1,6 +1,6 @@
 import { getCombatProgress, getEquippedSkills } from '../state.js';
 import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
-import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT } from '../monsters.js';
+import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT, getMonsterSpriteStyle } from '../monsters.js';
 import { createElement, formatNumber } from './helpers.js';
 import { getSkillById, getSkillCooldown, getSkillTier } from '../skills-config.js';
 import { canActivateSkill, activateSkill, getCooldownRemaining, getSkillLevel, isEffectActive } from '../skills.js';
@@ -22,7 +22,13 @@ export function renderMonsters(data) {
         const row = createElement('div', `monster-row${i === focusIndex ? ' monster-focused' : ''}${m.currentHP <= 0 ? ' monster-dead' : ''}`);
         row.dataset.index = i;
 
-        const emoji = createElement('div', 'monster-row-emoji', m.emoji);
+        const emoji = createElement('div', 'monster-row-emoji');
+        if (m.sprite) {
+            emoji.classList.add('has-sprite');
+            emoji.style.cssText = getMonsterSpriteStyle(m.sprite[0], m.sprite[1]);
+        } else {
+            emoji.textContent = m.emoji;
+        }
         const info = createElement('div', 'monster-row-info');
 
         const name = createElement('div', 'monster-row-name', m.name);
@@ -104,6 +110,18 @@ export function updateCombatInfo(data) {
     if (!data) return;
     renderMonsters(data);
     updateWaveDisplay();
+
+    // Set player sprite (first skin from players.png)
+    const playerEmoji = document.getElementById('player-emoji');
+    if (playerEmoji && !playerEmoji.classList.contains('has-sprite')) {
+        playerEmoji.classList.add('has-sprite');
+        // players.png: 1536×1024, 4 cols × 2 rows → first skin at (0,0), cell 384×512
+        playerEmoji.style.cssText =
+            'background-image:url(/assets/players.png);' +
+            'background-size:400% 200%;' +
+            'background-position:0% 0%;';
+        playerEmoji.textContent = '';
+    }
 
     // Trigger entrance animations
     const playerEl = document.getElementById('combatant-player');
