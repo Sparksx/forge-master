@@ -216,6 +216,7 @@ function switchSection(sectionId) {
     switch (sectionId) {
         case 'stats': loadStats(); break;
         case 'logs': logsPage = 1; loadLogs(); break;
+        case 'equipment': loadEquipmentSection(); break;
     }
 }
 
@@ -637,6 +638,488 @@ async function loadLogs() {
     }
 }
 
+// ─── Equipment Section ───────────────────────────────────────────
+
+// Sprite sheet file mapping (type → asset URL)
+const EQUIP_TYPE_FILES = {
+    hat: '/assets/helmets.png',
+    weapon: '/assets/weapons.png',
+    armor: '/assets/armors.png',
+    necklace: '/assets/necklaces.png',
+    ring: '/assets/rings.png',
+    gloves: '/assets/gloves.png',
+    belt: '/assets/belts.png',
+    boots: '/assets/boots.png',
+};
+
+let allItems = [];
+let spriteSheets = [];
+let spriteEditorState = {
+    img: null,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    selecting: false,
+    selStartX: 0,
+    selStartY: 0,
+    selEndX: 0,
+    selEndY: 0,
+    panning: false,
+    panStartX: 0,
+    panStartY: 0,
+};
+
+async function fetchEquipmentItems() {
+    const res = await apiFetch('/api/equipment/admin/items');
+    if (!res.ok) throw new Error('Chargement echoue');
+    const data = await res.json();
+    allItems = data.items;
+    return allItems;
+}
+
+async function fetchSpriteSheets() {
+    const res = await apiFetch('/api/equipment/admin/sprite-sheets');
+    if (!res.ok) throw new Error('Chargement sprite sheets echoue');
+    const data = await res.json();
+    spriteSheets = data.sheets;
+    return spriteSheets;
+}
+
+function getFilteredItems() {
+    const typeFilter = document.getElementById('adm-equip-filter-type')?.value;
+    const tierFilter = document.getElementById('adm-equip-filter-tier')?.value;
+    let items = allItems;
+    if (typeFilter) items = items.filter(i => i.type === typeFilter);
+    if (tierFilter) items = items.filter(i => i.tier === parseInt(tierFilter));
+    return items;
+}
+
+function renderEquipmentList() {
+    const container = document.getElementById('adm-equip-list');
+    const items = getFilteredItems();
+
+    if (items.length === 0) {
+        container.innerHTML = '<p class="adm-empty">Aucun equipement trouve.</p>';
+        return;
+    }
+
+    // Group by type then tier
+    const grouped = {};
+    items.forEach(item => {
+        const key = `${item.type}`;
+        if (!grouped[key]) grouped[key] = {};
+        if (!grouped[key][item.tier]) grouped[key][item.tier] = [];
+        grouped[key][item.tier].push(item);
+    });
+
+    let html = '';
+    for (const type of Object.keys(grouped).sort()) {
+        html += `<div class="adm-equip-type-group">`;
+        html += `<h3 class="adm-equip-type-title">${escapeHtml(type)}</h3>`;
+
+        const tiers = grouped[type];
+        for (const tier of Object.keys(tiers).sort((a, b) => a - b)) {
+            html += `<div class="adm-equip-tier-group">`;
+            html += `<h4 class="adm-equip-tier-title">Tier ${tier}</h4>`;
+            html += `<div class="adm-equip-grid">`;
+
+            for (const item of tiers[tier]) {
+                const spriteCSS = buildSpriteCSS(item);
+                html += `<div class="adm-equip-card" data-item-id="${item.id}">`;
+                html += `<div class="adm-equip-card-sprite" style="${spriteCSS}"></div>`;
+                html += `<div class="adm-equip-card-info">`;
+                html += `<span class="adm-equip-card-name">${escapeHtml(item.name)}</span>`;
+                html += `<span class="adm-equip-card-skin">${escapeHtml(item.skin)}</span>`;
+                html += `</div>`;
+                html += `<div class="adm-equip-card-actions">`;
+                html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-item="${item.id}">Modifier</button>`;
+                html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-item="${item.id}">Suppr.</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            }
+
+            html += `</div></div>`;
+        }
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Wire buttons
+    container.querySelectorAll('[data-edit-item]').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(parseInt(btn.dataset.editItem)));
+    });
+    container.querySelectorAll('[data-delete-item]').forEach(btn => {
+        btn.addEventListener('click', () => deleteItem(parseInt(btn.dataset.deleteItem)));
+    });
+}
+
+function buildSpriteCSS(item) {
+    const file = EQUIP_TYPE_FILES[item.type];
+    if (!file || !item.spriteSheet) return '';
+    const sheet = item.spriteSheet;
+    const pad = 8;
+    const x = Math.max(0, item.spriteX - pad);
+    const y = Math.max(0, item.spriteY - pad);
+    const w = Math.min(sheet.width - x, item.spriteW + pad * 2);
+    const h = Math.min(sheet.height - y, item.spriteH + pad * 2);
+    const sizeX = (sheet.width / w) * 100;
+    const sizeY = (sheet.height / h) * 100;
+    const posX = w < sheet.width ? (x / (sheet.width - w)) * 100 : 0;
+    const posY = h < sheet.height ? (y / (sheet.height - h)) * 100 : 0;
+    return `background-image: url(${file}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
+}
+
+function openEditModal(itemId) {
+    const modal = document.getElementById('adm-equip-modal');
+    const title = document.getElementById('adm-equip-modal-title');
+
+    if (itemId) {
+        const item = allItems.find(i => i.id === itemId);
+        if (!item) return;
+        title.textContent = 'Modifier Equipement';
+        document.getElementById('adm-equip-id').value = item.id;
+        document.getElementById('adm-equip-type').value = item.type;
+        document.getElementById('adm-equip-tier').value = item.tier;
+        document.getElementById('adm-equip-skin').value = item.skin;
+        document.getElementById('adm-equip-name').value = item.name;
+        document.getElementById('adm-equip-sx').value = item.spriteX;
+        document.getElementById('adm-equip-sy').value = item.spriteY;
+        document.getElementById('adm-equip-sw').value = item.spriteW;
+        document.getElementById('adm-equip-sh').value = item.spriteH;
+    } else {
+        title.textContent = 'Nouvel Equipement';
+        document.getElementById('adm-equip-id').value = '';
+        document.getElementById('adm-equip-form').reset();
+    }
+
+    modal.classList.remove('hidden');
+    loadSpriteEditorImage();
+    updateSpritePreview();
+}
+
+function closeEditModal() {
+    document.getElementById('adm-equip-modal').classList.add('hidden');
+}
+
+async function saveItem(e) {
+    e.preventDefault();
+    const id = document.getElementById('adm-equip-id').value;
+    const data = {
+        type: document.getElementById('adm-equip-type').value,
+        tier: parseInt(document.getElementById('adm-equip-tier').value),
+        skin: document.getElementById('adm-equip-skin').value.trim(),
+        name: document.getElementById('adm-equip-name').value.trim(),
+        spriteX: parseInt(document.getElementById('adm-equip-sx').value),
+        spriteY: parseInt(document.getElementById('adm-equip-sy').value),
+        spriteW: parseInt(document.getElementById('adm-equip-sw').value),
+        spriteH: parseInt(document.getElementById('adm-equip-sh').value),
+    };
+
+    try {
+        if (id) {
+            const res = await apiFetch(`/api/equipment/admin/items/${id}`, { method: 'PUT', body: data });
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.error || 'Echec');
+            }
+            showToast('Equipement mis a jour', 'success');
+        } else {
+            const res = await apiFetch('/api/equipment/admin/items', { method: 'POST', body: data });
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.error || 'Echec');
+            }
+            showToast('Equipement cree', 'success');
+        }
+        closeEditModal();
+        await fetchEquipmentItems();
+        renderEquipmentList();
+    } catch (err) {
+        showToast(`Erreur: ${err.message}`, 'error');
+    }
+}
+
+async function deleteItem(itemId) {
+    const item = allItems.find(i => i.id === itemId);
+    if (!item) return;
+    if (!confirm(`Supprimer "${item.name}" (${item.skin}) ?`)) return;
+
+    try {
+        const res = await apiFetch(`/api/equipment/admin/items/${itemId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Suppression echouee');
+        showToast('Equipement supprime', 'success');
+        await fetchEquipmentItems();
+        renderEquipmentList();
+    } catch (err) {
+        showToast(`Erreur: ${err.message}`, 'error');
+    }
+}
+
+// ─── Interactive Sprite Editor ──────────────────────────────────
+
+function loadSpriteEditorImage() {
+    const type = document.getElementById('adm-equip-type').value;
+    const file = EQUIP_TYPE_FILES[type];
+    if (!file) return;
+
+    const canvas = document.getElementById('adm-sprite-canvas');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('adm-sprite-canvas-wrap');
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        spriteEditorState.img = img;
+        spriteEditorState.zoom = 1;
+        spriteEditorState.offsetX = 0;
+        spriteEditorState.offsetY = 0;
+
+        // Scale canvas to fit the wrapper width
+        const wrapWidth = wrap.clientWidth || 800;
+        const scale = wrapWidth / img.width;
+        canvas.width = wrapWidth;
+        canvas.height = img.height * scale;
+        spriteEditorState.zoom = scale;
+
+        drawSpriteEditor();
+        drawSelectionFromInputs();
+    };
+    img.src = file;
+}
+
+function drawSpriteEditor() {
+    const canvas = document.getElementById('adm-sprite-canvas');
+    const ctx = canvas.getContext('2d');
+    const { img, zoom, offsetX, offsetY } = spriteEditorState;
+    if (!img) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, offsetX, offsetY, img.width * zoom, img.height * zoom);
+}
+
+function drawSelectionFromInputs() {
+    const sx = parseInt(document.getElementById('adm-equip-sx').value) || 0;
+    const sy = parseInt(document.getElementById('adm-equip-sy').value) || 0;
+    const sw = parseInt(document.getElementById('adm-equip-sw').value) || 0;
+    const sh = parseInt(document.getElementById('adm-equip-sh').value) || 0;
+
+    if (sw > 0 && sh > 0) {
+        const { zoom, offsetX, offsetY } = spriteEditorState;
+        const selEl = document.getElementById('adm-sprite-selection');
+        selEl.style.left = (sx * zoom + offsetX) + 'px';
+        selEl.style.top = (sy * zoom + offsetY) + 'px';
+        selEl.style.width = (sw * zoom) + 'px';
+        selEl.style.height = (sh * zoom) + 'px';
+        selEl.style.display = 'block';
+    }
+}
+
+function updateSpritePreview() {
+    const type = document.getElementById('adm-equip-type').value;
+    const file = EQUIP_TYPE_FILES[type];
+    const preview = document.getElementById('adm-sprite-preview');
+    if (!file || !preview) return;
+
+    const sx = parseInt(document.getElementById('adm-equip-sx').value) || 0;
+    const sy = parseInt(document.getElementById('adm-equip-sy').value) || 0;
+    const sw = parseInt(document.getElementById('adm-equip-sw').value) || 0;
+    const sh = parseInt(document.getElementById('adm-equip-sh').value) || 0;
+
+    if (sw <= 0 || sh <= 0) {
+        preview.style.backgroundImage = '';
+        return;
+    }
+
+    // Find sheet dimensions
+    const sheet = spriteSheets.find(s => s.type === type);
+    const sheetW = sheet?.width || 1024;
+    const sheetH = sheet?.height || 1536;
+
+    const pad = 8;
+    const x = Math.max(0, sx - pad);
+    const y = Math.max(0, sy - pad);
+    const w = Math.min(sheetW - x, sw + pad * 2);
+    const h = Math.min(sheetH - y, sh + pad * 2);
+    const sizeX = (sheetW / w) * 100;
+    const sizeY = (sheetH / h) * 100;
+    const posX = w < sheetW ? (x / (sheetW - w)) * 100 : 0;
+    const posY = h < sheetH ? (y / (sheetH - h)) * 100 : 0;
+
+    preview.style.backgroundImage = `url(${file})`;
+    preview.style.backgroundSize = `${sizeX}% ${sizeY}%`;
+    preview.style.backgroundPosition = `${posX}% ${posY}%`;
+    preview.style.backgroundRepeat = 'no-repeat';
+}
+
+function initSpriteEditor() {
+    const canvas = document.getElementById('adm-sprite-canvas');
+    const selEl = document.getElementById('adm-sprite-selection');
+    if (!canvas) return;
+
+    // Mouse down: start selection
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || e.ctrlKey) {
+            // Middle click or ctrl+click = pan
+            spriteEditorState.panning = true;
+            spriteEditorState.panStartX = e.clientX - spriteEditorState.offsetX;
+            spriteEditorState.panStartY = e.clientY - spriteEditorState.offsetY;
+            return;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const { zoom, offsetX, offsetY } = spriteEditorState;
+        const canvasX = e.clientX - rect.left;
+        const canvasY = e.clientY - rect.top;
+
+        // Convert to image coordinates
+        const imgX = Math.round((canvasX - offsetX) / zoom);
+        const imgY = Math.round((canvasY - offsetY) / zoom);
+
+        spriteEditorState.selecting = true;
+        spriteEditorState.selStartX = imgX;
+        spriteEditorState.selStartY = imgY;
+        spriteEditorState.selEndX = imgX;
+        spriteEditorState.selEndY = imgY;
+
+        selEl.style.display = 'block';
+    });
+
+    // Mouse move: update selection or pan
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const { zoom, offsetX, offsetY } = spriteEditorState;
+        const canvasX = e.clientX - rect.left;
+        const canvasY = e.clientY - rect.top;
+        const imgX = Math.round((canvasX - offsetX) / zoom);
+        const imgY = Math.round((canvasY - offsetY) / zoom);
+
+        // Show current coords
+        const coordsEl = document.getElementById('adm-sprite-coords');
+        if (coordsEl) coordsEl.textContent = `x: ${imgX}, y: ${imgY}`;
+
+        if (spriteEditorState.panning) {
+            spriteEditorState.offsetX = e.clientX - spriteEditorState.panStartX;
+            spriteEditorState.offsetY = e.clientY - spriteEditorState.panStartY;
+            drawSpriteEditor();
+            drawSelectionFromInputs();
+            return;
+        }
+
+        if (!spriteEditorState.selecting) return;
+
+        spriteEditorState.selEndX = imgX;
+        spriteEditorState.selEndY = imgY;
+
+        // Draw selection rectangle
+        const sx = Math.min(spriteEditorState.selStartX, spriteEditorState.selEndX);
+        const sy = Math.min(spriteEditorState.selStartY, spriteEditorState.selEndY);
+        const sw = Math.abs(spriteEditorState.selEndX - spriteEditorState.selStartX);
+        const sh = Math.abs(spriteEditorState.selEndY - spriteEditorState.selStartY);
+
+        selEl.style.left = (sx * zoom + offsetX) + 'px';
+        selEl.style.top = (sy * zoom + offsetY) + 'px';
+        selEl.style.width = (sw * zoom) + 'px';
+        selEl.style.height = (sh * zoom) + 'px';
+    });
+
+    // Mouse up: finalize selection
+    const finishSelection = () => {
+        if (spriteEditorState.panning) {
+            spriteEditorState.panning = false;
+            return;
+        }
+        if (!spriteEditorState.selecting) return;
+        spriteEditorState.selecting = false;
+
+        const sx = Math.min(spriteEditorState.selStartX, spriteEditorState.selEndX);
+        const sy = Math.min(spriteEditorState.selStartY, spriteEditorState.selEndY);
+        const sw = Math.abs(spriteEditorState.selEndX - spriteEditorState.selStartX);
+        const sh = Math.abs(spriteEditorState.selEndY - spriteEditorState.selStartY);
+
+        if (sw > 2 && sh > 2) {
+            document.getElementById('adm-equip-sx').value = sx;
+            document.getElementById('adm-equip-sy').value = sy;
+            document.getElementById('adm-equip-sw').value = sw;
+            document.getElementById('adm-equip-sh').value = sh;
+            updateSpritePreview();
+        }
+    };
+    canvas.addEventListener('mouseup', finishSelection);
+    canvas.addEventListener('mouseleave', finishSelection);
+
+    // Mouse wheel: zoom
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const prevZoom = spriteEditorState.zoom;
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        spriteEditorState.zoom = Math.max(0.1, Math.min(5, prevZoom * delta));
+
+        // Zoom toward mouse position
+        const zoomRatio = spriteEditorState.zoom / prevZoom;
+        spriteEditorState.offsetX = mouseX - (mouseX - spriteEditorState.offsetX) * zoomRatio;
+        spriteEditorState.offsetY = mouseY - (mouseY - spriteEditorState.offsetY) * zoomRatio;
+
+        const img = spriteEditorState.img;
+        if (img) {
+            canvas.width = img.width * spriteEditorState.zoom + Math.abs(spriteEditorState.offsetX);
+            canvas.height = img.height * spriteEditorState.zoom + Math.abs(spriteEditorState.offsetY);
+        }
+
+        drawSpriteEditor();
+        drawSelectionFromInputs();
+    });
+
+    // Type change reloads the sprite sheet image
+    document.getElementById('adm-equip-type')?.addEventListener('change', () => {
+        loadSpriteEditorImage();
+    });
+
+    // Sprite coordinate inputs update selection and preview
+    ['adm-equip-sx', 'adm-equip-sy', 'adm-equip-sw', 'adm-equip-sh'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            drawSpriteEditor();
+            drawSelectionFromInputs();
+            updateSpritePreview();
+        });
+    });
+}
+
+async function loadEquipmentSection() {
+    const container = document.getElementById('adm-equip-list');
+    container.innerHTML = '<p class="adm-loading">Chargement des equipements...</p>';
+    try {
+        await Promise.all([fetchEquipmentItems(), fetchSpriteSheets()]);
+        renderEquipmentList();
+    } catch (err) {
+        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function initEquipmentSection() {
+    // Add button
+    document.getElementById('adm-equip-add-btn')?.addEventListener('click', () => openEditModal(null));
+
+    // Close modal
+    document.getElementById('adm-equip-modal-close')?.addEventListener('click', closeEditModal);
+    document.getElementById('adm-equip-cancel-btn')?.addEventListener('click', closeEditModal);
+
+    // Save form
+    document.getElementById('adm-equip-form')?.addEventListener('submit', saveItem);
+
+    // Filters
+    document.getElementById('adm-equip-filter-type')?.addEventListener('change', renderEquipmentList);
+    document.getElementById('adm-equip-filter-tier')?.addEventListener('change', renderEquipmentList);
+
+    // Sprite editor
+    initSpriteEditor();
+}
+
 // ─── Broadcast Section ───────────────────────────────────────────
 function initBroadcastSection() {
     document.getElementById('adm-broadcast-send')?.addEventListener('click', () => {
@@ -656,9 +1139,12 @@ function initBroadcastSection() {
 function applyRoleVisibility() {
     const isAdm = currentUser.role === 'admin';
 
-    // Hide stats section nav for moderators
+    // Hide admin-only sections for moderators
     if (!isAdm) {
         document.querySelectorAll('[data-section="stats"]').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('[data-section="equipment"]').forEach(el => {
             el.style.display = 'none';
         });
         document.querySelectorAll('[data-section="broadcast"]').forEach(el => {
@@ -708,6 +1194,7 @@ async function init() {
     initNavigation();
     initPlayersSection();
     initStatsSection();
+    initEquipmentSection();
     initBroadcastSection();
     applyRoleVisibility();
 }

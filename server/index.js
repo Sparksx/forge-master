@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payment.js';
+import equipmentRoutes from './routes/equipment.js';
 import prisma from './lib/prisma.js';
 
 // Sync Prisma schema to database on startup (non-fatal)
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/equipment', equipmentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

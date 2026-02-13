@@ -45,6 +45,7 @@ import { initPvp, refreshPvpSocket } from './pvp.js';
 import { getAccessToken } from './api.js';
 import { initAdminUI } from './ui/admin-ui.js';
 import { initFeatureUnlock } from './feature-unlock.js';
+import { loadTemplatesFromAPI } from './equipment-templates.js';
 
 // PWA: Register service worker
 if ('serviceWorker' in navigator) {
@@ -202,6 +203,9 @@ function showForgedBatch(items) {
 
 // Start the game after successful auth
 async function startGame() {
+    // Load equipment templates from DB (non-blocking, falls back to hardcoded)
+    loadTemplatesFromAPI();
+
     // Load game state from server if authenticated, otherwise localStorage
     if (getAccessToken()) {
         await loadGameFromServer();
