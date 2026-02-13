@@ -72,7 +72,7 @@ export function buildItemCard(item, compareWith) {
     tierDiv.style.color = tierDef.color;
 
     // Show sprite image if the item has sprite data
-    const spriteCSS = getSpriteStyle(item.type, item.tier, item.spriteCol);
+    const spriteCSS = getSpriteStyle(item.type, item.sprite);
     if (spriteCSS) {
         const spriteDiv = createElement('div', 'item-sprite');
         spriteDiv.style.cssText = spriteCSS;

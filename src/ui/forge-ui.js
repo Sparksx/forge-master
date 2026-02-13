@@ -124,7 +124,7 @@ function renderSingleSlot(type) {
     // Update the slot icon: show sprite if available, else keep emoji
     const slotIcon = slotParent.querySelector('.slot-icon');
     if (slotIcon) {
-        const spriteCSS = item ? getSpriteStyle(item.type, item.tier, item.spriteCol) : '';
+        const spriteCSS = item ? getSpriteStyle(item.type, item.sprite) : '';
         if (spriteCSS) {
             slotIcon.classList.add('has-sprite');
             slotIcon.style.cssText = spriteCSS;

@@ -55,8 +55,8 @@ export function createItem(type, level, tier = 1) {
     if (template) {
         item.name = template.name;
         item.skin = template.skin;
-        if (template.spriteCol != null) {
-            item.spriteCol = template.spriteCol;
+        if (template.sprite) {
+            item.sprite = template.sprite;
         }
     }
 
