@@ -1121,9 +1121,45 @@ body {
     position: absolute;
     border: 2px solid #ff6b35;
     background: rgba(255, 107, 53, 0.15);
-    pointer-events: none;
     display: none;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+    cursor: move;
+}
+
+/* ─── Sprite Drag Handles ────────────────────────────────────── */
+
+.adm-sprite-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #ff6b35;
+    border: 2px solid #fff;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+.adm-handle-nw {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+}
+
+.adm-handle-ne {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+}
+
+.adm-handle-sw {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+}
+
+.adm-handle-se {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
 }
 
 /* ─── Sprite Preview ──────────────────────────────────────────── */

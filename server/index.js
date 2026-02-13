@@ -11,8 +11,10 @@ import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payment.js';
 import equipmentRoutes from './routes/equipment.js';
+import spriteRoutes from './routes/sprites.js';
 import prisma from './lib/prisma.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
+import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
 
 // Sync Prisma schema to database and regenerate client on startup (non-fatal)
 try {
@@ -39,6 +41,7 @@ app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/api/sprites', spriteRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -66,6 +69,9 @@ app.get('{*path}', (req, res, next) => {
 
 server.listen(PORT, async () => {
     console.log(`Anvil Legends server running on port ${PORT} (${NODE_ENV})`);
+
+    // Migrate existing sprites if upgrading from old schema
+    await migrateSpritesIfNeeded();
 
     // Seed equipment templates into DB if tables are empty (first run)
     await seedEquipmentIfEmpty();

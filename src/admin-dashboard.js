@@ -216,6 +216,7 @@ function switchSection(sectionId) {
     switch (sectionId) {
         case 'stats': loadStats(); break;
         case 'logs': logsPage = 1; loadLogs(); break;
+        case 'sprites': loadSpritesSection(); break;
         case 'equipment': loadEquipmentSection(); break;
     }
 }
@@ -638,10 +639,12 @@ async function loadLogs() {
     }
 }
 
-// ─── Equipment Section ───────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════
+// SPRITES Section
+// ═════════════════════════════════════════════════════════════════
 
 // Sprite sheet file mapping (type → asset URL)
-const EQUIP_TYPE_FILES = {
+const SHEET_TYPE_FILES = {
     hat: '/assets/helmets.png',
     weapon: '/assets/weapons.png',
     armor: '/assets/armors.png',
@@ -652,30 +655,15 @@ const EQUIP_TYPE_FILES = {
     boots: '/assets/boots.png',
 };
 
-let allItems = [];
+let allSprites = [];
 let spriteSheets = [];
-let spriteEditorState = {
-    img: null,
-    zoom: 1,
-    offsetX: 0,
-    offsetY: 0,
-    dragging: false,
-    selecting: false,
-    selStartX: 0,
-    selStartY: 0,
-    selEndX: 0,
-    selEndY: 0,
-    panning: false,
-    panStartX: 0,
-    panStartY: 0,
-};
 
-async function fetchEquipmentItems() {
-    const res = await apiFetch('/api/equipment/admin/items');
-    if (!res.ok) throw new Error('Chargement echoue');
+async function fetchAllSprites() {
+    const res = await apiFetch('/api/sprites/admin/list');
+    if (!res.ok) throw new Error('Chargement sprites echoue');
     const data = await res.json();
-    allItems = data.items;
-    return allItems;
+    allSprites = data.sprites;
+    return allSprites;
 }
 
 async function fetchSpriteSheets() {
@@ -684,6 +672,633 @@ async function fetchSpriteSheets() {
     const data = await res.json();
     spriteSheets = data.sheets;
     return spriteSheets;
+}
+
+function buildSpriteCSSFromData(sheetFile, sheetW, sheetH, sx, sy, sw, sh) {
+    if (!sheetFile || sw <= 0 || sh <= 0) return '';
+    const pad = 8;
+    const x = Math.max(0, sx - pad);
+    const y = Math.max(0, sy - pad);
+    const w = Math.min(sheetW - x, sw + pad * 2);
+    const h = Math.min(sheetH - y, sh + pad * 2);
+    const sizeX = (sheetW / w) * 100;
+    const sizeY = (sheetH / h) * 100;
+    const posX = w < sheetW ? (x / (sheetW - w)) * 100 : 0;
+    const posY = h < sheetH ? (y / (sheetH - h)) * 100 : 0;
+    return `background-image: url(${sheetFile}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
+}
+
+function buildSpriteCSSFromSprite(sprite) {
+    if (!sprite || !sprite.spriteSheet) return '';
+    const sheet = sprite.spriteSheet;
+    const file = SHEET_TYPE_FILES[sheet.type] || sheet.file;
+    return buildSpriteCSSFromData(file, sheet.width, sheet.height, sprite.spriteX, sprite.spriteY, sprite.spriteW, sprite.spriteH);
+}
+
+function getFilteredSprites() {
+    const sheetFilter = document.getElementById('adm-sprite-filter-sheet')?.value;
+    let sprites = allSprites;
+    if (sheetFilter) sprites = sprites.filter(s => s.spriteSheetId === parseInt(sheetFilter));
+    return sprites;
+}
+
+function renderSpriteList() {
+    const container = document.getElementById('adm-sprite-list');
+    const sprites = getFilteredSprites();
+
+    if (sprites.length === 0) {
+        container.innerHTML = '<p class="adm-empty">Aucun sprite trouve.</p>';
+        return;
+    }
+
+    // Group by sheet type
+    const grouped = {};
+    sprites.forEach(spr => {
+        const type = spr.spriteSheet?.type || 'unknown';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(spr);
+    });
+
+    let html = '';
+    for (const type of Object.keys(grouped).sort()) {
+        html += `<div class="adm-equip-type-group">`;
+        html += `<h3 class="adm-equip-type-title">${escapeHtml(type)}</h3>`;
+        html += `<div class="adm-equip-grid">`;
+
+        for (const spr of grouped[type]) {
+            const spriteCSS = buildSpriteCSSFromSprite(spr);
+            const usageCount = spr._count?.items || 0;
+            html += `<div class="adm-equip-card" data-sprite-id="${spr.id}">`;
+            html += `<div class="adm-equip-card-sprite" style="${spriteCSS}"></div>`;
+            html += `<div class="adm-equip-card-info">`;
+            html += `<span class="adm-equip-card-name">${escapeHtml(spr.name)}</span>`;
+            html += `<span class="adm-equip-card-skin">${spr.spriteX},${spr.spriteY} ${spr.spriteW}x${spr.spriteH}</span>`;
+            if (usageCount > 0) {
+                html += `<span class="adm-equip-card-skin">${usageCount} equip.</span>`;
+            }
+            html += `</div>`;
+            html += `<div class="adm-equip-card-actions">`;
+            html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-sprite="${spr.id}">Modifier</button>`;
+            html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-sprite="${spr.id}">Suppr.</button>`;
+            html += `</div>`;
+            html += `</div>`;
+        }
+
+        html += `</div></div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Wire buttons
+    container.querySelectorAll('[data-edit-sprite]').forEach(btn => {
+        btn.addEventListener('click', () => openSpriteModal(parseInt(btn.dataset.editSprite)));
+    });
+    container.querySelectorAll('[data-delete-sprite]').forEach(btn => {
+        btn.addEventListener('click', () => deleteSprite(parseInt(btn.dataset.deleteSprite)));
+    });
+}
+
+async function deleteSprite(spriteId) {
+    const spr = allSprites.find(s => s.id === spriteId);
+    if (!spr) return;
+    if (!confirm(`Supprimer le sprite "${spr.name}" ?`)) return;
+
+    try {
+        const res = await apiFetch(`/api/sprites/admin/${spriteId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const d = await res.json();
+            throw new Error(d.error || 'Suppression echouee');
+        }
+        showToast('Sprite supprime', 'success');
+        await fetchAllSprites();
+        renderSpriteList();
+    } catch (err) {
+        showToast(`Erreur: ${err.message}`, 'error');
+    }
+}
+
+// ─── Sprite Editor State ─────────────────────────────────────────
+let sprEditorState = {
+    img: null,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    // Interaction modes
+    mode: 'none', // 'none' | 'selecting' | 'moving' | 'resizing' | 'panning'
+    resizeHandle: null, // 'nw' | 'ne' | 'sw' | 'se'
+    // Selection in image coordinates
+    selX: 0,
+    selY: 0,
+    selW: 0,
+    selH: 0,
+    // Drag start
+    dragStartMouseX: 0,
+    dragStartMouseY: 0,
+    dragStartSelX: 0,
+    dragStartSelY: 0,
+    dragStartSelW: 0,
+    dragStartSelH: 0,
+    // Pan start
+    panStartX: 0,
+    panStartY: 0,
+};
+
+function openSpriteModal(spriteId) {
+    const modal = document.getElementById('adm-sprite-modal');
+    const title = document.getElementById('adm-sprite-modal-title');
+
+    // Populate sheet dropdown
+    const sheetSelect = document.getElementById('adm-spr-sheet');
+    sheetSelect.innerHTML = '';
+    spriteSheets.forEach(s => {
+        sheetSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.type)} (${s.file})</option>`;
+    });
+
+    if (spriteId) {
+        const spr = allSprites.find(s => s.id === spriteId);
+        if (!spr) return;
+        title.textContent = 'Modifier Sprite';
+        document.getElementById('adm-spr-id').value = spr.id;
+        document.getElementById('adm-spr-name').value = spr.name;
+        document.getElementById('adm-spr-sheet').value = spr.spriteSheetId;
+        document.getElementById('adm-spr-sx').value = spr.spriteX;
+        document.getElementById('adm-spr-sy').value = spr.spriteY;
+        document.getElementById('adm-spr-sw').value = spr.spriteW;
+        document.getElementById('adm-spr-sh').value = spr.spriteH;
+    } else {
+        title.textContent = 'Nouveau Sprite';
+        document.getElementById('adm-spr-id').value = '';
+        document.getElementById('adm-sprite-form').reset();
+        if (spriteSheets.length > 0) {
+            sheetSelect.value = spriteSheets[0].id;
+        }
+    }
+
+    modal.classList.remove('hidden');
+    loadSprEditorImage();
+    updateSprPreview();
+}
+
+function closeSpriteModal() {
+    document.getElementById('adm-sprite-modal').classList.add('hidden');
+}
+
+async function saveSpriteForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('adm-spr-id').value;
+    const data = {
+        name: document.getElementById('adm-spr-name').value.trim(),
+        spriteSheetId: parseInt(document.getElementById('adm-spr-sheet').value),
+        spriteX: parseInt(document.getElementById('adm-spr-sx').value),
+        spriteY: parseInt(document.getElementById('adm-spr-sy').value),
+        spriteW: parseInt(document.getElementById('adm-spr-sw').value),
+        spriteH: parseInt(document.getElementById('adm-spr-sh').value),
+    };
+
+    try {
+        if (id) {
+            const res = await apiFetch(`/api/sprites/admin/${id}`, { method: 'PUT', body: data });
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.error || 'Echec');
+            }
+            showToast('Sprite mis a jour', 'success');
+        } else {
+            const res = await apiFetch('/api/sprites/admin', { method: 'POST', body: data });
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.error || 'Echec');
+            }
+            showToast('Sprite cree', 'success');
+        }
+        closeSpriteModal();
+        await fetchAllSprites();
+        renderSpriteList();
+    } catch (err) {
+        showToast(`Erreur: ${err.message}`, 'error');
+    }
+}
+
+// ─── Interactive Sprite Editor (with move + resize) ──────────────
+
+function getSheetForEditor() {
+    const sheetId = parseInt(document.getElementById('adm-spr-sheet').value);
+    return spriteSheets.find(s => s.id === sheetId);
+}
+
+function loadSprEditorImage() {
+    const sheet = getSheetForEditor();
+    if (!sheet) return;
+    const file = SHEET_TYPE_FILES[sheet.type] || sheet.file;
+
+    const canvas = document.getElementById('adm-spr-canvas');
+    const wrap = document.getElementById('adm-spr-canvas-wrap');
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        sprEditorState.img = img;
+        sprEditorState.offsetX = 0;
+        sprEditorState.offsetY = 0;
+
+        const wrapWidth = wrap.clientWidth || 800;
+        const scale = wrapWidth / img.width;
+        canvas.width = wrapWidth;
+        canvas.height = img.height * scale;
+        sprEditorState.zoom = scale;
+
+        drawSprEditor();
+        syncSelectionFromInputs();
+    };
+    img.src = file;
+}
+
+function drawSprEditor() {
+    const canvas = document.getElementById('adm-spr-canvas');
+    const ctx = canvas.getContext('2d');
+    const { img, zoom, offsetX, offsetY } = sprEditorState;
+    if (!img) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, offsetX, offsetY, img.width * zoom, img.height * zoom);
+}
+
+function syncSelectionFromInputs() {
+    const sx = parseInt(document.getElementById('adm-spr-sx').value) || 0;
+    const sy = parseInt(document.getElementById('adm-spr-sy').value) || 0;
+    const sw = parseInt(document.getElementById('adm-spr-sw').value) || 0;
+    const sh = parseInt(document.getElementById('adm-spr-sh').value) || 0;
+
+    sprEditorState.selX = sx;
+    sprEditorState.selY = sy;
+    sprEditorState.selW = sw;
+    sprEditorState.selH = sh;
+
+    updateSelectionOverlay();
+}
+
+function updateSelectionOverlay() {
+    const { selX, selY, selW, selH, zoom, offsetX, offsetY } = sprEditorState;
+    const selEl = document.getElementById('adm-spr-selection');
+
+    if (selW > 0 && selH > 0) {
+        selEl.style.left = (selX * zoom + offsetX) + 'px';
+        selEl.style.top = (selY * zoom + offsetY) + 'px';
+        selEl.style.width = (selW * zoom) + 'px';
+        selEl.style.height = (selH * zoom) + 'px';
+        selEl.style.display = 'block';
+    } else {
+        selEl.style.display = 'none';
+    }
+}
+
+function syncInputsFromSelection() {
+    const { selX, selY, selW, selH } = sprEditorState;
+    document.getElementById('adm-spr-sx').value = Math.round(selX);
+    document.getElementById('adm-spr-sy').value = Math.round(selY);
+    document.getElementById('adm-spr-sw').value = Math.round(selW);
+    document.getElementById('adm-spr-sh').value = Math.round(selH);
+    updateSprPreview();
+}
+
+function updateSprPreview() {
+    const sheet = getSheetForEditor();
+    const preview = document.getElementById('adm-spr-preview');
+    if (!sheet || !preview) return;
+
+    const file = SHEET_TYPE_FILES[sheet.type] || sheet.file;
+    const sx = parseInt(document.getElementById('adm-spr-sx').value) || 0;
+    const sy = parseInt(document.getElementById('adm-spr-sy').value) || 0;
+    const sw = parseInt(document.getElementById('adm-spr-sw').value) || 0;
+    const sh = parseInt(document.getElementById('adm-spr-sh').value) || 0;
+
+    if (sw <= 0 || sh <= 0) {
+        preview.style.backgroundImage = '';
+        return;
+    }
+
+    const css = buildSpriteCSSFromData(file, sheet.width, sheet.height, sx, sy, sw, sh);
+    preview.setAttribute('style', css);
+}
+
+function screenToImage(clientX, clientY) {
+    const canvas = document.getElementById('adm-spr-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const { zoom, offsetX, offsetY } = sprEditorState;
+    const canvasX = clientX - rect.left;
+    const canvasY = clientY - rect.top;
+    return {
+        x: (canvasX - offsetX) / zoom,
+        y: (canvasY - offsetY) / zoom,
+    };
+}
+
+function hitTestHandle(clientX, clientY) {
+    const { selX, selY, selW, selH, zoom, offsetX, offsetY } = sprEditorState;
+    if (selW <= 0 || selH <= 0) return null;
+
+    const canvas = document.getElementById('adm-spr-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+
+    const handleSize = 10;
+    const corners = {
+        nw: { x: selX * zoom + offsetX, y: selY * zoom + offsetY },
+        ne: { x: (selX + selW) * zoom + offsetX, y: selY * zoom + offsetY },
+        sw: { x: selX * zoom + offsetX, y: (selY + selH) * zoom + offsetY },
+        se: { x: (selX + selW) * zoom + offsetX, y: (selY + selH) * zoom + offsetY },
+    };
+
+    for (const [handle, pos] of Object.entries(corners)) {
+        if (Math.abs(mx - pos.x) <= handleSize && Math.abs(my - pos.y) <= handleSize) {
+            return handle;
+        }
+    }
+    return null;
+}
+
+function hitTestSelection(clientX, clientY) {
+    const { selX, selY, selW, selH, zoom, offsetX, offsetY } = sprEditorState;
+    if (selW <= 0 || selH <= 0) return false;
+
+    const canvas = document.getElementById('adm-spr-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const mx = clientX - rect.left;
+    const my = clientY - rect.top;
+
+    const screenX = selX * zoom + offsetX;
+    const screenY = selY * zoom + offsetY;
+    const screenW = selW * zoom;
+    const screenH = selH * zoom;
+
+    return mx >= screenX && mx <= screenX + screenW && my >= screenY && my <= screenY + screenH;
+}
+
+function initSpriteEditor() {
+    const canvas = document.getElementById('adm-spr-canvas');
+    const wrap = document.getElementById('adm-spr-canvas-wrap');
+    if (!canvas || !wrap) return;
+
+    // Mouse down on the canvas wrapper (captures events on selection overlay too)
+    wrap.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || e.ctrlKey) {
+            // Middle click or ctrl+click = pan
+            sprEditorState.mode = 'panning';
+            sprEditorState.panStartX = e.clientX - sprEditorState.offsetX;
+            sprEditorState.panStartY = e.clientY - sprEditorState.offsetY;
+            e.preventDefault();
+            return;
+        }
+
+        if (e.button !== 0) return;
+
+        const imgPos = screenToImage(e.clientX, e.clientY);
+
+        // Check if clicking a resize handle
+        const handle = hitTestHandle(e.clientX, e.clientY);
+        if (handle) {
+            sprEditorState.mode = 'resizing';
+            sprEditorState.resizeHandle = handle;
+            sprEditorState.dragStartMouseX = imgPos.x;
+            sprEditorState.dragStartMouseY = imgPos.y;
+            sprEditorState.dragStartSelX = sprEditorState.selX;
+            sprEditorState.dragStartSelY = sprEditorState.selY;
+            sprEditorState.dragStartSelW = sprEditorState.selW;
+            sprEditorState.dragStartSelH = sprEditorState.selH;
+            e.preventDefault();
+            return;
+        }
+
+        // Check if clicking inside the selection (move)
+        if (hitTestSelection(e.clientX, e.clientY)) {
+            sprEditorState.mode = 'moving';
+            sprEditorState.dragStartMouseX = imgPos.x;
+            sprEditorState.dragStartMouseY = imgPos.y;
+            sprEditorState.dragStartSelX = sprEditorState.selX;
+            sprEditorState.dragStartSelY = sprEditorState.selY;
+            e.preventDefault();
+            return;
+        }
+
+        // Otherwise: create new selection
+        sprEditorState.mode = 'selecting';
+        sprEditorState.selX = imgPos.x;
+        sprEditorState.selY = imgPos.y;
+        sprEditorState.selW = 0;
+        sprEditorState.selH = 0;
+        sprEditorState.dragStartMouseX = imgPos.x;
+        sprEditorState.dragStartMouseY = imgPos.y;
+
+        const selEl = document.getElementById('adm-spr-selection');
+        selEl.style.display = 'block';
+    });
+
+    // Mouse move
+    wrap.addEventListener('mousemove', (e) => {
+        const imgPos = screenToImage(e.clientX, e.clientY);
+
+        // Update cursor based on hover
+        if (sprEditorState.mode === 'none') {
+            const handle = hitTestHandle(e.clientX, e.clientY);
+            if (handle) {
+                wrap.style.cursor = handle + '-resize';
+            } else if (hitTestSelection(e.clientX, e.clientY)) {
+                wrap.style.cursor = 'move';
+            } else {
+                wrap.style.cursor = 'crosshair';
+            }
+        }
+
+        // Show coordinates
+        const coordsEl = document.getElementById('adm-spr-coords');
+        if (coordsEl) coordsEl.textContent = `x: ${Math.round(imgPos.x)}, y: ${Math.round(imgPos.y)}`;
+
+        if (sprEditorState.mode === 'panning') {
+            sprEditorState.offsetX = e.clientX - sprEditorState.panStartX;
+            sprEditorState.offsetY = e.clientY - sprEditorState.panStartY;
+            drawSprEditor();
+            updateSelectionOverlay();
+            return;
+        }
+
+        if (sprEditorState.mode === 'selecting') {
+            const endX = imgPos.x;
+            const endY = imgPos.y;
+            sprEditorState.selX = Math.min(sprEditorState.dragStartMouseX, endX);
+            sprEditorState.selY = Math.min(sprEditorState.dragStartMouseY, endY);
+            sprEditorState.selW = Math.abs(endX - sprEditorState.dragStartMouseX);
+            sprEditorState.selH = Math.abs(endY - sprEditorState.dragStartMouseY);
+            updateSelectionOverlay();
+            return;
+        }
+
+        if (sprEditorState.mode === 'moving') {
+            const dx = imgPos.x - sprEditorState.dragStartMouseX;
+            const dy = imgPos.y - sprEditorState.dragStartMouseY;
+            sprEditorState.selX = Math.max(0, sprEditorState.dragStartSelX + dx);
+            sprEditorState.selY = Math.max(0, sprEditorState.dragStartSelY + dy);
+            updateSelectionOverlay();
+            return;
+        }
+
+        if (sprEditorState.mode === 'resizing') {
+            const dx = imgPos.x - sprEditorState.dragStartMouseX;
+            const dy = imgPos.y - sprEditorState.dragStartMouseY;
+            const { dragStartSelX, dragStartSelY, dragStartSelW, dragStartSelH, resizeHandle } = sprEditorState;
+
+            let newX = dragStartSelX;
+            let newY = dragStartSelY;
+            let newW = dragStartSelW;
+            let newH = dragStartSelH;
+
+            if (resizeHandle === 'nw') {
+                newX = dragStartSelX + dx;
+                newY = dragStartSelY + dy;
+                newW = dragStartSelW - dx;
+                newH = dragStartSelH - dy;
+            } else if (resizeHandle === 'ne') {
+                newY = dragStartSelY + dy;
+                newW = dragStartSelW + dx;
+                newH = dragStartSelH - dy;
+            } else if (resizeHandle === 'sw') {
+                newX = dragStartSelX + dx;
+                newW = dragStartSelW - dx;
+                newH = dragStartSelH + dy;
+            } else if (resizeHandle === 'se') {
+                newW = dragStartSelW + dx;
+                newH = dragStartSelH + dy;
+            }
+
+            // Ensure minimum size
+            if (newW < 2) { newW = 2; newX = dragStartSelX + dragStartSelW - 2; }
+            if (newH < 2) { newH = 2; newY = dragStartSelY + dragStartSelH - 2; }
+            newX = Math.max(0, newX);
+            newY = Math.max(0, newY);
+
+            sprEditorState.selX = newX;
+            sprEditorState.selY = newY;
+            sprEditorState.selW = newW;
+            sprEditorState.selH = newH;
+            updateSelectionOverlay();
+            return;
+        }
+    });
+
+    // Mouse up: finalize any interaction
+    const finishInteraction = () => {
+        const prevMode = sprEditorState.mode;
+        sprEditorState.mode = 'none';
+
+        if (prevMode === 'panning') return;
+
+        if (prevMode === 'selecting') {
+            // Only commit if selection is meaningful
+            if (sprEditorState.selW > 2 && sprEditorState.selH > 2) {
+                sprEditorState.selX = Math.round(sprEditorState.selX);
+                sprEditorState.selY = Math.round(sprEditorState.selY);
+                sprEditorState.selW = Math.round(sprEditorState.selW);
+                sprEditorState.selH = Math.round(sprEditorState.selH);
+                syncInputsFromSelection();
+            }
+            return;
+        }
+
+        if (prevMode === 'moving' || prevMode === 'resizing') {
+            sprEditorState.selX = Math.round(sprEditorState.selX);
+            sprEditorState.selY = Math.round(sprEditorState.selY);
+            sprEditorState.selW = Math.round(sprEditorState.selW);
+            sprEditorState.selH = Math.round(sprEditorState.selH);
+            syncInputsFromSelection();
+            updateSelectionOverlay();
+        }
+    };
+
+    wrap.addEventListener('mouseup', finishInteraction);
+    wrap.addEventListener('mouseleave', finishInteraction);
+
+    // Mouse wheel: zoom
+    wrap.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const prevZoom = sprEditorState.zoom;
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        sprEditorState.zoom = Math.max(0.1, Math.min(5, prevZoom * delta));
+
+        // Zoom toward mouse position
+        const zoomRatio = sprEditorState.zoom / prevZoom;
+        sprEditorState.offsetX = mouseX - (mouseX - sprEditorState.offsetX) * zoomRatio;
+        sprEditorState.offsetY = mouseY - (mouseY - sprEditorState.offsetY) * zoomRatio;
+
+        const img = sprEditorState.img;
+        if (img) {
+            canvas.width = Math.max(canvas.parentElement.clientWidth, img.width * sprEditorState.zoom + Math.abs(sprEditorState.offsetX));
+            canvas.height = Math.max(200, img.height * sprEditorState.zoom + Math.abs(sprEditorState.offsetY));
+        }
+
+        drawSprEditor();
+        updateSelectionOverlay();
+    });
+
+    // Sheet change reloads image
+    document.getElementById('adm-spr-sheet')?.addEventListener('change', () => {
+        loadSprEditorImage();
+    });
+
+    // Coordinate inputs update the selection and preview
+    ['adm-spr-sx', 'adm-spr-sy', 'adm-spr-sw', 'adm-spr-sh'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            syncSelectionFromInputs();
+            drawSprEditor();
+            updateSprPreview();
+        });
+    });
+}
+
+async function loadSpritesSection() {
+    const container = document.getElementById('adm-sprite-list');
+    container.innerHTML = '<p class="adm-loading">Chargement des sprites...</p>';
+    try {
+        await Promise.all([fetchAllSprites(), fetchSpriteSheets()]);
+
+        // Populate sheet filter dropdown
+        const filterSelect = document.getElementById('adm-sprite-filter-sheet');
+        filterSelect.innerHTML = '<option value="">Toutes les feuilles</option>';
+        spriteSheets.forEach(s => {
+            filterSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.type)}</option>`;
+        });
+
+        renderSpriteList();
+    } catch (err) {
+        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+    }
+}
+
+function initSpritesSection() {
+    document.getElementById('adm-sprite-add-btn')?.addEventListener('click', () => openSpriteModal(null));
+    document.getElementById('adm-sprite-modal-close')?.addEventListener('click', closeSpriteModal);
+    document.getElementById('adm-sprite-cancel-btn')?.addEventListener('click', closeSpriteModal);
+    document.getElementById('adm-sprite-form')?.addEventListener('submit', saveSpriteForm);
+    document.getElementById('adm-sprite-filter-sheet')?.addEventListener('change', renderSpriteList);
+
+    initSpriteEditor();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// EQUIPMENT Section (updated to use Sprite references)
+// ═════════════════════════════════════════════════════════════════
+
+let allItems = [];
+
+async function fetchEquipmentItems() {
+    const res = await apiFetch('/api/equipment/admin/items');
+    if (!res.ok) throw new Error('Chargement echoue');
+    const data = await res.json();
+    allItems = data.items;
+    return allItems;
 }
 
 function getFilteredItems() {
@@ -725,7 +1340,7 @@ function renderEquipmentList() {
             html += `<div class="adm-equip-grid">`;
 
             for (const item of tiers[tier]) {
-                const spriteCSS = buildSpriteCSS(item);
+                const spriteCSS = item.sprite ? buildSpriteCSSFromSprite(item.sprite) : '';
                 html += `<div class="adm-equip-card" data-item-id="${item.id}">`;
                 html += `<div class="adm-equip-card-sprite" style="${spriteCSS}"></div>`;
                 html += `<div class="adm-equip-card-info">`;
@@ -755,20 +1370,53 @@ function renderEquipmentList() {
     });
 }
 
-function buildSpriteCSS(item) {
-    const file = EQUIP_TYPE_FILES[item.type];
-    if (!file || !item.spriteSheet) return '';
-    const sheet = item.spriteSheet;
-    const pad = 8;
-    const x = Math.max(0, item.spriteX - pad);
-    const y = Math.max(0, item.spriteY - pad);
-    const w = Math.min(sheet.width - x, item.spriteW + pad * 2);
-    const h = Math.min(sheet.height - y, item.spriteH + pad * 2);
-    const sizeX = (sheet.width / w) * 100;
-    const sizeY = (sheet.height / h) * 100;
-    const posX = w < sheet.width ? (x / (sheet.width - w)) * 100 : 0;
-    const posY = h < sheet.height ? (y / (sheet.height - h)) * 100 : 0;
-    return `background-image: url(${file}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
+function populateSpriteSelect(selectedSpriteId) {
+    const select = document.getElementById('adm-equip-sprite-select');
+    select.innerHTML = '<option value="">-- Selectionner un sprite --</option>';
+
+    // Group sprites by sheet type
+    const grouped = {};
+    allSprites.forEach(spr => {
+        const type = spr.spriteSheet?.type || 'unknown';
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(spr);
+    });
+
+    for (const type of Object.keys(grouped).sort()) {
+        const optGroup = document.createElement('optgroup');
+        optGroup.label = type;
+        grouped[type].forEach(spr => {
+            const opt = document.createElement('option');
+            opt.value = spr.id;
+            opt.textContent = `${spr.name} (${spr.spriteX},${spr.spriteY} ${spr.spriteW}x${spr.spriteH})`;
+            if (selectedSpriteId && spr.id === selectedSpriteId) {
+                opt.selected = true;
+            }
+            optGroup.appendChild(opt);
+        });
+        select.appendChild(optGroup);
+    }
+}
+
+function updateEquipSpritePreview() {
+    const select = document.getElementById('adm-equip-sprite-select');
+    const preview = document.getElementById('adm-equip-sprite-preview');
+    if (!select || !preview) return;
+
+    const spriteId = parseInt(select.value);
+    if (!spriteId) {
+        preview.style.backgroundImage = '';
+        return;
+    }
+
+    const spr = allSprites.find(s => s.id === spriteId);
+    if (!spr) {
+        preview.style.backgroundImage = '';
+        return;
+    }
+
+    const css = buildSpriteCSSFromSprite(spr);
+    preview.setAttribute('style', css);
 }
 
 function openEditModal(itemId) {
@@ -784,19 +1432,16 @@ function openEditModal(itemId) {
         document.getElementById('adm-equip-tier').value = item.tier;
         document.getElementById('adm-equip-skin').value = item.skin;
         document.getElementById('adm-equip-name').value = item.name;
-        document.getElementById('adm-equip-sx').value = item.spriteX;
-        document.getElementById('adm-equip-sy').value = item.spriteY;
-        document.getElementById('adm-equip-sw').value = item.spriteW;
-        document.getElementById('adm-equip-sh').value = item.spriteH;
+        populateSpriteSelect(item.spriteId);
     } else {
         title.textContent = 'Nouvel Equipement';
         document.getElementById('adm-equip-id').value = '';
         document.getElementById('adm-equip-form').reset();
+        populateSpriteSelect(null);
     }
 
     modal.classList.remove('hidden');
-    loadSpriteEditorImage();
-    updateSpritePreview();
+    updateEquipSpritePreview();
 }
 
 function closeEditModal() {
@@ -806,15 +1451,19 @@ function closeEditModal() {
 async function saveItem(e) {
     e.preventDefault();
     const id = document.getElementById('adm-equip-id').value;
+    const spriteId = parseInt(document.getElementById('adm-equip-sprite-select').value);
+
+    if (!spriteId) {
+        showToast('Veuillez selectionner un sprite', 'error');
+        return;
+    }
+
     const data = {
         type: document.getElementById('adm-equip-type').value,
         tier: parseInt(document.getElementById('adm-equip-tier').value),
         skin: document.getElementById('adm-equip-skin').value.trim(),
         name: document.getElementById('adm-equip-name').value.trim(),
-        spriteX: parseInt(document.getElementById('adm-equip-sx').value),
-        spriteY: parseInt(document.getElementById('adm-equip-sy').value),
-        spriteW: parseInt(document.getElementById('adm-equip-sw').value),
-        spriteH: parseInt(document.getElementById('adm-equip-sh').value),
+        spriteId,
     };
 
     try {
@@ -857,244 +1506,11 @@ async function deleteItem(itemId) {
     }
 }
 
-// ─── Interactive Sprite Editor ──────────────────────────────────
-
-function loadSpriteEditorImage() {
-    const type = document.getElementById('adm-equip-type').value;
-    const file = EQUIP_TYPE_FILES[type];
-    if (!file) return;
-
-    const canvas = document.getElementById('adm-sprite-canvas');
-    const ctx = canvas.getContext('2d');
-    const wrap = document.getElementById('adm-sprite-canvas-wrap');
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-        spriteEditorState.img = img;
-        spriteEditorState.zoom = 1;
-        spriteEditorState.offsetX = 0;
-        spriteEditorState.offsetY = 0;
-
-        // Scale canvas to fit the wrapper width
-        const wrapWidth = wrap.clientWidth || 800;
-        const scale = wrapWidth / img.width;
-        canvas.width = wrapWidth;
-        canvas.height = img.height * scale;
-        spriteEditorState.zoom = scale;
-
-        drawSpriteEditor();
-        drawSelectionFromInputs();
-    };
-    img.src = file;
-}
-
-function drawSpriteEditor() {
-    const canvas = document.getElementById('adm-sprite-canvas');
-    const ctx = canvas.getContext('2d');
-    const { img, zoom, offsetX, offsetY } = spriteEditorState;
-    if (!img) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, offsetX, offsetY, img.width * zoom, img.height * zoom);
-}
-
-function drawSelectionFromInputs() {
-    const sx = parseInt(document.getElementById('adm-equip-sx').value) || 0;
-    const sy = parseInt(document.getElementById('adm-equip-sy').value) || 0;
-    const sw = parseInt(document.getElementById('adm-equip-sw').value) || 0;
-    const sh = parseInt(document.getElementById('adm-equip-sh').value) || 0;
-
-    if (sw > 0 && sh > 0) {
-        const { zoom, offsetX, offsetY } = spriteEditorState;
-        const selEl = document.getElementById('adm-sprite-selection');
-        selEl.style.left = (sx * zoom + offsetX) + 'px';
-        selEl.style.top = (sy * zoom + offsetY) + 'px';
-        selEl.style.width = (sw * zoom) + 'px';
-        selEl.style.height = (sh * zoom) + 'px';
-        selEl.style.display = 'block';
-    }
-}
-
-function updateSpritePreview() {
-    const type = document.getElementById('adm-equip-type').value;
-    const file = EQUIP_TYPE_FILES[type];
-    const preview = document.getElementById('adm-sprite-preview');
-    if (!file || !preview) return;
-
-    const sx = parseInt(document.getElementById('adm-equip-sx').value) || 0;
-    const sy = parseInt(document.getElementById('adm-equip-sy').value) || 0;
-    const sw = parseInt(document.getElementById('adm-equip-sw').value) || 0;
-    const sh = parseInt(document.getElementById('adm-equip-sh').value) || 0;
-
-    if (sw <= 0 || sh <= 0) {
-        preview.style.backgroundImage = '';
-        return;
-    }
-
-    // Find sheet dimensions
-    const sheet = spriteSheets.find(s => s.type === type);
-    const sheetW = sheet?.width || 1024;
-    const sheetH = sheet?.height || 1536;
-
-    const pad = 8;
-    const x = Math.max(0, sx - pad);
-    const y = Math.max(0, sy - pad);
-    const w = Math.min(sheetW - x, sw + pad * 2);
-    const h = Math.min(sheetH - y, sh + pad * 2);
-    const sizeX = (sheetW / w) * 100;
-    const sizeY = (sheetH / h) * 100;
-    const posX = w < sheetW ? (x / (sheetW - w)) * 100 : 0;
-    const posY = h < sheetH ? (y / (sheetH - h)) * 100 : 0;
-
-    preview.style.backgroundImage = `url(${file})`;
-    preview.style.backgroundSize = `${sizeX}% ${sizeY}%`;
-    preview.style.backgroundPosition = `${posX}% ${posY}%`;
-    preview.style.backgroundRepeat = 'no-repeat';
-}
-
-function initSpriteEditor() {
-    const canvas = document.getElementById('adm-sprite-canvas');
-    const selEl = document.getElementById('adm-sprite-selection');
-    if (!canvas) return;
-
-    // Mouse down: start selection
-    canvas.addEventListener('mousedown', (e) => {
-        if (e.button === 1 || e.ctrlKey) {
-            // Middle click or ctrl+click = pan
-            spriteEditorState.panning = true;
-            spriteEditorState.panStartX = e.clientX - spriteEditorState.offsetX;
-            spriteEditorState.panStartY = e.clientY - spriteEditorState.offsetY;
-            return;
-        }
-
-        const rect = canvas.getBoundingClientRect();
-        const { zoom, offsetX, offsetY } = spriteEditorState;
-        const canvasX = e.clientX - rect.left;
-        const canvasY = e.clientY - rect.top;
-
-        // Convert to image coordinates
-        const imgX = Math.round((canvasX - offsetX) / zoom);
-        const imgY = Math.round((canvasY - offsetY) / zoom);
-
-        spriteEditorState.selecting = true;
-        spriteEditorState.selStartX = imgX;
-        spriteEditorState.selStartY = imgY;
-        spriteEditorState.selEndX = imgX;
-        spriteEditorState.selEndY = imgY;
-
-        selEl.style.display = 'block';
-    });
-
-    // Mouse move: update selection or pan
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const { zoom, offsetX, offsetY } = spriteEditorState;
-        const canvasX = e.clientX - rect.left;
-        const canvasY = e.clientY - rect.top;
-        const imgX = Math.round((canvasX - offsetX) / zoom);
-        const imgY = Math.round((canvasY - offsetY) / zoom);
-
-        // Show current coords
-        const coordsEl = document.getElementById('adm-sprite-coords');
-        if (coordsEl) coordsEl.textContent = `x: ${imgX}, y: ${imgY}`;
-
-        if (spriteEditorState.panning) {
-            spriteEditorState.offsetX = e.clientX - spriteEditorState.panStartX;
-            spriteEditorState.offsetY = e.clientY - spriteEditorState.panStartY;
-            drawSpriteEditor();
-            drawSelectionFromInputs();
-            return;
-        }
-
-        if (!spriteEditorState.selecting) return;
-
-        spriteEditorState.selEndX = imgX;
-        spriteEditorState.selEndY = imgY;
-
-        // Draw selection rectangle
-        const sx = Math.min(spriteEditorState.selStartX, spriteEditorState.selEndX);
-        const sy = Math.min(spriteEditorState.selStartY, spriteEditorState.selEndY);
-        const sw = Math.abs(spriteEditorState.selEndX - spriteEditorState.selStartX);
-        const sh = Math.abs(spriteEditorState.selEndY - spriteEditorState.selStartY);
-
-        selEl.style.left = (sx * zoom + offsetX) + 'px';
-        selEl.style.top = (sy * zoom + offsetY) + 'px';
-        selEl.style.width = (sw * zoom) + 'px';
-        selEl.style.height = (sh * zoom) + 'px';
-    });
-
-    // Mouse up: finalize selection
-    const finishSelection = () => {
-        if (spriteEditorState.panning) {
-            spriteEditorState.panning = false;
-            return;
-        }
-        if (!spriteEditorState.selecting) return;
-        spriteEditorState.selecting = false;
-
-        const sx = Math.min(spriteEditorState.selStartX, spriteEditorState.selEndX);
-        const sy = Math.min(spriteEditorState.selStartY, spriteEditorState.selEndY);
-        const sw = Math.abs(spriteEditorState.selEndX - spriteEditorState.selStartX);
-        const sh = Math.abs(spriteEditorState.selEndY - spriteEditorState.selStartY);
-
-        if (sw > 2 && sh > 2) {
-            document.getElementById('adm-equip-sx').value = sx;
-            document.getElementById('adm-equip-sy').value = sy;
-            document.getElementById('adm-equip-sw').value = sw;
-            document.getElementById('adm-equip-sh').value = sh;
-            updateSpritePreview();
-        }
-    };
-    canvas.addEventListener('mouseup', finishSelection);
-    canvas.addEventListener('mouseleave', finishSelection);
-
-    // Mouse wheel: zoom
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        const prevZoom = spriteEditorState.zoom;
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        spriteEditorState.zoom = Math.max(0.1, Math.min(5, prevZoom * delta));
-
-        // Zoom toward mouse position
-        const zoomRatio = spriteEditorState.zoom / prevZoom;
-        spriteEditorState.offsetX = mouseX - (mouseX - spriteEditorState.offsetX) * zoomRatio;
-        spriteEditorState.offsetY = mouseY - (mouseY - spriteEditorState.offsetY) * zoomRatio;
-
-        const img = spriteEditorState.img;
-        if (img) {
-            canvas.width = img.width * spriteEditorState.zoom + Math.abs(spriteEditorState.offsetX);
-            canvas.height = img.height * spriteEditorState.zoom + Math.abs(spriteEditorState.offsetY);
-        }
-
-        drawSpriteEditor();
-        drawSelectionFromInputs();
-    });
-
-    // Type change reloads the sprite sheet image
-    document.getElementById('adm-equip-type')?.addEventListener('change', () => {
-        loadSpriteEditorImage();
-    });
-
-    // Sprite coordinate inputs update selection and preview
-    ['adm-equip-sx', 'adm-equip-sy', 'adm-equip-sw', 'adm-equip-sh'].forEach(id => {
-        document.getElementById(id)?.addEventListener('input', () => {
-            drawSpriteEditor();
-            drawSelectionFromInputs();
-            updateSpritePreview();
-        });
-    });
-}
-
 async function loadEquipmentSection() {
     const container = document.getElementById('adm-equip-list');
     container.innerHTML = '<p class="adm-loading">Chargement des equipements...</p>';
     try {
-        await Promise.all([fetchEquipmentItems(), fetchSpriteSheets()]);
+        await Promise.all([fetchEquipmentItems(), fetchAllSprites(), fetchSpriteSheets()]);
         renderEquipmentList();
     } catch (err) {
         container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
@@ -1116,8 +1532,8 @@ function initEquipmentSection() {
     document.getElementById('adm-equip-filter-type')?.addEventListener('change', renderEquipmentList);
     document.getElementById('adm-equip-filter-tier')?.addEventListener('change', renderEquipmentList);
 
-    // Sprite editor
-    initSpriteEditor();
+    // Sprite select preview
+    document.getElementById('adm-equip-sprite-select')?.addEventListener('change', updateEquipSpritePreview);
 }
 
 // ─── Broadcast Section ───────────────────────────────────────────
@@ -1142,6 +1558,9 @@ function applyRoleVisibility() {
     // Hide admin-only sections for moderators
     if (!isAdm) {
         document.querySelectorAll('[data-section="stats"]').forEach(el => {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('[data-section="sprites"]').forEach(el => {
             el.style.display = 'none';
         });
         document.querySelectorAll('[data-section="equipment"]').forEach(el => {
@@ -1194,6 +1613,7 @@ async function init() {
     initNavigation();
     initPlayersSection();
     initStatsSection();
+    initSpritesSection();
     initEquipmentSection();
     initBroadcastSection();
     applyRoleVisibility();
