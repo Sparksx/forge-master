@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anvil Legends — Admin Dashboard</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#1a1a2e">
+
+    <!-- Game Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Loading / Auth gate -->
+    <div class="adm-gate" id="adm-gate">
+        <div class="adm-gate-inner">
+            <h1 class="adm-gate-title">Anvil Legends</h1>
+            <p class="adm-gate-text" id="adm-gate-text">Verification des permissions...</p>
+        </div>
+    </div>
+
+    <!-- Dashboard (hidden until auth passes) -->
+    <div class="adm-dashboard hidden" id="adm-dashboard">
+        <!-- Sidebar -->
+        <aside class="adm-sidebar" id="adm-sidebar">
+            <div class="adm-sidebar-header">
+                <h1 class="adm-logo">Anvil Legends</h1>
+                <span class="adm-role-badge" id="adm-role-badge"></span>
+            </div>
+            <nav class="adm-sidebar-nav" id="adm-sidebar-nav">
+                <button class="adm-nav-item active" data-section="players">
+                    <span class="adm-nav-icon">&#x1F465;</span>
+                    <span class="adm-nav-label">Joueurs</span>
+                </button>
+                <button class="adm-nav-item" data-section="stats">
+                    <span class="adm-nav-icon">&#x1F4CA;</span>
+                    <span class="adm-nav-label">Statistiques</span>
+                </button>
+                <button class="adm-nav-item" data-section="logs">
+                    <span class="adm-nav-icon">&#x1F4CB;</span>
+                    <span class="adm-nav-label">Logs</span>
+                </button>
+                <button class="adm-nav-item" data-section="broadcast">
+                    <span class="adm-nav-icon">&#x1F4E2;</span>
+                    <span class="adm-nav-label">Annonce</span>
+                </button>
+            </nav>
+            <div class="adm-sidebar-footer">
+                <a href="/" class="adm-back-link">&#x2190; Retour au jeu</a>
+            </div>
+        </aside>
+
+        <!-- Mobile top bar -->
+        <header class="adm-topbar" id="adm-topbar">
+            <a href="/" class="adm-topbar-back">&#x2190;</a>
+            <h1 class="adm-topbar-title">Admin Dashboard</h1>
+            <span class="adm-role-badge adm-topbar-badge" id="adm-role-badge-mobile"></span>
+        </header>
+
+        <!-- Mobile bottom nav -->
+        <nav class="adm-mobile-nav" id="adm-mobile-nav">
+            <button class="adm-mobile-nav-item active" data-section="players">
+                <span class="adm-nav-icon">&#x1F465;</span>
+                <span>Joueurs</span>
+            </button>
+            <button class="adm-mobile-nav-item" data-section="stats">
+                <span class="adm-nav-icon">&#x1F4CA;</span>
+                <span>Stats</span>
+            </button>
+            <button class="adm-mobile-nav-item" data-section="logs">
+                <span class="adm-nav-icon">&#x1F4CB;</span>
+                <span>Logs</span>
+            </button>
+            <button class="adm-mobile-nav-item" data-section="broadcast">
+                <span class="adm-nav-icon">&#x1F4E2;</span>
+                <span>Annonce</span>
+            </button>
+        </nav>
+
+        <!-- Main content -->
+        <main class="adm-main" id="adm-main">
+            <!-- Players Section -->
+            <section class="adm-section active" id="section-players">
+                <div class="adm-section-header">
+                    <h2>Gestion des Joueurs</h2>
+                </div>
+                <div class="adm-search-bar">
+                    <input type="text" id="adm-player-search" placeholder="Rechercher un joueur par nom..." maxlength="30" autocomplete="off">
+                    <button class="adm-btn adm-btn-primary" id="adm-player-search-btn">Rechercher</button>
+                </div>
+                <div id="adm-player-results"></div>
+                <div id="adm-player-detail"></div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="adm-section" id="section-stats">
+                <div class="adm-section-header">
+                    <h2>Statistiques du Serveur</h2>
+                    <button class="adm-btn adm-btn-secondary" id="adm-stats-refresh">Rafraichir</button>
+                </div>
+                <div id="adm-stats-content">
+                    <p class="adm-loading">Chargement des statistiques...</p>
+                </div>
+            </section>
+
+            <!-- Logs Section -->
+            <section class="adm-section" id="section-logs">
+                <div class="adm-section-header">
+                    <h2>Logs d'Audit</h2>
+                </div>
+                <div id="adm-logs-content">
+                    <p class="adm-loading">Chargement des logs...</p>
+                </div>
+            </section>
+
+            <!-- Broadcast Section -->
+            <section class="adm-section" id="section-broadcast">
+                <div class="adm-section-header">
+                    <h2>Annonce Systeme</h2>
+                </div>
+                <div class="adm-broadcast-form">
+                    <p class="adm-form-desc">Envoyer un message a tous les joueurs connectes. Le message s'affichera en dore dans le chat.</p>
+                    <textarea id="adm-broadcast-text" rows="4" maxlength="500" placeholder="Tapez votre message d'annonce..."></textarea>
+                    <button class="adm-btn adm-btn-gold" id="adm-broadcast-send">Envoyer l'Annonce</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast container -->
+    <div class="adm-toast-container" id="adm-toast-container"></div>
+
+    <script type="module" src="src/admin-dashboard.js"></script>
+</body>
+
+</html>

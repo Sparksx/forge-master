@@ -48,6 +48,12 @@ const io = setupSocket(server);
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
+
+// Admin dashboard — serve admin.html for /admin route
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(distPath, 'admin.html'));
+});
+
 app.get('{*path}', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
         return next();
