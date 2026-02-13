@@ -60,7 +60,8 @@ export function showForgeToast(item) {
     const tierDef = TIERS[(item.tier || 1) - 1];
     const icon = EQUIPMENT_ICONS[item.type] || '';
     const tierName = t('tiers.' + tierDef.name.toLowerCase());
-    showToast(t('forge.forged', { icon, tier: tierName, type: capitalizeFirst(item.type) }), 'forge');
+    const displayType = item.name || capitalizeFirst(item.type);
+    showToast(t('forge.forged', { icon, tier: tierName, type: displayType }), 'forge');
 }
 
 export function showSellToast({ item, goldEarned }) {
@@ -123,6 +124,13 @@ function renderSingleSlot(type) {
         const tierDef = TIERS[(item.tier || 1) - 1];
         slotParent.style.borderColor = tierDef.color;
         slotParent.style.borderWidth = '2px';
+
+        // Show template name if available
+        if (item.name) {
+            const nameDiv = createElement('div', 'item-name', item.name);
+            nameDiv.style.color = tierDef.color;
+            slotElement.appendChild(nameDiv);
+        }
 
         const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
         levelDiv.style.color = tierDef.color;

@@ -75,6 +75,17 @@
     font-size: clamp(0.65em, 0.9vw, 0.8em);
 }
 
+.item-name {
+    font-weight: 600;
+    font-size: clamp(0.55em, 0.8vw, 0.75em);
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
 .item-level {
     font-weight: bold;
     color: var(--text-secondary);

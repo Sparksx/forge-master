@@ -70,7 +70,9 @@ export function buildItemCard(item, compareWith) {
     const tierDiv = createElement('div', 'forged-tier', tierDef.name);
     tierDiv.style.color = tierDef.color;
 
-    const typeDiv = createElement('div', 'forged-type', `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`);
+    // Show the template name if available, otherwise fall back to generic type
+    const displayName = item.name || `${EQUIPMENT_ICONS[item.type]} ${capitalizeFirst(item.type)}`;
+    const typeDiv = createElement('div', 'forged-type', displayName);
     const levelDiv = createElement('div', 'forged-level', `Level ${item.level}`);
     const statLabel = item.statType === 'health' ? '\u2764\uFE0F Health' : '\u2694\uFE0F Damage';
     const statDiv = createElement('div', 'forged-stat', `${statLabel}: +${formatNumber(item.stats)}`);
