@@ -136,17 +136,23 @@ function renderSingleSlot(type) {
         }
     }
 
+    // Manage rarity badge
+    let badge = slotParent.querySelector('.slot-rarity-badge');
+
     if (item) {
         const tierDef = TIERS[(item.tier || 1) - 1];
         slotParent.style.borderColor = tierDef.color;
         slotParent.style.borderWidth = '2px';
+        slotParent.style.boxShadow = `0 0 8px ${tierDef.color}33, inset 0 0 12px ${tierDef.color}11`;
 
-        // Show template name if available
-        if (item.name) {
-            const nameDiv = createElement('div', 'item-name', item.name);
-            nameDiv.style.color = tierDef.color;
-            slotElement.appendChild(nameDiv);
+        // Rarity badge in top-right
+        if (!badge) {
+            badge = createElement('div', 'slot-rarity-badge');
+            slotParent.appendChild(badge);
         }
+        badge.textContent = tierDef.name.charAt(0);
+        badge.style.background = tierDef.color;
+        badge.style.display = '';
 
         const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
         levelDiv.style.color = tierDef.color;
@@ -154,6 +160,8 @@ function renderSingleSlot(type) {
     } else {
         slotParent.style.borderColor = '#e0e0e0';
         slotParent.style.borderWidth = '1px';
+        slotParent.style.boxShadow = '';
+        if (badge) badge.style.display = 'none';
         const emptySpan = createElement('span', 'empty-slot', t('forge.empty'));
         slotElement.appendChild(emptySpan);
     }
