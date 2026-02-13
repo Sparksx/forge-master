@@ -49,10 +49,7 @@ export function renderSkillsTab() {
     // Forge section (shards + button + tier chances + upgrade all)
     container.appendChild(buildForgeSection());
 
-    // Equipped skills bar
-    container.appendChild(buildEquippedSection());
-
-    // Unlocked skills grid (sorted by tier)
+    // Unlocked skills list — equipped status shown inline on each card
     container.appendChild(buildSkillsGrid());
 }
 
@@ -283,25 +280,32 @@ function buildSkillCard(skill) {
     const canUp = canUpgradeSkill(skill.id);
 
     let cardClass = 'skill-card';
+    cardClass += ` skill-tier-${tier.name.toLowerCase()}`;
     if (isEquipped) cardClass += ' skill-equipped';
     if (canUp) cardClass += ' skill-upgradable';
 
     const card = createElement('div', cardClass);
     card.style.borderColor = tier.color;
 
-    // Type icon (shield/sword)
-    const typeIcon = createElement('div', 'skill-card-type-icon', skill.type === 'passive' ? '\uD83D\uDEE1\uFE0F' : '\u2694\uFE0F');
-    card.appendChild(typeIcon);
+    // Icon on left
+    const icon = createElement('div', 'skill-card-icon', skill.icon);
+    card.appendChild(icon);
 
-    // Name
-    const nameEl = createElement('div', 'skill-card-name', skill.name);
+    // Info column (name + level on first line, type on second)
+    const infoCol = createElement('div', 'skill-card-info');
+
+    const topRow = createElement('div', 'skill-card-top-row');
+    const nameEl = createElement('span', 'skill-card-name', skill.name);
     nameEl.style.color = tier.color;
-    card.appendChild(nameEl);
-
-    // Level + copies
-    const levelRow = createElement('div', 'skill-card-level-row');
+    topRow.appendChild(nameEl);
     const lvlText = createElement('span', 'skill-card-level', t('skills.level', { level }));
-    levelRow.appendChild(lvlText);
+    topRow.appendChild(lvlText);
+    infoCol.appendChild(topRow);
+
+    const bottomRow = createElement('div', 'skill-card-bottom-row');
+    const typeLabel = createElement('span', `skill-card-type-tag ${skill.type === 'passive' ? 'skills-type-passive' : 'skills-type-active'}`,
+        skill.type === 'passive' ? `\uD83D\uDEE1\uFE0F ${t('skills.passive')}` : `\u2694\uFE0F ${t('skills.active')}`);
+    bottomRow.appendChild(typeLabel);
 
     if (level < maxLevel) {
         const currentTotal = getTotalCopiesForLevel(level);
@@ -309,12 +313,19 @@ function buildSkillCard(skill) {
         const copiesNeeded = getSkillCopiesForLevel(level + 1);
         const copiesEl = createElement('span', 'skill-card-copies', `${copiesInto}/${copiesNeeded}`);
         if (canUp) copiesEl.classList.add('skill-card-copies-ready');
-        levelRow.appendChild(copiesEl);
+        bottomRow.appendChild(copiesEl);
     } else {
-        levelRow.appendChild(createElement('span', 'skill-card-copies skill-card-copies-max', 'MAX'));
+        bottomRow.appendChild(createElement('span', 'skill-card-copies skill-card-copies-max', 'MAX'));
     }
 
-    card.appendChild(levelRow);
+    infoCol.appendChild(bottomRow);
+    card.appendChild(infoCol);
+
+    // Equipped badge
+    if (isEquipped) {
+        const badge = createElement('div', 'skill-card-equipped-badge', t('forge.equipped'));
+        card.appendChild(badge);
+    }
 
     // Click -> detail
     card.addEventListener('click', () => showSkillDetailModal(skill.id));

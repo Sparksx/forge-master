@@ -46,8 +46,18 @@ export function initTechUI() {
 // ── Render everything ────────────────────────────────────
 
 export function renderTechTree() {
-    renderActiveResearch();
+    // Clear the old active research banner (no longer used as separate card)
+    const activeContainer = document.getElementById('tech-research-active');
+    if (activeContainer) {
+        activeContainer.textContent = '';
+        activeContainer.classList.remove('has-research');
+    }
     renderTechList();
+    // Start timer if there's active research (for inline progress update)
+    const research = getResearchState();
+    if (research.active) {
+        startTechTimer();
+    }
 }
 
 // ── Active Research Banner ───────────────────────────────
@@ -193,7 +203,42 @@ function buildTechCard(tech) {
     if (isMaxed) {
         card.appendChild(createElement('div', 'tech-card-status tech-status-max', t('tech.max')));
     } else if (isBeingResearched) {
-        card.appendChild(createElement('div', 'tech-card-status tech-status-active', t('tech.researching')));
+        // Inline progress bar + timer + speed-up button
+        const progressSection = createElement('div', 'tech-card-inline-progress');
+
+        const progressBar = createElement('div', 'research-progress-bar');
+        const progressFill = createElement('div', 'research-progress-fill');
+        progressFill.classList.add('tech-inline-progress-fill');
+        progressBar.appendChild(progressFill);
+        progressSection.appendChild(progressBar);
+
+        const infoRow = createElement('div', 'tech-card-inline-info');
+        const timerText = createElement('span', 'tech-inline-timer');
+        infoRow.appendChild(timerText);
+
+        const speedUpBtn = createElement('button', 'btn btn-speed-up btn-speed-up-research tech-inline-speed-btn');
+        speedUpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            speedUpResearch();
+            renderTechTree();
+        });
+        infoRow.appendChild(speedUpBtn);
+        progressSection.appendChild(infoRow);
+
+        card.appendChild(progressSection);
+
+        // Update the inline display immediately
+        requestAnimationFrame(() => {
+            const status = getResearchStatus();
+            if (!status) return;
+            const fill = progressSection.querySelector('.tech-inline-progress-fill');
+            if (fill) fill.style.width = `${(status.progress * 100).toFixed(1)}%`;
+            timerText.textContent = formatTime(status.remaining);
+            speedUpBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)} 💎`;
+            const canAffordSpeedUp = getDiamonds() >= status.speedUpCost;
+            speedUpBtn.disabled = !canAffordSpeedUp;
+            speedUpBtn.classList.toggle('btn-disabled', !canAffordSpeedUp);
+        });
     } else if (isQueued) {
         card.appendChild(createElement('div', 'tech-card-status tech-status-queued', t('tech.queued')));
     } else if (!isUnlocked) {
@@ -218,7 +263,7 @@ function buildTechCard(tech) {
 
         actionRow.appendChild(createElement('span', 'tech-card-time', formatTime(time)));
 
-        const researchBtn = createElement('button', 'btn btn-research', t('tech.research'));
+        const researchBtn = createElement('button', 'btn btn-research', `${t('tech.research')} (${formatCompact(cost)} 🔮)`);
         const hasActiveOrFull = !!research.active;
         const maxQueue = getTechEffect('researchQueue');
         const canQueue = hasActiveOrFull && research.queue.length < maxQueue;
@@ -237,7 +282,7 @@ function buildTechCard(tech) {
         }
 
         if (canAfford && hasActiveOrFull && canQueue) {
-            researchBtn.textContent = t('tech.enqueue');
+            researchBtn.textContent = `${t('tech.enqueue')} (${formatCompact(cost)} 🔮)`;
         }
 
         researchBtn.addEventListener('click', () => {
@@ -297,18 +342,19 @@ function updateResearchTimerDisplay() {
     const status = getResearchStatus();
     if (!status) return;
 
-    const timerText = document.getElementById('research-timer-text');
-    if (timerText) timerText.textContent = formatTime(status.remaining);
+    // Update inline progress on tech card
+    const inlineFill = document.querySelector('.tech-inline-progress-fill');
+    if (inlineFill) inlineFill.style.width = `${(status.progress * 100).toFixed(1)}%`;
 
-    const progressFill = document.getElementById('research-progress-fill');
-    if (progressFill) progressFill.style.width = `${(status.progress * 100).toFixed(1)}%`;
+    const inlineTimer = document.querySelector('.tech-inline-timer');
+    if (inlineTimer) inlineTimer.textContent = formatTime(status.remaining);
 
-    const speedUpBtn = document.getElementById('research-speed-up-btn');
-    if (speedUpBtn) {
-        speedUpBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)} 💎`;
+    const inlineSpeedBtn = document.querySelector('.tech-inline-speed-btn');
+    if (inlineSpeedBtn) {
+        inlineSpeedBtn.textContent = `⚡ ${formatNumber(status.speedUpCost)} 💎`;
         const canAfford = getDiamonds() >= status.speedUpCost;
-        speedUpBtn.disabled = !canAfford;
-        speedUpBtn.classList.toggle('btn-disabled', !canAfford);
+        inlineSpeedBtn.disabled = !canAfford;
+        inlineSpeedBtn.classList.toggle('btn-disabled', !canAfford);
     }
 }
 
