@@ -1,17 +1,16 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+import { EQUIPMENT_TYPES, MAX_TIER } from '../../shared/stats.js';
 
 const router = Router();
-
-const VALID_SLOTS = ['hat', 'armor', 'belt', 'boots', 'gloves', 'necklace', 'ring', 'weapon'];
 
 function isValidItem(item) {
     if (item === null) return true;
     if (typeof item !== 'object' || Array.isArray(item)) return false;
     if (typeof item.level !== 'number' || item.level < 1) return false;
-    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > 6) return false;
-    if (typeof item.type !== 'string' || !VALID_SLOTS.includes(item.type)) return false;
+    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > MAX_TIER) return false;
+    if (typeof item.type !== 'string' || !EQUIPMENT_TYPES.includes(item.type)) return false;
     if (item.bonuses !== undefined) {
         if (!Array.isArray(item.bonuses)) return false;
         for (const b of item.bonuses) {
@@ -24,7 +23,7 @@ function isValidItem(item) {
 function isValidEquipment(equipment) {
     if (typeof equipment !== 'object' || Array.isArray(equipment) || equipment === null) return false;
     for (const [slot, item] of Object.entries(equipment)) {
-        if (!VALID_SLOTS.includes(slot)) return false;
+        if (!EQUIPMENT_TYPES.includes(slot)) return false;
         if (!isValidItem(item)) return false;
     }
     return true;
