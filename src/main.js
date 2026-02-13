@@ -19,6 +19,7 @@ import '../css/skills.css';
 import '../css/admin.css';
 import '../css/unlock.css';
 import { gameEvents, EVENTS } from './events.js';
+import { t, initLocale } from './i18n/i18n.js';
 import { loadGame, loadGameFromServer, getForgedItem, setForgedItem, addXP, resetGame, addGold, saveGame, getTechEffect, addEssence, setProfilePicture, getGold } from './state.js';
 import { forgeEquipment, getForgeEssenceReward } from './forge.js';
 import { initResearch } from './research.js';
@@ -96,7 +97,7 @@ gameEvents.on(EVENTS.ITEM_FORGED, (item) => {
 
 // Research events
 gameEvents.on(EVENTS.RESEARCH_COMPLETED, ({ techId, level }) => {
-    showToast(`🔬 Recherche terminée!`, 'study');
+    showToast(`🔬 ${t('tech.researching')}`, 'study');
     renderTechTree();
     // Refresh combat stats in case vitality/strength changed
     refreshPlayerStats();
@@ -152,11 +153,11 @@ gameEvents.on(EVENTS.COMBAT_MONSTER_DEFEATED, ({ monster }) => {
 });
 
 gameEvents.on(EVENTS.COMBAT_SUBWAVE_CLEARED, () => {
-    showCombatResult('Victory!', 'victory');
+    showCombatResult(t('combat.victory'), 'victory');
 });
 
 gameEvents.on(EVENTS.COMBAT_PLAYER_DEFEATED, () => {
-    showCombatResult('Defeated', 'defeat');
+    showCombatResult(t('combat.defeated'), 'defeat');
     showDeathAnimation();
 });
 
@@ -213,8 +214,18 @@ async function startGame() {
         if (user?.settings?.theme) {
             applyTheme(user.settings.theme);
         }
+        // Apply saved locale preference
+        const savedLocale = user?.settings?.locale || localStorage.getItem('forgemaster_locale');
+        if (savedLocale) {
+            await initLocale(savedLocale);
+        }
     } else {
         loadGame();
+        // Apply saved locale for guests
+        const savedLocale = localStorage.getItem('forgemaster_locale');
+        if (savedLocale) {
+            await initLocale(savedLocale);
+        }
     }
 
     // Initialize gold animation with current value (prevents drip on load)
@@ -238,11 +249,11 @@ async function startGame() {
             // Start forging animation with delay
             manualForging = true;
             forgeBtn.classList.add('forging');
-            forgeBtn.textContent = '⚒️ Forge...';
+            forgeBtn.textContent = `⚒️ ${t('home.forging')}`;
             setTimeout(() => {
                 manualForging = false;
                 forgeBtn.classList.remove('forging');
-                forgeBtn.textContent = '⚒️ Forge';
+                forgeBtn.textContent = `⚒️ ${t('home.forge')}`;
                 const items = forgeEquipment();
                 items.forEach(item => gameEvents.emit(EVENTS.ITEM_FORGED, item));
                 showForgedBatch(items);
@@ -251,7 +262,7 @@ async function startGame() {
             console.error('Forge error:', err);
             manualForging = false;
             forgeBtn.classList.remove('forging');
-            forgeBtn.textContent = '⚒️ Forge';
+            forgeBtn.textContent = `⚒️ ${t('home.forge')}`;
             const activeModal = document.querySelector('.modal.active');
             if (activeModal) activeModal.classList.remove('active');
         }

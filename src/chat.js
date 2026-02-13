@@ -4,6 +4,8 @@
  * and moderation features (message deletion, role badges, system messages).
  */
 
+import { t } from './i18n/i18n.js';
+import { gameEvents, EVENTS } from './events.js';
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { getProfileEmoji } from './state.js';
@@ -73,6 +75,8 @@ export function initChat() {
     }
 
     setupSocketListeners();
+
+    gameEvents.on(EVENTS.LOCALE_CHANGED, updatePreview);
 }
 
 function setupSocketListeners() {
@@ -230,7 +234,7 @@ function appendMessage(msg) {
 
     let deleteBtn = '';
     if (staff && !isOwn) {
-        deleteBtn = `<button class="chat-delete-btn" data-delete-id="${msg.id}" title="Supprimer">&#10005;</button>`;
+        deleteBtn = `<button class="chat-delete-btn" data-delete-id="${msg.id}" title="${t('chat.delete')}">&#10005;</button>`;
     }
 
     el.innerHTML = `<span class="chat-avatar chat-clickable">${avatar}</span>` +
@@ -262,7 +266,7 @@ function appendMessage(msg) {
         delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const msgId = parseInt(delBtn.dataset.deleteId);
-            if (msgId && confirm('Supprimer ce message?')) {
+            if (msgId && confirm(t('chat.deleteConfirm'))) {
                 deleteChatMessage(msgId);
             }
         });
@@ -311,7 +315,7 @@ function appendCombatMessage(data) {
     const el = document.createElement('div');
     el.className = 'chat-combat-msg';
     el.innerHTML =
-        `<div class="chat-combat-title">\u2694\uFE0F PVP Combat</div>` +
+        `<div class="chat-combat-title">\u2694\uFE0F ${t('chat.pvpCombat')}</div>` +
         `<div class="chat-combat-players">` +
             `<div class="chat-combat-player ${isP1Winner ? 'chat-combat-winner' : ''} ${!isP1Winner && !isDraw ? 'chat-combat-loser' : ''}">` +
                 `<span class="chat-combat-avatar">${p1Emoji}</span>` +
@@ -325,8 +329,8 @@ function appendCombatMessage(data) {
                 `${isP2Winner ? '<span class="chat-combat-crown">\uD83D\uDC51</span>' : ''}` +
             `</div>` +
         `</div>` +
-        `${isDraw ? '<div class="chat-combat-draw">Draw!</div>' : ''}` +
-        `<div class="chat-combat-replay-hint">\u25B6 Tap to replay</div>`;
+        `${isDraw ? '<div class="chat-combat-draw">' + t('chat.draw') + '</div>' : ''}` +
+        `<div class="chat-combat-replay-hint">\u25B6 ${t('chat.tapToReplay')}</div>`;
 
     el.addEventListener('click', () => {
         const socket = getSocket();
@@ -364,7 +368,7 @@ function showPlayerProfileModal(data) {
         } else {
             equipmentHtml += `<div class="chat-profile-equip-item chat-profile-equip-empty">` +
                 `<span class="chat-profile-equip-icon">${icon}</span>` +
-                `<span class="chat-profile-equip-name">Empty</span>` +
+                `<span class="chat-profile-equip-name">${t('home.empty')}</span>` +
                 `</div>`;
         }
     });
@@ -404,7 +408,7 @@ function showPlayerProfileModal(data) {
     // Only show PVP button for other players
     const pvpBtnHtml = isOwnProfile
         ? ''
-        : `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F Challenge to PVP</button>`;
+        : `<button class="chat-profile-fight-btn" id="chat-profile-fight">\u2694\uFE0F ${t('chat.challengePvp')}</button>`;
 
     content.innerHTML =
         `<button class="modal-close-btn" id="chat-profile-close">\u2715</button>` +
@@ -416,17 +420,17 @@ function showPlayerProfileModal(data) {
             `</div>` +
         `</div>` +
         `<div class="chat-profile-stats">` +
-            `<div class="chat-profile-stat">\uD83D\uDD25 <span>Power</span><strong>${formatNum(data.power)}</strong></div>` +
-            `<div class="chat-profile-stat">\u2764\uFE0F <span>HP</span><strong>${formatNum(data.maxHP)}</strong></div>` +
-            `<div class="chat-profile-stat">\u2694\uFE0F <span>Damage</span><strong>${formatNum(data.damage)}</strong></div>` +
-            `<div class="chat-profile-stat">\u2692\uFE0F <span>Forge</span><strong>Lv.${data.forgeLevel}</strong></div>` +
+            `<div class="chat-profile-stat">\uD83D\uDD25 <span>${t('chat.power')}</span><strong>${formatNum(data.power)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2764\uFE0F <span>${t('chat.hp')}</span><strong>${formatNum(data.maxHP)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2694\uFE0F <span>${t('chat.damage')}</span><strong>${formatNum(data.damage)}</strong></div>` +
+            `<div class="chat-profile-stat">\u2692\uFE0F <span>${t('chat.forgeLabel')}</span><strong>Lv.${data.forgeLevel}</strong></div>` +
         `</div>` +
         `<div class="chat-profile-pvp-stats">` +
             `<span>\uD83C\uDFC6 ${data.pvpRating} ELO</span>` +
             `<span>\u2705 ${data.pvpWins}W</span>` +
             `<span>\u274C ${data.pvpLosses}L</span>` +
         `</div>` +
-        `<div class="chat-profile-section-title">Equipment</div>` +
+        `<div class="chat-profile-section-title">${t('chat.equipment')}</div>` +
         `<div class="chat-profile-equipment">${equipmentHtml}</div>` +
         moderationHtml +
         pvpBtnHtml;
@@ -500,23 +504,23 @@ function showCombatReplay(log) {
     const isP2Winner = log.winnerId === log.player2.userId;
 
     let turnsHtml = '';
-    (log.turns || []).forEach(t => {
+    (log.turns || []).forEach(tn => {
         turnsHtml += `<div class="replay-turn">` +
-            `<div class="replay-turn-num">Turn ${t.turn}</div>` +
+            `<div class="replay-turn-num">${t('chat.turn')} ${tn.turn}</div>` +
             `<div class="replay-turn-row">` +
-                `<span class="replay-action">${actionIcon(t.player1.action)} ${t.player1.damage > 0 ? t.player1.damage + ' dmg' : ''}${t.player1.isCrit ? ' CRIT!' : ''}</span>` +
-                `<span class="replay-hp">${Math.floor(t.player1.currentHP)}/${t.player1.maxHP}</span>` +
+                `<span class="replay-action">${actionIcon(tn.player1.action)} ${tn.player1.damage > 0 ? tn.player1.damage + ' ' + t('chat.dmg') : ''}${tn.player1.isCrit ? ' ' + t('chat.crit') : ''}</span>` +
+                `<span class="replay-hp">${Math.floor(tn.player1.currentHP)}/${tn.player1.maxHP}</span>` +
             `</div>` +
             `<div class="replay-turn-row">` +
-                `<span class="replay-action">${actionIcon(t.player2.action)} ${t.player2.damage > 0 ? t.player2.damage + ' dmg' : ''}${t.player2.isCrit ? ' CRIT!' : ''}</span>` +
-                `<span class="replay-hp">${Math.floor(t.player2.currentHP)}/${t.player2.maxHP}</span>` +
+                `<span class="replay-action">${actionIcon(tn.player2.action)} ${tn.player2.damage > 0 ? tn.player2.damage + ' ' + t('chat.dmg') : ''}${tn.player2.isCrit ? ' ' + t('chat.crit') : ''}</span>` +
+                `<span class="replay-hp">${Math.floor(tn.player2.currentHP)}/${tn.player2.maxHP}</span>` +
             `</div>` +
             `</div>`;
     });
 
     content.innerHTML =
         `<button class="modal-close-btn" id="chat-replay-close">\u2715</button>` +
-        `<div class="chat-combat-title">\u2694\uFE0F Combat Replay</div>` +
+        `<div class="chat-combat-title">\u2694\uFE0F ${t('chat.combatReplay')}</div>` +
         `<div class="chat-combat-players" style="margin-bottom:12px">` +
             `<div class="chat-combat-player ${isP1Winner ? 'chat-combat-winner' : ''}">` +
                 `<span class="chat-combat-avatar">${p1Emoji}</span>` +
@@ -565,7 +569,7 @@ function updatePreview() {
     if (recentMessages.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'chat-preview-empty';
-        empty.textContent = 'No messages yet';
+        empty.textContent = t('chat.noMessages');
         previewContainer.appendChild(empty);
         return;
     }

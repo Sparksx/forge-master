@@ -3,6 +3,8 @@
  * real-time combat, and power-weighted results.
  */
 
+import { t } from './i18n/i18n.js';
+import { gameEvents, EVENTS } from './events.js';
 import { getSocket } from './socket-client.js';
 import { getCurrentUser } from './auth.js';
 import { shareCombatInChat } from './chat.js';
@@ -41,6 +43,7 @@ export function initPvp() {
 
     setupSocketListeners();
     refreshPlayerCard();
+    gameEvents.on(EVENTS.LOCALE_CHANGED, refreshPlayerCard);
 }
 
 function setupSocketListeners() {
@@ -84,7 +87,7 @@ function setupSocketListeners() {
 
     socket.on('pvp:error', (data) => {
         const errorEl = document.getElementById('pvp-error');
-        if (errorEl) errorEl.textContent = data.message || 'PvP error';
+        if (errorEl) errorEl.textContent = data.message || t('pvp.error');
     });
 
     socket.on('pvp:leaderboard', (data) => {
@@ -157,7 +160,7 @@ function renderLeaderboard(players) {
     if (!list) return;
 
     if (!players || players.length === 0) {
-        list.innerHTML = '<div class="pvp-leaderboard-empty">No ranked players yet</div>';
+        list.innerHTML = `<div class="pvp-leaderboard-empty">${t('pvp.noRankedPlayers')}</div>`;
         return;
     }
 
@@ -209,7 +212,7 @@ function updateQueuePowerRange() {
     const low = Math.round(myPower * (1 - rangePct));
     const high = Math.round(myPower * (1 + rangePct));
 
-    el.textContent = `Power range: ${Math.max(0, low).toLocaleString()} - ${high.toLocaleString()}${expansions > 0 ? ' (expanding...)' : ''}`;
+    el.textContent = t('pvp.powerRange', { low: Math.max(0, low).toLocaleString(), high: high.toLocaleString() }) + (expansions > 0 ? ` ${t('pvp.expanding')}` : '');
 }
 
 // --- Match Info ---
@@ -238,7 +241,7 @@ function updateCombatUI(data) {
         line.className = 'pvp-log-entry';
         const yourAction = data.you.action;
         const theirAction = data.opponent.action;
-        line.textContent = `Turn ${data.turn}: You ${yourAction} (${data.opponent.damage} dmg taken) \u2014 Opponent ${theirAction} (${data.you.damage} dmg taken)`;
+        line.textContent = t('pvp.turnLog', { turn: data.turn, yourAction, oppDmg: data.opponent.damage, oppAction: theirAction, yourDmg: data.you.damage });
         log.appendChild(line);
         while (log.children.length > 20) {
             log.firstChild.remove();
@@ -294,13 +297,13 @@ function showResult(data) {
     const ratingChange = document.getElementById('pvp-rating-change');
 
     if (resultTitle) {
-        resultTitle.textContent = isDraw ? 'Draw!' : won ? 'Victory!' : 'Defeat!';
+        resultTitle.textContent = isDraw ? t('pvp.draw') : won ? t('pvp.victory') : t('pvp.defeat');
         resultTitle.className = `pvp-result-title ${isDraw ? 'draw' : won ? 'win' : 'loss'}`;
     }
 
     if (ratingChange) {
         const change = data.you.ratingChange;
-        ratingChange.textContent = `Rating: ${change >= 0 ? '+' : ''}${change}`;
+        ratingChange.textContent = t('pvp.ratingLabel', { change: `${change >= 0 ? '+' : ''}${change}` });
         ratingChange.className = `pvp-rating-change ${change >= 0 ? 'positive' : 'negative'}`;
     }
 
@@ -318,11 +321,11 @@ function showResult(data) {
         shareBtn = document.createElement('button');
         shareBtn.id = 'pvp-share-btn';
         shareBtn.className = 'btn pvp-share-btn';
-        shareBtn.textContent = '\uD83D\uDCE4 Share in Chat';
+        shareBtn.textContent = '\uD83D\uDCE4 ' + t('pvp.shareInChat');
         shareBtn.addEventListener('click', () => {
             shareCombatInChat(data.combatId);
             shareBtn.disabled = true;
-            shareBtn.textContent = '\u2705 Shared!';
+            shareBtn.textContent = '\u2705 ' + t('pvp.shared');
         });
         resultSection.appendChild(shareBtn);
     }

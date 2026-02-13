@@ -12,6 +12,8 @@ import {
 import { getResearchTime } from '../tech-config.js';
 import { getResearchState } from '../state.js';
 import { createElement, formatNumber, formatCompact, formatTime } from './helpers.js';
+import { t } from '../i18n/i18n.js';
+import { gameEvents, EVENTS } from '../events.js';
 
 let selectedBranch = 'forge';
 let techTimerInterval = null;
@@ -37,6 +39,8 @@ export function initTechUI() {
     });
 
     renderTechTree();
+
+    gameEvents.on(EVENTS.LOCALE_CHANGED, () => { initTechUI(); });
 }
 
 // ── Render everything ────────────────────────────────────
@@ -72,7 +76,7 @@ export function renderActiveResearch() {
         const header = createElement('div', 'research-banner');
 
         const title = createElement('div', 'research-banner-title',
-            `${tech.icon} ${tech.name} Niv.${research.active.level}`);
+            `${tech.icon} ${tech.name} ${t('tech.level', { level: research.active.level })}`);
         header.appendChild(title);
 
         const progressBar = createElement('div', 'research-progress-bar');
@@ -103,14 +107,14 @@ export function renderActiveResearch() {
     // Show queue
     if (queue.length > 0) {
         const queueDiv = createElement('div', 'research-queue');
-        const queueLabel = createElement('div', 'research-queue-label', `File d'attente (${queue.length}):`);
+        const queueLabel = createElement('div', 'research-queue-label', t('tech.queue', { count: queue.length }));
         queueDiv.appendChild(queueLabel);
 
         queue.forEach(entry => {
             const tech = getTechById(entry.techId);
             if (!tech) return;
             const item = createElement('div', 'research-queue-item',
-                `${tech.icon} ${tech.name} Niv.${entry.level}`);
+                `${tech.icon} ${tech.name} ${t('tech.level', { level: entry.level })}`);
             queueDiv.appendChild(item);
         });
 
@@ -187,11 +191,11 @@ function buildTechCard(tech) {
 
     // Bottom: action zone
     if (isMaxed) {
-        card.appendChild(createElement('div', 'tech-card-status tech-status-max', 'MAX'));
+        card.appendChild(createElement('div', 'tech-card-status tech-status-max', t('tech.max')));
     } else if (isBeingResearched) {
-        card.appendChild(createElement('div', 'tech-card-status tech-status-active', 'En cours...'));
+        card.appendChild(createElement('div', 'tech-card-status tech-status-active', t('tech.researching')));
     } else if (isQueued) {
-        card.appendChild(createElement('div', 'tech-card-status tech-status-queued', 'En file d\'attente'));
+        card.appendChild(createElement('div', 'tech-card-status tech-status-queued', t('tech.queued')));
     } else if (!isUnlocked) {
         // Show prerequisite info
         const reqText = buildRequiresText(tech);
@@ -214,7 +218,7 @@ function buildTechCard(tech) {
 
         actionRow.appendChild(createElement('span', 'tech-card-time', formatTime(time)));
 
-        const researchBtn = createElement('button', 'btn btn-research', 'Rechercher');
+        const researchBtn = createElement('button', 'btn btn-research', t('tech.research'));
         const hasActiveOrFull = !!research.active;
         const maxQueue = getTechEffect('researchQueue');
         const canQueue = hasActiveOrFull && research.queue.length < maxQueue;
@@ -226,14 +230,14 @@ function buildTechCard(tech) {
             researchBtn.disabled = true;
             researchBtn.classList.add('btn-disabled');
             if (maxQueue === 0) {
-                researchBtn.textContent = 'Occupé';
+                researchBtn.textContent = t('tech.busy');
             } else {
-                researchBtn.textContent = 'File pleine';
+                researchBtn.textContent = t('tech.queueFull');
             }
         }
 
         if (canAfford && hasActiveOrFull && canQueue) {
-            researchBtn.textContent = 'En file';
+            researchBtn.textContent = t('tech.enqueue');
         }
 
         researchBtn.addEventListener('click', () => {
@@ -254,17 +258,17 @@ function buildRequiresText(tech) {
     const addReqParts = (reqs) => {
         return reqs.map(req => {
             const reqTech = getTechById(req.tech);
-            return reqTech ? `${reqTech.name} Niv.${req.level}` : req.tech;
+            return reqTech ? `${reqTech.name} ${t('tech.level', { level: req.level })}` : req.tech;
         });
     };
 
     if (tech.altRequires) {
-        parts.push('1 maîtrise Niv.5');
+        parts.push(t('tech.mastery'));
     } else {
         parts.push(...addReqParts(tech.requires));
     }
 
-    return `Requiert: ${parts.join(' + ')}`;
+    return t('tech.requires', { reqs: parts.join(' + ') });
 }
 
 // ── Timer display ────────────────────────────────────────
