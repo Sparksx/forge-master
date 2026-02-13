@@ -5,6 +5,7 @@ import {
 } from './config.js';
 import { calculateItemStats, calculateStats, calculatePowerScore } from '../shared/stats.js';
 import { getEquipmentByType, getHighestLevelForSlot, trackForgedLevel, getForgeLevel, getTechEffect } from './state.js';
+import { pickTemplate } from './equipment-templates.js';
 
 // Re-export shared functions so existing imports keep working
 export { calculateItemStats, calculateStats, calculatePowerScore };
@@ -40,7 +41,7 @@ export function createItem(type, level, tier = 1) {
     const tierDef = TIERS[tier - 1];
     const bonuses = rollBonuses(tierDef.bonusCount);
 
-    return {
+    const item = {
         type,
         level,
         tier,
@@ -48,6 +49,18 @@ export function createItem(type, level, tier = 1) {
         statType: isHealthItem ? 'health' : 'damage',
         bonuses,
     };
+
+    // Assign a template (name + skin + sprite) if one exists for this type/tier
+    const template = pickTemplate(type, tier);
+    if (template) {
+        item.name = template.name;
+        item.skin = template.skin;
+        if (template.sprite) {
+            item.sprite = template.sprite;
+        }
+    }
+
+    return item;
 }
 
 export function rollTier(forgeLevel) {

@@ -17,6 +17,7 @@ import { gameEvents, EVENTS } from '../events.js';
 import { t } from '../i18n/i18n.js';
 import { createElement, formatNumber, formatCompact, formatTime, capitalizeFirst, buildItemCard, showToast, animateGoldToward, initGoldAnimation } from './helpers.js';
 import { renderProfileContent } from './profile-ui.js';
+import { getSpriteStyle } from '../equipment-templates.js';
 
 let forgeTimerInterval = null;
 let decisionModalCallback = null;
@@ -60,7 +61,8 @@ export function showForgeToast(item) {
     const tierDef = TIERS[(item.tier || 1) - 1];
     const icon = EQUIPMENT_ICONS[item.type] || '';
     const tierName = t('tiers.' + tierDef.name.toLowerCase());
-    showToast(t('forge.forged', { icon, tier: tierName, type: capitalizeFirst(item.type) }), 'forge');
+    const displayType = item.name || capitalizeFirst(item.type);
+    showToast(t('forge.forged', { icon, tier: tierName, type: displayType }), 'forge');
 }
 
 export function showSellToast({ item, goldEarned }) {
@@ -119,10 +121,32 @@ function renderSingleSlot(type) {
 
     const slotParent = slotElement.closest('.equipment-slot');
 
+    // Update the slot icon: show sprite if available, else keep emoji
+    const slotIcon = slotParent.querySelector('.slot-icon');
+    if (slotIcon) {
+        const spriteCSS = item ? getSpriteStyle(item.type, item.sprite) : '';
+        if (spriteCSS) {
+            slotIcon.classList.add('has-sprite');
+            slotIcon.style.cssText = spriteCSS;
+            slotIcon.textContent = '';
+        } else {
+            slotIcon.classList.remove('has-sprite');
+            slotIcon.style.cssText = '';
+            slotIcon.textContent = EQUIPMENT_ICONS[type] || '';
+        }
+    }
+
     if (item) {
         const tierDef = TIERS[(item.tier || 1) - 1];
         slotParent.style.borderColor = tierDef.color;
         slotParent.style.borderWidth = '2px';
+
+        // Show template name if available
+        if (item.name) {
+            const nameDiv = createElement('div', 'item-name', item.name);
+            nameDiv.style.color = tierDef.color;
+            slotElement.appendChild(nameDiv);
+        }
 
         const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
         levelDiv.style.color = tierDef.color;
