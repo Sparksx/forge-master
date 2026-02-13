@@ -10,7 +10,7 @@
 }
 
 #view-home .combat-zone {
-    flex: 1;
+    flex: 3;
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-panel) 40%, var(--bg-surface) 100%);
@@ -41,11 +41,11 @@
 }
 
 #view-home .forge-zone {
-    flex: 1;
+    flex: 2;
     display: flex;
     flex-direction: column;
     background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-card) 100%);
-    padding: clamp(8px, 1.5vw, 16px);
+    padding: clamp(6px, 1vw, 12px);
     min-height: 0;
     overflow-y: auto;
     border-top: 2px solid var(--border-medium);
@@ -422,28 +422,30 @@
     color: #ef5350;
 }
 
-/* Achievements FAB button */
+/* Achievements FAB button (inside combat zone) */
 .achievements-fab {
-    position: fixed;
-    bottom: 76px;
-    right: 12px;
-    width: 44px;
-    height: 44px;
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     border: 2px solid var(--border-medium);
     background: var(--bg-card);
-    font-size: 1.3em;
+    font-size: 1.1em;
     cursor: pointer;
-    z-index: 400;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 12px var(--shadow-strong);
+    box-shadow: 0 2px 8px var(--shadow-strong);
     transition: transform 0.2s, box-shadow 0.2s;
     -webkit-tap-highlight-color: transparent;
+    opacity: 0.8;
 }
 
 .achievements-fab:hover {
     transform: scale(1.1);
     box-shadow: 0 4px 16px var(--shadow-strong);
+    opacity: 1;
 }

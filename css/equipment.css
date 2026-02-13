@@ -3,31 +3,29 @@
    ============================================= */
 
 .equipment-display {
-    flex: 1;
-    min-height: 0;
+    flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     overflow: hidden;
 }
 
 .body-container {
     width: 100%;
-    height: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: clamp(6px, 1vw, 12px);
-    padding: clamp(4px, 0.5vw, 8px);
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto auto;
+    gap: clamp(4px, 0.8vw, 8px);
+    padding: clamp(2px, 0.4vw, 6px);
 }
 
 /* Equipment Slots */
 .equipment-slot {
     background: var(--bg-card);
     border-radius: 8px;
-    padding: clamp(4px, 0.8vw, 8px);
-    border: 1px solid var(--border-subtle);
+    padding: clamp(2px, 0.4vw, 4px);
+    border: 3px solid var(--border-subtle);
     transition: box-shadow 0.3s, border-color 0.3s, transform 0.15s;
     display: flex;
     flex-direction: column;
@@ -37,6 +35,7 @@
     overflow: hidden;
     cursor: pointer;
     position: relative;
+    aspect-ratio: 1;
 }
 
 .equipment-slot::before {
@@ -55,9 +54,9 @@
 }
 
 .slot-icon {
-    font-size: clamp(1.4em, 2.5vw, 2em);
+    font-size: clamp(1.6em, 3vw, 2.4em);
     line-height: 1;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
@@ -92,34 +91,12 @@
     font-size: clamp(0.75em, 1vw, 0.95em);
 }
 
-/* ── Rarity Badge (top-right corner of slot) ── */
-
-.slot-rarity-badge {
-    position: absolute;
-    top: 3px;
-    right: 3px;
-    width: clamp(14px, 2vw, 18px);
-    height: clamp(14px, 2vw, 18px);
-    border-radius: 50%;
-    font-size: clamp(0.5em, 0.7vw, 0.65em);
-    font-weight: 900;
-    font-family: var(--font-display);
-    color: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-    pointer-events: none;
-    z-index: 1;
-}
-
 /* ── Equipment Sprite ── */
 
 .slot-icon.has-sprite {
     font-size: 0;           /* hide the emoji text */
-    width: clamp(28px, 5vw, 40px);
-    height: clamp(28px, 5vw, 40px);
+    width: clamp(36px, 7vw, 52px);
+    height: clamp(36px, 7vw, 52px);
     background-repeat: no-repeat;
     image-rendering: pixelated;
     filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
