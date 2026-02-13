@@ -136,10 +136,14 @@ function renderSingleSlot(type) {
         }
     }
 
+    // Clear previous tier class
+    slotParent.className = slotParent.className.replace(/\btier-\w+/g, '').trim();
+
     if (item) {
         const tierDef = TIERS[(item.tier || 1) - 1];
         slotParent.style.borderColor = tierDef.color;
         slotParent.style.boxShadow = `0 0 8px ${tierDef.color}33, inset 0 0 12px ${tierDef.color}11`;
+        slotParent.classList.add(`tier-${tierDef.name.toLowerCase()}`);
 
         const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
         levelDiv.style.color = tierDef.color;
@@ -839,3 +843,18 @@ export function updateUI() {
 
 // Re-render translatable UI when locale changes
 gameEvents.on(EVENTS.LOCALE_CHANGED, () => { updateEquipmentSlots(); });
+
+// Pulse animation when an item is equipped
+gameEvents.on(EVENTS.ITEM_EQUIPPED, (item) => {
+    const slot = document.querySelector(`.equipment-slot[data-type="${item.type}"]`);
+    if (!slot) return;
+    const tierDef = TIERS[(item.tier || 1) - 1];
+    slot.style.setProperty('--pulse-color', tierDef.color + '80');
+    slot.classList.remove('slot-equip-pulse');
+    // Force reflow to restart animation
+    void slot.offsetWidth;
+    slot.classList.add('slot-equip-pulse');
+    slot.addEventListener('animationend', () => {
+        slot.classList.remove('slot-equip-pulse');
+    }, { once: true });
+});
