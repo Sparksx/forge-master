@@ -7,6 +7,16 @@ let refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('f
 let onAuthLost = null; // callback when auth is completely lost
 const FETCH_TIMEOUT = 10000; // 10s timeout for API requests
 
+// Cross-tab sync: when another tab rotates the refresh token via setTokens(),
+// localStorage fires a 'storage' event in all OTHER tabs. Keep in-memory copy in sync.
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'fm_refresh_token') {
+            refreshToken = e.newValue;
+        }
+    });
+}
+
 function withTimeout(options, timeoutMs = FETCH_TIMEOUT) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
