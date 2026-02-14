@@ -281,6 +281,7 @@ export function getTotalItemsSold() {
 // Centralized counter: increment on every ITEM_SOLD event regardless of source
 gameEvents.on(EVENTS.ITEM_SOLD, () => {
     gameState.totalItemsSold++;
+    saveGame();
 });
 
 export function addGold(amount) {
