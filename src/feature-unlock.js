@@ -1,5 +1,5 @@
 import { gameEvents, EVENTS } from './events.js';
-import { getEquipment, getForgeLevel, getCombatProgress } from './state.js';
+import { getEquipment, getForgeLevel, getCombatProgress, getTotalItemsSold } from './state.js';
 import { showToast } from './ui/helpers.js';
 import { t } from './i18n/i18n.js';
 
@@ -9,7 +9,7 @@ const FEATURES = [
         id: 'forgeUpgrade',
         label: 'Forge Upgrade',
         toastKey: 'featureUnlock.forgeUpgrade',
-        condition: () => countEquipped() >= 2,
+        condition: () => getTotalItemsSold() >= 2,
         selectors: ['#forge-upgrade-btn'],
     },
     {
@@ -67,6 +67,18 @@ const FEATURES = [
         toastKey: 'featureUnlock.pvp',
         condition: () => getOverallSubWave() >= 40,
         selectors: ['.nav-tab[data-tab="pvp"]'],
+    },
+    {
+        id: 'dungeon',
+        label: 'Dungeon',
+        condition: () => false,
+        selectors: ['.nav-tab[data-tab="dungeon"]'],
+    },
+    {
+        id: 'pets',
+        label: 'Pets',
+        condition: () => false,
+        selectors: ['.sub-tab[data-subtab="pets"]'],
     },
 ];
 
@@ -152,18 +164,17 @@ export function initFeatureUnlock() {
         }
     }
 
-    // The upgrade tab defaults to skills sub-tab, but if skills is locked and techs is
-    // unlocked, switch the default active sub-tab to techs
-    if (unlockedSet.has('upgrade') && !unlockedSet.has('skills')) {
+    // Default sub-tab is techs in HTML. If skills is unlocked, switch to skills as default.
+    if (unlockedSet.has('upgrade') && unlockedSet.has('skills')) {
         const skillsTab = document.querySelector('.sub-tab[data-subtab="skills"]');
         const techsTab = document.querySelector('.sub-tab[data-subtab="techs"]');
         const skillsContent = document.getElementById('subtab-skills');
         const techsContent = document.getElementById('subtab-techs');
         if (skillsTab && techsTab && skillsContent && techsContent) {
-            skillsTab.classList.remove('active');
-            techsTab.classList.add('active');
-            skillsContent.classList.remove('active');
-            techsContent.classList.add('active');
+            techsTab.classList.remove('active');
+            skillsTab.classList.add('active');
+            techsContent.classList.remove('active');
+            skillsContent.classList.add('active');
         }
     }
 

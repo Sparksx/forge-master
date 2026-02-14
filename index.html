@@ -214,21 +214,16 @@
                 <!-- Wave indicator -->
                 <div class="wave-indicator" aria-label="Wave progress">
                     <span class="wave-label" id="wave-label" aria-live="polite">Wave 1-1</span>
-                    <div class="wave-progress-bar" role="progressbar" aria-label="Dungeon progress" aria-valuemin="0" aria-valuemax="100">
-                        <div class="wave-progress-fill" id="wave-progress-fill"></div>
-                    </div>
                 </div>
 
                 <!-- Combat Arena -->
                 <div class="combat-arena" role="region" aria-label="Combat arena">
                     <!-- Player Side -->
                     <div class="combatant combatant-player" id="combatant-player">
-                        <div class="combatant-emoji" id="player-emoji" aria-hidden="true">🧙</div>
-                        <div class="combatant-name" data-i18n="combat.you">You</div>
                         <div class="hp-bar-container" role="progressbar" aria-label="Player health" aria-valuemin="0" aria-valuemax="100">
                             <div class="hp-bar hp-bar-player" id="player-hp-bar"></div>
-                            <span class="hp-text" id="player-hp-text">100 / 100</span>
                         </div>
+                        <div class="combatant-emoji" id="player-emoji" aria-hidden="true">🧙</div>
                         <div class="damage-numbers damage-numbers-player" id="damage-numbers-player" aria-hidden="true"></div>
                     </div>
 
@@ -326,7 +321,7 @@
 
                 <!-- Chat Preview (2 lines, click to open full chat) -->
                 <div class="chat-preview" id="chat-preview" role="button" tabindex="0" aria-label="Open chat">
-                    <div class="chat-preview-label" aria-hidden="true">💬 <span data-i18n="nav.home">Chat</span></div>
+                    <div class="chat-preview-label" aria-hidden="true">💬 <span data-i18n="chat.title">Chat</span></div>
                     <div class="chat-preview-messages" id="chat-preview-messages">
                         <div class="chat-preview-empty" data-i18n="chat.noMessages">No messages yet</div>
                     </div>
@@ -337,16 +332,16 @@
         <section class="tab-view" id="view-upgrade" role="tabpanel" aria-label="Upgrade">
             <div class="container">
                 <div class="sub-tab-nav" id="upgrade-sub-nav" role="tablist" aria-label="Upgrade categories">
-                    <button class="sub-tab active" data-subtab="skills" role="tab" aria-selected="true" aria-controls="subtab-skills">⚡ <span data-i18n-key="skills">Skills</span></button>
+                    <button class="sub-tab" data-subtab="skills" role="tab" aria-selected="false" aria-controls="subtab-skills">⚡ <span data-i18n-key="skills">Skills</span></button>
                     <button class="sub-tab" data-subtab="pets" role="tab" aria-selected="false" aria-controls="subtab-pets">🐾 Pets</button>
-                    <button class="sub-tab" data-subtab="techs" role="tab" aria-selected="false" aria-controls="subtab-techs">🔧 Techs</button>
+                    <button class="sub-tab active" data-subtab="techs" role="tab" aria-selected="true" aria-controls="subtab-techs">🔧 Techs</button>
                 </div>
-                <div class="sub-tab-content active" id="subtab-skills" role="tabpanel" aria-labelledby="subtab-skills">
+                <div class="sub-tab-content" id="subtab-skills" role="tabpanel" aria-labelledby="subtab-skills">
                 </div>
                 <div class="sub-tab-content" id="subtab-pets" role="tabpanel" aria-labelledby="subtab-pets">
                     <div class="placeholder-content"><p>Pets coming soon...</p></div><!-- Pets not translatable yet -->
                 </div>
-                <div class="sub-tab-content" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
+                <div class="sub-tab-content active" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
                     <div class="tech-tree-container">
                         <!-- Essence display -->
                         <div class="tech-essence-display" id="tech-essence-display" aria-label="Essence amount">
@@ -412,7 +407,7 @@
         <!-- Full-page Chat Overlay -->
         <div class="chat-fullpage" id="chat-panel" role="dialog" aria-label="Chat" aria-modal="true">
             <div class="chat-header">
-                <span>💬 <span data-i18n="chat.send">Chat</span></span>
+                <span>💬 <span data-i18n="chat.title">Chat</span></span>
                 <button class="chat-close-btn" id="chat-close" aria-label="Close chat">✕</button>
             </div>
             <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>

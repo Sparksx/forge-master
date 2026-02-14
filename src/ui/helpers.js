@@ -205,6 +205,9 @@ export function initGoldAnimation(currentGold) {
     goldAnim.displayed = currentGold;
     goldAnim.target = currentGold;
     goldAnim.pending = 0;
+    // Sync DOM immediately so gold shows correct value on load
+    const amountEl = document.getElementById('gold-amount');
+    if (amountEl) amountEl.textContent = formatCompact(currentGold);
 }
 
 // ===== Essence Gain Animation =====

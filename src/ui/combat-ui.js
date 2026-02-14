@@ -1,6 +1,6 @@
 import { getCombatProgress, getEquippedSkills } from '../state.js';
 import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
-import { getWaveLabel, getMaxWaveCount, SUB_WAVE_COUNT, getMonsterSpriteStyle } from '../monsters.js';
+import { getWaveLabel, getMonsterSpriteStyle } from '../monsters.js';
 import { createElement, formatNumber } from './helpers.js';
 import { getSkillById, getSkillCooldown, getSkillTier } from '../skills-config.js';
 import { canActivateSkill, activateSkill, getCooldownRemaining, getSkillLevel, isEffectActive } from '../skills.js';
@@ -29,23 +29,16 @@ export function renderMonsters(data) {
         } else {
             emoji.textContent = m.emoji;
         }
-        const info = createElement('div', 'monster-row-info');
-
-        const name = createElement('div', 'monster-row-name', m.name);
-        name.style.color = m.color;
 
         const hpContainer = createElement('div', 'hp-bar-container');
         const hpBar = createElement('div', 'hp-bar hp-bar-monster');
         hpBar.id = `monster-hp-bar-${i}`;
-        const hpText = createElement('span', 'hp-text');
-        hpText.id = `monster-hp-text-${i}`;
-        hpContainer.append(hpBar, hpText);
+        hpContainer.append(hpBar);
 
         const dmgContainer = createElement('div', 'damage-numbers damage-numbers-monster');
         dmgContainer.id = `damage-numbers-monster-${i}`;
 
-        info.append(name, hpContainer);
-        row.append(emoji, info, dmgContainer);
+        row.append(hpContainer, emoji, dmgContainer);
         container.appendChild(row);
     });
 
@@ -70,12 +63,10 @@ export function updateCombatUI() {
     if (!player || monsters.length === 0) return;
 
     const playerHPBar = document.getElementById('player-hp-bar');
-    const playerHPText = document.getElementById('player-hp-text');
-    if (playerHPBar && playerHPText) {
+    if (playerHPBar) {
         const playerHPPct = Math.max(0, (player.currentHP / player.maxHP) * 100);
         playerHPBar.style.width = `${playerHPPct}%`;
         playerHPBar.className = `hp-bar hp-bar-player ${getHPColorClass(playerHPPct)}`;
-        playerHPText.textContent = `${formatNumber(Math.ceil(player.currentHP))} / ${formatNumber(player.maxHP)}`;
     }
 
     updateAllMonstersHP(monsters, getCurrentMonsterIndex());
@@ -84,13 +75,11 @@ export function updateCombatUI() {
 function updateAllMonstersHP(monsters, focusIndex) {
     monsters.forEach((m, i) => {
         const bar = document.getElementById(`monster-hp-bar-${i}`);
-        const text = document.getElementById(`monster-hp-text-${i}`);
-        if (!bar || !text) return;
+        if (!bar) return;
 
         const pct = Math.max(0, (m.currentHP / m.maxHP) * 100);
         bar.style.width = `${pct}%`;
         bar.className = `hp-bar hp-bar-monster ${getHPColorClass(pct)}`;
-        text.textContent = `${formatNumber(Math.max(0, Math.ceil(m.currentHP)))} / ${formatNumber(m.maxHP)}`;
 
         const row = bar.closest('.monster-row');
         if (row) {
@@ -142,13 +131,6 @@ export function updateWaveDisplay() {
     const { currentWave, currentSubWave } = getCombatProgress();
     const waveLabel = document.getElementById('wave-label');
     if (waveLabel) waveLabel.textContent = `${t('combat.wave')} ${getWaveLabel(currentWave, currentSubWave)}`;
-
-    const progressFill = document.getElementById('wave-progress-fill');
-    if (progressFill) {
-        const total = getMaxWaveCount() * SUB_WAVE_COUNT;
-        const current = (currentWave - 1) * SUB_WAVE_COUNT + currentSubWave;
-        progressFill.style.width = `${(current / total) * 100}%`;
-    }
 }
 
 export function showDamageNumber(damage, type, isCrit, monsterIndex) {

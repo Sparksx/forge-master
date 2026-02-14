@@ -52,45 +52,45 @@
 /* ── Light Theme Override ── */
 [data-theme="light"] {
     /* Core palette */
-    --bg-dark: #e0dcd4;
-    --bg-panel: #f2efe8;
-    --bg-card: #ffffff;
-    --bg-card-hover: #ece8e0;
-    --bg-surface: #e8e4da;
+    --bg-dark: #ddd8cc;
+    --bg-panel: #efe9de;
+    --bg-card: #faf8f4;
+    --bg-card-hover: #e6e0d4;
+    --bg-surface: #e2dccf;
 
     /* Borders (stronger for better contrast) */
-    --border-subtle: rgba(100, 80, 40, 0.2);
-    --border-medium: rgba(100, 80, 40, 0.35);
-    --border-strong: rgba(100, 80, 40, 0.5);
+    --border-subtle: rgba(80, 60, 20, 0.25);
+    --border-medium: rgba(80, 60, 20, 0.40);
+    --border-strong: rgba(80, 60, 20, 0.60);
 
     /* Gold accents (darker for contrast on light bg) */
-    --gold: #8a6814;
-    --gold-light: #b88c1c;
-    --gold-dark: #6a5010;
-    --gold-glow: rgba(138, 104, 20, 0.2);
+    --gold: #7a5a0a;
+    --gold-light: #a07010;
+    --gold-dark: #5a4008;
+    --gold-glow: rgba(122, 90, 10, 0.22);
 
-    /* Text (stronger contrast) */
+    /* Text (much stronger contrast) */
     --text-primary: #1a1408;
-    --text-secondary: #504430;
-    --text-muted: #80725e;
+    --text-secondary: #3a3020;
+    --text-muted: #5e5240;
 
-    /* Game accents (adjusted for light bg) */
-    --accent-purple: #6a3ec8;
-    --accent-cyan: #0277bd;
-    --accent-green: #1b5e20;
-    --accent-red: #b71c1c;
+    /* Game accents (adjusted for light bg — vivid, not pastel) */
+    --accent-purple: #5a2ea8;
+    --accent-cyan: #015f99;
+    --accent-green: #145218;
+    --accent-red: #a01515;
 
     /* Theme-adaptive helpers */
     --text-on-gold: #ffffff;
-    --overlay-soft: rgba(0, 0, 0, 0.08);
-    --overlay-border: rgba(0, 0, 0, 0.12);
-    --shadow-strong: rgba(0, 0, 0, 0.18);
-    --btn-secondary-from: #5a5f98;
-    --btn-secondary-to: #6a6fb0;
-    --btn-secondary-hover-from: #6a6fb0;
-    --btn-secondary-hover-to: #7a7fc8;
-    --bg-header: linear-gradient(180deg, #f2efe8 0%, #e8e4da 100%);
-    --bg-nav: linear-gradient(0deg, #ece8e0 0%, #f2efe8 100%);
+    --overlay-soft: rgba(0, 0, 0, 0.10);
+    --overlay-border: rgba(0, 0, 0, 0.16);
+    --shadow-strong: rgba(0, 0, 0, 0.22);
+    --btn-secondary-from: #4a4f82;
+    --btn-secondary-to: #5a5f9a;
+    --btn-secondary-hover-from: #5a5f9a;
+    --btn-secondary-hover-to: #6a6fb5;
+    --bg-header: linear-gradient(180deg, #efe9de 0%, #e2dccf 100%);
+    --bg-nav: linear-gradient(0deg, #e6e0d4 0%, #efe9de 100%);
 }
 
 * {

@@ -49,6 +49,7 @@ export default {
         autoForge: 'Auto Forge',
     },
     chat: {
+        title: 'Chat',
         typeMessage: 'Type a message...',
         send: 'Send',
         noMessages: 'No messages yet',
