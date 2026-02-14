@@ -1,6 +1,7 @@
 import { getCombatProgress, getEquippedSkills } from '../state.js';
 import { getPlayerCombatState, getAllMonsters, getCurrentMonsterIndex } from '../combat.js';
-import { getWaveLabel, getMonsterSpriteStyle } from '../monsters.js';
+import { getWaveLabel, getMonsterSpriteStyle, getMonsterSpriteStyleFromDB } from '../monsters.js';
+import { getPlayerSpriteStyle } from '../player-templates.js';
 import { createElement, formatNumber } from './helpers.js';
 import { getSkillById, getSkillCooldown, getSkillTier } from '../skills-config.js';
 import { canActivateSkill, activateSkill, getCooldownRemaining, getSkillLevel, isEffectActive } from '../skills.js';
@@ -23,7 +24,12 @@ export function renderMonsters(data) {
         row.dataset.index = i;
 
         const emoji = createElement('div', 'monster-row-emoji');
-        if (m.sprite) {
+        if (m.spriteDB) {
+            // DB-based pixel sprite data
+            emoji.classList.add('has-sprite');
+            emoji.style.cssText = getMonsterSpriteStyleFromDB(m.spriteDB);
+        } else if (m.sprite) {
+            // Fallback grid-based sprite (col, row)
             emoji.classList.add('has-sprite');
             emoji.style.cssText = getMonsterSpriteStyle(m.sprite[0], m.sprite[1]);
         } else {
@@ -100,15 +106,12 @@ export function updateCombatInfo(data) {
     renderMonsters(data);
     updateWaveDisplay();
 
-    // Set player sprite (first skin from players.png)
+    // Set player sprite from DB template (or fallback to first skin)
     const playerEmoji = document.getElementById('player-emoji');
     if (playerEmoji && !playerEmoji.classList.contains('has-sprite')) {
+        const playerStyle = getPlayerSpriteStyle();
         playerEmoji.classList.add('has-sprite');
-        // players.png: 1536×1024, 4 cols × 2 rows → first skin at (0,0), cell 384×512
-        playerEmoji.style.cssText =
-            'background-image:url(/assets/players.png);' +
-            'background-size:400% 200%;' +
-            'background-position:0% 0%;';
+        playerEmoji.style.cssText = playerStyle;
         playerEmoji.textContent = '';
     }
 

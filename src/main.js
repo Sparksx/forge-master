@@ -46,6 +46,8 @@ import { getAccessToken } from './api.js';
 import { initAdminUI } from './ui/admin-ui.js';
 import { initFeatureUnlock } from './feature-unlock.js';
 import { loadTemplatesFromAPI } from './equipment-templates.js';
+import { loadMonsterTemplatesFromAPI } from './monsters.js';
+import { loadPlayerTemplatesFromAPI } from './player-templates.js';
 
 // PWA: Register service worker
 if ('serviceWorker' in navigator) {
@@ -203,8 +205,12 @@ function showForgedBatch(items) {
 
 // Start the game after successful auth
 async function startGame() {
-    // Load equipment templates from DB (falls back to hardcoded if API unavailable)
-    await loadTemplatesFromAPI();
+    // Load templates from DB (falls back to hardcoded if API unavailable)
+    await Promise.all([
+        loadTemplatesFromAPI(),
+        loadMonsterTemplatesFromAPI(),
+        loadPlayerTemplatesFromAPI(),
+    ]);
 
     // Load game state from server if authenticated, otherwise localStorage
     if (getAccessToken()) {
