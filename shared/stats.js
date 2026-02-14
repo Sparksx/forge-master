@@ -27,12 +27,12 @@ export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
 
 export const TIERS = [
     { id: 1, name: 'Common',    color: '#9d9d9d', bonusCount: 0 },
-    { id: 2, name: 'Uncommon',  color: '#1eff00', bonusCount: 1 },
-    { id: 3, name: 'Rare',      color: '#0070dd', bonusCount: 1 },
-    { id: 4, name: 'Epic',      color: '#a335ee', bonusCount: 1 },
-    { id: 5, name: 'Legendary', color: '#ff8000', bonusCount: 2 },
-    { id: 6, name: 'Mythic',    color: '#ff0000', bonusCount: 2 },
-    { id: 7, name: 'Divine',    color: '#ffd700', bonusCount: 3 },
+    { id: 2, name: 'Uncommon',  color: '#4F772D', bonusCount: 1 },
+    { id: 3, name: 'Rare',      color: '#4A7FB5', bonusCount: 1 },
+    { id: 4, name: 'Epic',      color: '#7B5EA7', bonusCount: 1 },
+    { id: 5, name: 'Legendary', color: '#C4822B', bonusCount: 2 },
+    { id: 6, name: 'Mythic',    color: '#A63D3D', bonusCount: 2 },
+    { id: 7, name: 'Divine',    color: '#C9A84C', bonusCount: 3 },
 ];
 
 export const MAX_TIER = TIERS.length;

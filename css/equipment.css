@@ -49,12 +49,12 @@
 /* ── Tier-colored radial background ── */
 
 .equipment-slot.tier-common::before  { background: radial-gradient(ellipse at center, rgba(157,157,157,0.06) 0%, transparent 70%); }
-.equipment-slot.tier-uncommon::before { background: radial-gradient(ellipse at center, rgba(30,255,0,0.08) 0%, transparent 70%); }
-.equipment-slot.tier-rare::before    { background: radial-gradient(ellipse at center, rgba(0,112,221,0.10) 0%, transparent 70%); }
-.equipment-slot.tier-epic::before    { background: radial-gradient(ellipse at center, rgba(163,53,238,0.10) 0%, transparent 70%); }
-.equipment-slot.tier-legendary::before { background: radial-gradient(ellipse at center, rgba(255,128,0,0.12) 0%, transparent 70%); }
-.equipment-slot.tier-mythic::before  { background: radial-gradient(ellipse at center, rgba(255,0,0,0.12) 0%, transparent 70%); }
-.equipment-slot.tier-divine::before  { background: radial-gradient(ellipse at center, rgba(255,215,0,0.14) 0%, transparent 70%); }
+.equipment-slot.tier-uncommon::before { background: radial-gradient(ellipse at center, rgba(79,119,45,0.08) 0%, transparent 70%); }
+.equipment-slot.tier-rare::before    { background: radial-gradient(ellipse at center, rgba(74,127,181,0.10) 0%, transparent 70%); }
+.equipment-slot.tier-epic::before    { background: radial-gradient(ellipse at center, rgba(123,94,167,0.10) 0%, transparent 70%); }
+.equipment-slot.tier-legendary::before { background: radial-gradient(ellipse at center, rgba(196,130,43,0.12) 0%, transparent 70%); }
+.equipment-slot.tier-mythic::before  { background: radial-gradient(ellipse at center, rgba(166,61,61,0.12) 0%, transparent 70%); }
+.equipment-slot.tier-divine::before  { background: radial-gradient(ellipse at center, rgba(201,168,76,0.14) 0%, transparent 70%); }
 
 /* ── Shimmer sweep for Legendary+ ── */
 
@@ -92,9 +92,9 @@
     background: linear-gradient(
         105deg,
         transparent 40%,
-        rgba(255, 215, 0, 0.15) 45%,
-        rgba(255, 215, 0, 0.30) 50%,
-        rgba(255, 215, 0, 0.15) 55%,
+        rgba(201, 168, 76, 0.15) 45%,
+        rgba(201, 168, 76, 0.30) 50%,
+        rgba(201, 168, 76, 0.15) 55%,
         transparent 60%
     );
 }
