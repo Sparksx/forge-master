@@ -31,12 +31,10 @@ export function connectSocket({ onReconnect } = {}) {
 
     socket.on('connect', () => {
         if (!hasConnectedOnce) {
-            console.log('Socket connected');
             hasConnectedOnce = true;
             return;
         }
         // This is a reconnection — re-register listeners and refresh auth
-        console.log('Socket reconnected');
         onReconnectCallback?.();
     });
 
@@ -54,15 +52,16 @@ export function connectSocket({ onReconnect } = {}) {
     });
 
     socket.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason);
         // If disconnected by the server (e.g. auth expired, kick), refresh auth and reconnect
         if (reason === 'io server disconnect') {
-            refreshAccessToken().then((refreshed) => {
+            refreshAccessToken().then((_refreshed) => {
                 const freshToken = getAccessToken();
                 if (freshToken && socket) {
                     socket.auth = { token: freshToken };
                     socket.connect();
                 }
+            }).catch((err) => {
+                console.error('Socket reconnect auth refresh failed:', err);
             });
         }
         // For other reasons (transport close, ping timeout), Socket.io auto-reconnects

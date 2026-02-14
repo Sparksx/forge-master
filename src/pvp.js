@@ -171,9 +171,9 @@ function renderLeaderboard(players) {
         return `<div class="pvp-lb-row${isMe ? ' pvp-lb-me' : ''}">
             <span class="pvp-lb-pos">#${i + 1}</span>
             <span class="pvp-lb-name">${rank.icon} ${escapeHtml(p.username)}</span>
-            <span class="pvp-lb-elo">${p.rating}</span>
-            <span class="pvp-lb-power">${p.power.toLocaleString()}</span>
-            <span class="pvp-lb-record">${p.wins}W ${p.losses}L</span>
+            <span class="pvp-lb-elo">${p.rating || 0}</span>
+            <span class="pvp-lb-power">${(p.power || 0).toLocaleString()}</span>
+            <span class="pvp-lb-record">${p.wins || 0}W ${p.losses || 0}L</span>
         </div>`;
     }).join('');
 }

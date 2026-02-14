@@ -582,21 +582,24 @@ router.put('/settings', requireAuth, async (req, res) => {
     }
 
     try {
-        // Merge with existing settings
-        const user = await prisma.user.findUnique({
-            where: { id: req.user.userId },
-            select: { settings: true },
+        // Use a transaction to atomically read-merge-write settings
+        const updated = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.findUnique({
+                where: { id: req.user.userId },
+                select: { settings: true },
+            });
+
+            const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
+            const merged = { ...current, ...settings };
+
+            return tx.user.update({
+                where: { id: req.user.userId },
+                data: { settings: merged },
+                select: { settings: true },
+            });
         });
 
-        const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-        const merged = { ...current, ...settings };
-
-        await prisma.user.update({
-            where: { id: req.user.userId },
-            data: { settings: merged },
-        });
-
-        res.json({ message: 'Settings updated', settings: merged });
+        res.json({ message: 'Settings updated', settings: updated.settings });
     } catch (err) {
         console.error('Update settings error:', err);
         res.status(500).json({ error: 'Internal server error' });
