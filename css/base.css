@@ -315,7 +315,6 @@ h1 {
 
 /* ── Forge ── */
 [data-theme="light"] .forge-btn {
-    color: var(--text-on-gold);
     text-shadow: none;
 }
 
