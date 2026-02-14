@@ -128,6 +128,8 @@ const gameState = {
         copies: {},     // { [skillId]: totalCopiesForged }
         shards: 0,      // earned through combat sub-wave completions
     },
+    // Counters
+    totalItemsSold: 0,
     // Shop state (persisted with game save to prevent re-claiming after cache clear)
     shopState: {
         claimedMilestones: [],
@@ -149,6 +151,7 @@ export function resetGame() {
     gameState.essence = 0;
     gameState.research = { completed: {}, active: null, queue: [] };
     gameState.skills = { unlocked: {}, equipped: [], copies: {}, shards: 0 };
+    gameState.totalItemsSold = 0;
 }
 
 // --- Player level getters / setters ---
@@ -270,6 +273,15 @@ export function setForgedItem(item) {
 export function getGold() {
     return gameState.gold;
 }
+
+export function getTotalItemsSold() {
+    return gameState.totalItemsSold;
+}
+
+// Centralized counter: increment on every ITEM_SOLD event regardless of source
+gameEvents.on(EVENTS.ITEM_SOLD, () => {
+    gameState.totalItemsSold++;
+});
 
 export function addGold(amount) {
     gameState.gold += amount;
@@ -640,6 +652,7 @@ function buildSaveData() {
         essence: gameState.essence,
         research: gameState.research,
         skills: gameState.skills,
+        totalItemsSold: gameState.totalItemsSold,
     };
     return data;
 }
@@ -871,6 +884,11 @@ function applyLoadedData(loaded) {
         if (typeof shopData.dailyStreak === 'number' && shopData.dailyStreak >= 0) {
             gameState.shopState.dailyStreak = Math.floor(shopData.dailyStreak);
         }
+    }
+
+    // Restore items sold counter
+    if (typeof loaded.totalItemsSold === 'number' && loaded.totalItemsSold >= 0) {
+        gameState.totalItemsSold = Math.floor(loaded.totalItemsSold);
     }
 
     // Restore forge upgrade timer
