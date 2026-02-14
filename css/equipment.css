@@ -16,7 +16,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: auto auto;
-    gap: clamp(6px, 1.2vw, 12px);
+    gap: clamp(10px, 2vw, 18px);
     padding: clamp(4px, 0.8vw, 8px);
 }
 
@@ -24,9 +24,9 @@
 .equipment-slot {
     background: var(--bg-card);
     border-radius: 6px;
-    padding: clamp(2px, 0.3vw, 3px);
-    border: 2px solid var(--border-subtle);
-    transition: box-shadow 0.3s, border-color 0.3s, transform 0.15s;
+    padding: 8px;
+    border: 2px solid #000;
+    transition: box-shadow 0.3s, background-color 0.3s, transform 0.15s;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -119,7 +119,6 @@
 
 .equipment-slot:hover {
     box-shadow: 0 0 12px rgba(240, 192, 64, 0.15), 0 4px 8px rgba(0, 0, 0, 0.3);
-    border-color: var(--border-medium);
     transform: translateY(-1px);
 }
 
@@ -136,6 +135,16 @@
     justify-content: center;
     align-items: center;
     min-height: 0;
+}
+
+/* When a sprite is shown, overlay the slot-content on the image */
+.slot-icon.has-sprite ~ .slot-content {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    left: auto;
+    z-index: 2;
+    min-height: auto;
 }
 
 .empty-slot {
@@ -156,17 +165,22 @@
 }
 
 .item-level {
-    font-weight: bold;
-    color: var(--text-secondary);
-    font-size: clamp(0.75em, 1vw, 0.95em);
+    font-weight: 900;
+    color: #fff;
+    font-size: clamp(0.7em, 1vw, 0.9em);
+    -webkit-text-stroke: 1.5px #000;
+    paint-order: stroke fill;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.8);
+    line-height: 1;
 }
 
 /* ── Equipment Sprite ── */
 
 .slot-icon.has-sprite {
     font-size: 0;           /* hide the emoji text */
-    width: clamp(38px, 8vw, 56px);
-    height: clamp(38px, 8vw, 56px);
+    flex: 1;
+    width: 100%;
+    min-height: 0;
     background-repeat: no-repeat;
     image-rendering: pixelated;
     filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));

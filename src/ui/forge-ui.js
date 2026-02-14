@@ -141,15 +141,14 @@ function renderSingleSlot(type) {
 
     if (item) {
         const tierDef = TIERS[(item.tier || 1) - 1];
-        slotParent.style.borderColor = tierDef.color;
-        slotParent.style.boxShadow = `0 0 8px ${tierDef.color}33, inset 0 0 12px ${tierDef.color}11`;
+        slotParent.style.backgroundColor = tierDef.color;
+        slotParent.style.boxShadow = `0 0 8px ${tierDef.color}33`;
         slotParent.classList.add(`tier-${tierDef.name.toLowerCase()}`);
 
         const levelDiv = createElement('div', 'item-level', `Lv.${item.level}`);
-        levelDiv.style.color = tierDef.color;
         slotElement.appendChild(levelDiv);
     } else {
-        slotParent.style.borderColor = '';
+        slotParent.style.backgroundColor = '';
         slotParent.style.boxShadow = '';
         const emptySpan = createElement('span', 'empty-slot', t('forge.empty'));
         slotElement.appendChild(emptySpan);
