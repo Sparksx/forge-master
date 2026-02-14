@@ -100,10 +100,9 @@ export async function loadMonsterTemplatesFromAPI() {
                 dmgMultiplier: t.dmgMultiplier ?? 1,
                 speedModifier: t.speedModifier ?? 0,
             }));
-            console.log(`[Monsters] Loaded ${data.templates.length} monster templates from database`);
         }
     } catch {
-        console.log('[Monsters] Using fallback monster templates (API unavailable)');
+        // API unavailable — use fallback monster templates
     }
 }
 

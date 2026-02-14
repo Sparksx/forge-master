@@ -265,8 +265,8 @@ function appendMessage(msg) {
     if (delBtn) {
         delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const msgId = parseInt(delBtn.dataset.deleteId);
-            if (msgId && confirm(t('chat.deleteConfirm'))) {
+            const msgId = parseInt(delBtn.dataset.deleteId, 10);
+            if (!isNaN(msgId) && confirm(t('chat.deleteConfirm'))) {
                 deleteChatMessage(msgId);
             }
         });
@@ -470,13 +470,15 @@ function wireModActions(container, targetUserId, modal) {
                     const reason = prompt('Raison du mute:');
                     if (!reason) return;
                     const duration = prompt('Dur\u00e9e en minutes (d\u00e9faut: 30):', '30');
-                    await muteUser(targetUserId, reason, parseInt(duration) || 30);
+                    const parsedDuration = parseInt(duration, 10);
+                    await muteUser(targetUserId, reason, (parsedDuration > 0 && parsedDuration <= 10080) ? parsedDuration : 30);
                     alert('Joueur mute.');
                 } else if (action === 'ban') {
                     const reason = prompt('Raison du ban:');
                     if (!reason) return;
                     const duration = prompt('Dur\u00e9e en heures (vide = permanent):');
-                    await banUser(targetUserId, reason, duration ? parseInt(duration) * 60 : undefined);
+                    const parsedBanDuration = parseInt(duration, 10);
+                    await banUser(targetUserId, reason, (duration && parsedBanDuration > 0) ? parsedBanDuration * 60 : undefined);
                     alert('Joueur banni.');
                 } else if (action === 'kick') {
                     if (!confirm('Kick ce joueur?')) return;

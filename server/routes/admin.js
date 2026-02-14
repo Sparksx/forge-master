@@ -405,7 +405,15 @@ router.post('/users/:id/level', requireRole('admin'), async (req, res) => {
         const state = await prisma.gameState.findUnique({ where: { userId } });
         if (!state) return res.status(404).json({ error: 'Game state not found' });
 
-        const player = typeof state.player === 'object' ? state.player : JSON.parse(state.player);
+        let player;
+        try {
+            player = (typeof state.player === 'object' && state.player !== null) ? state.player : JSON.parse(state.player);
+        } catch {
+            player = { level: 1, xp: 0, profilePicture: 'wizard' };
+        }
+        if (typeof player !== 'object' || player === null) {
+            player = { level: 1, xp: 0, profilePicture: 'wizard' };
+        }
         player.level = Math.floor(level);
         player.xp = 0;
 

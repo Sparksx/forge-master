@@ -43,10 +43,9 @@ export async function loadPlayerTemplatesFromAPI() {
         }
         if (data.templates && data.templates.length > 0) {
             PLAYER_TEMPLATES = data.templates;
-            console.log(`[Players] Loaded ${data.templates.length} player templates from database`);
         }
     } catch {
-        console.log('[Players] Using fallback player templates (API unavailable)');
+        // API unavailable — use fallback player templates
     }
 }
 

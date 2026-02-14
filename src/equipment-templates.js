@@ -183,9 +183,8 @@ export async function loadTemplatesFromAPI() {
         if (data.templates && Object.keys(data.templates).length > 0) {
             EQUIPMENT_TEMPLATES = data.templates;
         }
-        console.log('[Equipment] Loaded templates from database');
     } catch {
-        console.log('[Equipment] Using fallback templates (API unavailable)');
+        // API unavailable — use fallback templates
     }
 }
 

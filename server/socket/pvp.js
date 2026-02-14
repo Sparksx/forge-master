@@ -27,26 +27,31 @@ const RANGE_INTERVAL = PVP_RANGE_INTERVAL;
 
 export function registerPvpHandlers(io, socket) {
     socket.on('pvp:queue', async () => {
-        // Don't queue if already in queue or in a match
-        if (queue.has(socket.id)) return;
-        if (socket.matchId) return;
+        try {
+            // Don't queue if already in queue or in a match
+            if (queue.has(socket.id)) return;
+            if (socket.matchId) return;
 
-        const stats = await getPlayerStats(socket.user.userId);
-        if (!stats) {
-            socket.emit('pvp:error', { message: 'Could not load your stats' });
-            return;
+            const stats = await getPlayerStats(socket.user.userId);
+            if (!stats) {
+                socket.emit('pvp:error', { message: 'Could not load your stats' });
+                return;
+            }
+
+            queue.set(socket.id, {
+                socket,
+                userId: socket.user.userId,
+                username: socket.user.username,
+                stats,
+                queuedAt: Date.now(),
+            });
+
+            socket.emit('pvp:queued', { power: stats.power });
+            tryMatch(io);
+        } catch (err) {
+            console.error('pvp:queue error:', err);
+            socket.emit('pvp:error', { message: 'Failed to join queue' });
         }
-
-        queue.set(socket.id, {
-            socket,
-            userId: socket.user.userId,
-            username: socket.user.username,
-            stats,
-            queuedAt: Date.now(),
-        });
-
-        socket.emit('pvp:queued', { power: stats.power });
-        tryMatch(io);
     });
 
     socket.on('pvp:cancel', () => {
@@ -65,8 +70,13 @@ export function registerPvpHandlers(io, socket) {
     });
 
     socket.on('pvp:leaderboard', async () => {
-        const leaderboard = await getLeaderboard();
-        socket.emit('pvp:leaderboard', leaderboard);
+        try {
+            const leaderboard = await getLeaderboard();
+            socket.emit('pvp:leaderboard', leaderboard);
+        } catch (err) {
+            console.error('pvp:leaderboard error:', err);
+            socket.emit('pvp:leaderboard', []);
+        }
     });
 
     socket.on('disconnect', () => {
