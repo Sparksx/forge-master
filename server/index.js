@@ -12,6 +12,8 @@ import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payment.js';
 import equipmentRoutes from './routes/equipment.js';
 import spriteRoutes from './routes/sprites.js';
+import monsterRoutes from './routes/monsters.js';
+import playerRoutes from './routes/players.js';
 import prisma from './lib/prisma.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
@@ -42,6 +44,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/sprites', spriteRoutes);
+app.use('/api/monsters', monsterRoutes);
+app.use('/api/players', playerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -128,12 +128,14 @@ model AuditLog {
 
 model SpriteSheet {
   id       Int            @id @default(autoincrement())
-  type     String         @unique @db.VarChar(30) // hat, weapon, armor, necklace, ring, gloves, belt, boots
+  type     String         @unique @db.VarChar(30) // hat, weapon, armor, ..., monster, player
   file     String         @db.VarChar(200)         // /assets/helmets.png
   width    Int
   height   Int
   items    ItemTemplate[]
   sprites  Sprite[]       @relation("SpriteSheetSprites")
+  monsters MonsterTemplate[]
+  players  PlayerTemplate[]
 }
 
 model Sprite {
@@ -148,6 +150,8 @@ model Sprite {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   items         ItemTemplate[]
+  monsters      MonsterTemplate[]
+  players       PlayerTemplate[]
 
   @@index([spriteSheetId])
 }
@@ -188,4 +192,37 @@ model Purchase {
 
   @@index([userId, createdAt])
   @@index([status])
+}
+
+model MonsterTemplate {
+  id            Int          @id @default(autoincrement())
+  slug          String       @unique @db.VarChar(50)   // e.g. "rat", "wolf", "spider"
+  name          String       @db.VarChar(100)           // Display name: "Rat", "Wolf"
+  emoji         String       @db.VarChar(10)            // Fallback emoji: "🐀"
+  color         String       @db.VarChar(10)            // Theme color hex: "#8d6e63"
+  wave          Int                                     // Wave index (1-20)
+  hpMultiplier  Float        @default(1.0)              // Per-monster HP modifier
+  dmgMultiplier Float        @default(1.0)              // Per-monster damage modifier
+  speedModifier Int          @default(0)                // Attack speed offset (ms)
+  spriteId      Int?
+  sprite        Sprite?      @relation(fields: [spriteId], references: [id])
+  spriteSheetId Int?
+  spriteSheet   SpriteSheet? @relation(fields: [spriteSheetId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([wave])
+}
+
+model PlayerTemplate {
+  id            Int          @id @default(autoincrement())
+  slug          String       @unique @db.VarChar(50)   // e.g. "warrior", "mage"
+  name          String       @db.VarChar(100)           // Display name
+  isDefault     Boolean      @default(false)            // Default player skin
+  spriteId      Int?
+  sprite        Sprite?      @relation(fields: [spriteId], references: [id])
+  spriteSheetId Int?
+  spriteSheet   SpriteSheet? @relation(fields: [spriteSheetId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
