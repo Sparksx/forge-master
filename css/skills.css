@@ -680,7 +680,7 @@
     position: relative;
     width: 42px;
     height: 42px;
-    border: 2px solid var(--border-medium);
+    border: 2px solid #000;
     border-radius: 10px;
     background: var(--overlay-soft);
     display: flex;
@@ -688,7 +688,7 @@
     justify-content: center;
     cursor: pointer;
     overflow: hidden;
-    transition: border-color 0.2s, transform 0.15s;
+    transition: background-color 0.2s, transform 0.15s;
     user-select: none;
 }
 
@@ -703,23 +703,19 @@
 }
 
 .skill-hud-btn.skill-hud-ready {
-    border-color: #4a90d9;
     animation: skill-pulse 2s infinite;
 }
 
 .skill-hud-btn.skill-hud-active {
-    border-color: #1eff00;
     box-shadow: 0 0 8px rgba(30, 255, 0, 0.4);
 }
 
 .skill-hud-btn.skill-hud-cooldown {
-    border-color: var(--bg-surface);
     opacity: 0.7;
     cursor: default;
 }
 
 .skill-hud-btn.skill-hud-passive {
-    border-color: var(--bg-surface);
     cursor: default;
     opacity: 0.85;
 }

@@ -4,24 +4,27 @@
 
 .chat-preview {
     margin-top: 8px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: var(--bg-card);
     border: 1px solid var(--border-medium);
     border-radius: 8px;
     cursor: pointer;
     flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .chat-preview:active {
     opacity: 0.8;
 }
 
-.chat-preview-label {
-    font-size: 0.75em;
-    color: var(--gold);
-    font-weight: bold;
-    margin-bottom: 4px;
+.chat-preview-icon {
+    font-size: 1.6em;
+    line-height: 1;
+    flex-shrink: 0;
+    position: relative;
 }
 
 .chat-preview-messages {
@@ -30,6 +33,8 @@
     gap: 2px;
     max-height: 2.8em;
     overflow: hidden;
+    min-width: 0;
+    flex: 1;
 }
 
 .chat-preview-line {
@@ -190,15 +195,15 @@
 }
 
 /* Chat preview unread indicator */
-.chat-preview.has-unread .chat-preview-label::after {
+.chat-preview.has-unread .chat-preview-icon::after {
     content: '';
-    display: inline-block;
+    position: absolute;
+    top: -2px;
+    right: -4px;
     width: 8px;
     height: 8px;
     background: #ff6b6b;
     border-radius: 50%;
-    margin-left: 6px;
-    vertical-align: middle;
 }
 
 /* =============================================

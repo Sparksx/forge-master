@@ -240,7 +240,7 @@ export function renderSkillHUD() {
         const tier = getSkillTier(skill);
         const btn = createElement('div', 'skill-hud-btn');
         btn.dataset.skillId = skillId;
-        btn.style.borderColor = tier.color;
+        btn.style.backgroundColor = tier.color;
 
         const icon = createElement('span', 'skill-hud-icon', skill.icon);
         btn.appendChild(icon);
