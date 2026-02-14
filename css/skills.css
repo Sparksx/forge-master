@@ -461,12 +461,12 @@
 }
 
 .skill-card.skill-tier-common::before  { background: radial-gradient(ellipse at left, rgba(157,157,157,0.06) 0%, transparent 70%); }
-.skill-card.skill-tier-uncommon::before { background: radial-gradient(ellipse at left, rgba(30,255,0,0.08) 0%, transparent 70%); }
-.skill-card.skill-tier-rare::before    { background: radial-gradient(ellipse at left, rgba(0,112,221,0.10) 0%, transparent 70%); }
-.skill-card.skill-tier-epic::before    { background: radial-gradient(ellipse at left, rgba(163,53,238,0.10) 0%, transparent 70%); }
-.skill-card.skill-tier-legendary::before { background: radial-gradient(ellipse at left, rgba(255,128,0,0.12) 0%, transparent 70%); }
-.skill-card.skill-tier-mythic::before  { background: radial-gradient(ellipse at left, rgba(255,0,0,0.12) 0%, transparent 70%); }
-.skill-card.skill-tier-divine::before  { background: radial-gradient(ellipse at left, rgba(255,215,0,0.14) 0%, transparent 70%); }
+.skill-card.skill-tier-uncommon::before { background: radial-gradient(ellipse at left, rgba(79,119,45,0.08) 0%, transparent 70%); }
+.skill-card.skill-tier-rare::before    { background: radial-gradient(ellipse at left, rgba(74,127,181,0.10) 0%, transparent 70%); }
+.skill-card.skill-tier-epic::before    { background: radial-gradient(ellipse at left, rgba(123,94,167,0.10) 0%, transparent 70%); }
+.skill-card.skill-tier-legendary::before { background: radial-gradient(ellipse at left, rgba(196,130,43,0.12) 0%, transparent 70%); }
+.skill-card.skill-tier-mythic::before  { background: radial-gradient(ellipse at left, rgba(166,61,61,0.12) 0%, transparent 70%); }
+.skill-card.skill-tier-divine::before  { background: radial-gradient(ellipse at left, rgba(201,168,76,0.14) 0%, transparent 70%); }
 
 /* Shimmer sweep for Legendary+ */
 .skill-card::after {
@@ -503,9 +503,9 @@
     background: linear-gradient(
         105deg,
         transparent 40%,
-        rgba(255, 215, 0, 0.12) 45%,
-        rgba(255, 215, 0, 0.25) 50%,
-        rgba(255, 215, 0, 0.12) 55%,
+        rgba(201, 168, 76, 0.12) 45%,
+        rgba(201, 168, 76, 0.25) 50%,
+        rgba(201, 168, 76, 0.12) 55%,
         transparent 60%
     );
 }
