@@ -252,6 +252,59 @@
     padding: clamp(10px, 1.5vw, 14px);
     border: 1px solid var(--border-subtle);
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Tier-colored radial glow for decision sections */
+.decision-section.tier-common  { background: radial-gradient(ellipse at center, rgba(157,157,157,0.06) 0%, var(--bg-card) 70%); }
+.decision-section.tier-uncommon { background: radial-gradient(ellipse at center, rgba(79,119,45,0.08) 0%, var(--bg-card) 70%); }
+.decision-section.tier-rare    { background: radial-gradient(ellipse at center, rgba(74,127,181,0.10) 0%, var(--bg-card) 70%); }
+.decision-section.tier-epic    { background: radial-gradient(ellipse at center, rgba(123,94,167,0.10) 0%, var(--bg-card) 70%); }
+.decision-section.tier-legendary { background: radial-gradient(ellipse at center, rgba(196,130,43,0.12) 0%, var(--bg-card) 70%); }
+.decision-section.tier-mythic  { background: radial-gradient(ellipse at center, rgba(166,61,61,0.12) 0%, var(--bg-card) 70%); }
+.decision-section.tier-divine  { background: radial-gradient(ellipse at center, rgba(201,168,76,0.14) 0%, var(--bg-card) 70%); }
+
+/* Shimmer sweep for Legendary+ decision sections */
+.decision-section::after {
+    content: '';
+    position: absolute;
+    inset: -50% -50%;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.10) 45%,
+        rgba(255, 255, 255, 0.18) 50%,
+        rgba(255, 255, 255, 0.10) 55%,
+        transparent 60%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-100%);
+    border-radius: 8px;
+}
+
+.decision-section.tier-legendary::after,
+.decision-section.tier-mythic::after,
+.decision-section.tier-divine::after {
+    opacity: 1;
+    animation: shimmerSweep 3s ease-in-out infinite;
+}
+
+.decision-section.tier-mythic::after {
+    animation-duration: 2.5s;
+}
+
+.decision-section.tier-divine::after {
+    animation-duration: 2s;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(201, 168, 76, 0.10) 45%,
+        rgba(201, 168, 76, 0.22) 50%,
+        rgba(201, 168, 76, 0.10) 55%,
+        transparent 60%
+    );
 }
 
 .decision-top {

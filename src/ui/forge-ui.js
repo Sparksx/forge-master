@@ -315,10 +315,13 @@ function renderForgeUpgradeContent() {
     } else {
         const cost = getForgeUpgradeCost();
         const time = FORGE_LEVELS[forgeLevel].time;
-        const upgradeBtn = createElement('button', 'btn btn-upgrade-forge',
-            `\u2B06\uFE0F ${t('forge.upgradeCost', { cost: formatNumber(cost) })} \u00B7 ${formatTime(time)}`);
+        const isAdminMode = typeof window !== 'undefined' && window.__adminMode;
+        const label = isAdminMode
+            ? `\u2B06\uFE0F ${t('forge.upgradeCost', { cost: formatNumber(cost) })} (ADMIN)`
+            : `\u2B06\uFE0F ${t('forge.upgradeCost', { cost: formatNumber(cost) })} \u00B7 ${formatTime(time)}`;
+        const upgradeBtn = createElement('button', 'btn btn-upgrade-forge', label);
         upgradeBtn.id = 'upgrade-forge-btn';
-        const canAfford = getGold() >= cost;
+        const canAfford = isAdminMode || getGold() >= cost;
         upgradeBtn.disabled = !canAfford;
         upgradeBtn.classList.toggle('btn-disabled', !canAfford);
         upgradeBtn.addEventListener('click', () => { startForgeUpgrade(); });
@@ -369,6 +372,11 @@ export function showDecisionModal(item, onClose) {
 
         // === TOP SECTION: Equipped Item ===
         const topSection = createElement('div', 'decision-section decision-top');
+        if (topItem) {
+            const topTierDef = TIERS[(topItem.tier || 1) - 1];
+            topSection.classList.add(`tier-${topTierDef.name.toLowerCase()}`);
+            topSection.style.borderColor = topTierDef.color + '80';
+        }
 
         const topHeader = createElement('div', 'decision-header');
         const topLabel = createElement('div', 'decision-label decision-label-equipped',
@@ -398,7 +406,10 @@ export function showDecisionModal(item, onClose) {
         itemInfo.appendChild(topSection);
 
         // === BOTTOM SECTION: Action Item ===
+        const bottomTierDef = TIERS[(bottomItem.tier || 1) - 1];
         const bottomSection = createElement('div', 'decision-section decision-bottom');
+        bottomSection.classList.add(`tier-${bottomTierDef.name.toLowerCase()}`);
+        bottomSection.style.borderColor = bottomTierDef.color + '80';
 
         const bottomLabel = createElement('div', 'decision-label decision-label-new',
             hasSwapped ? `📦 ${t('forge.old')}` : `✨ ${t('forge.newItem')}`);

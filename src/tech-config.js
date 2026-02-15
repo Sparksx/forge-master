@@ -244,13 +244,13 @@ export const TECHS = [
         name: 'Bonus Supplémentaire',
         icon: '🌟',
         branch: 'equipment',
-        maxLevel: 3,
+        maxLevel: 1,
         description: '+1 slot de bonus sur les items forgés',
-        baseCost: 2000,
-        costScale: 4,
-        baseTime: 3600,      // 1h
-        timeScale: 3,
-        requires: [{ tech: 'bonusEnhance', level: 3 }],
+        baseCost: 12000,
+        costScale: 1,
+        baseTime: 14400,     // 4h
+        timeScale: 1,
+        requires: [{ tech: 'bonusEnhance', level: 5 }, { tech: 'masterwork', level: 1 }],
         effect: { type: 'extraBonus', perLevel: 1 },
     },
     {

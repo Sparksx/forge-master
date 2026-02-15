@@ -474,7 +474,7 @@ function renderSelfSection(container) {
         const adminModeActive = window.__adminMode || false;
         html += `<div class="admin-mode-section">`;
         html += `<h4>Mode Admin</h4>`;
-        html += `<p class="admin-mode-desc">Desactive les temps d'attente (forge, recherche)</p>`;
+        html += `<p class="admin-mode-desc">Desactive les temps d'attente et les couts (forge, recherche)</p>`;
         html += `<label class="admin-toggle">`;
         html += `<input type="checkbox" id="admin-mode-toggle" ${adminModeActive ? 'checked' : ''}>`;
         html += `<span class="admin-toggle-slider"></span>`;
