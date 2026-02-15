@@ -64,6 +64,9 @@ export function canStartResearch(techId) {
     const tech = getTechById(techId);
     if (currentLevel >= tech.maxLevel) return false;
 
+    // Admin mode: skip cost check
+    if (typeof window !== 'undefined' && window.__adminMode) return true;
+
     const nextLevel = currentLevel + 1;
     const cost = getEffectiveResearchCost(techId, nextLevel);
     if (getEssence() < cost) return false;
@@ -82,12 +85,15 @@ export function startResearch(techId) {
     if (!isTechUnlocked(techId)) return false;
 
     const cost = getEffectiveResearchCost(techId, nextLevel);
-    if (!spendEssence(cost)) return false;
+    const isAdminMode = typeof window !== 'undefined' && window.__adminMode;
+
+    // Admin mode: skip essence cost
+    if (!isAdminMode && !spendEssence(cost)) return false;
 
     const duration = getResearchTime(techId, nextLevel);
 
-    // Admin mode: instant completion
-    if (typeof window !== 'undefined' && window.__adminMode) {
+    // Admin mode: instant completion (and free)
+    if (isAdminMode) {
         if (!research.active) {
             completeResearch(techId, nextLevel);
             gameEvents.emit(EVENTS.RESEARCH_STARTED, { techId, level: nextLevel });

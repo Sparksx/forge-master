@@ -10,13 +10,20 @@ import { pickTemplate } from './equipment-templates.js';
 // Re-export shared functions so existing imports keep working
 export { calculateItemStats, calculateStats, calculatePowerScore };
 
-function rollBonuses(count) {
+// Minimum bonus stat value as a % of max, by tier (0-indexed)
+// Tiers 1-4 (Common–Epic): no minimum; Legendary: 15%; Mythic: 25%; Divine: 50%
+const BONUS_MIN_PCT = [0, 0, 0, 0, 15, 25, 50];
+
+function rollBonuses(count, tier) {
     // Extra Bonus tech: +1 bonus slot per level
     const extraBonusSlots = getTechEffect('extraBonus');
     const totalCount = Math.min(count + extraBonusSlots, BONUS_STAT_KEYS.length);
 
     // Bonus Enhancement tech: +10% bonus values per level
     const bonusEnhancePct = getTechEffect('bonusEnhance');
+
+    // Minimum bonus value for this tier (Legendary+)
+    const minPct = BONUS_MIN_PCT[tier - 1] || 0;
 
     const bonuses = [];
     const usedKeys = new Set();
@@ -26,7 +33,9 @@ function rollBonuses(count) {
             key = BONUS_STAT_KEYS[Math.floor(Math.random() * BONUS_STAT_KEYS.length)];
         } while (usedKeys.has(key));
         usedKeys.add(key);
-        let value = Math.floor(Math.random() * BONUS_STATS[key].max) + 1;
+        const statMax = BONUS_STATS[key].max;
+        const minValue = minPct > 0 ? Math.max(1, Math.ceil(statMax * minPct / 100)) : 1;
+        let value = Math.floor(Math.random() * (statMax - minValue + 1)) + minValue;
         if (bonusEnhancePct > 0) {
             value = Math.floor(value * (1 + bonusEnhancePct / 100));
         }
@@ -39,7 +48,7 @@ export function createItem(type, level, tier = 1) {
     const isHealthItem = HEALTH_ITEMS.includes(type);
     const stats = calculateItemStats(level, tier, isHealthItem);
     const tierDef = TIERS[tier - 1];
-    const bonuses = rollBonuses(tierDef.bonusCount);
+    const bonuses = rollBonuses(tierDef.bonusCount, tier);
 
     const item = {
         type,

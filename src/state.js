@@ -340,12 +340,15 @@ export function startForgeUpgrade() {
     if (gameState.forgeUpgrade) return false; // already upgrading
     const cost = getForgeUpgradeCost();
     if (cost === null) return false;
-    if (gameState.gold < cost) return false;
+
+    const isAdminMode = typeof window !== 'undefined' && window.__adminMode;
+
+    if (!isAdminMode && gameState.gold < cost) return false;
 
     const duration = getForgeUpgradeTime();
-    gameState.gold -= cost;
+    if (!isAdminMode) gameState.gold -= cost;
 
-    if (duration === 0 || (typeof window !== 'undefined' && window.__adminMode)) {
+    if (duration === 0 || isAdminMode) {
         // Instant upgrade (level 1 has time=0, admin mode, or initial state)
         gameState.forgeLevel += 1;
         saveGame();
@@ -647,8 +650,8 @@ function buildSaveData() {
         forgeHighestLevel: gameState.forgeHighestLevel,
         forgeUpgrade: gameState.forgeUpgrade || null,
         combat: gameState.combat,
-        // Embed shopState inside player JSON so it persists on server without schema changes
-        player: { ...gameState.player, shopState: gameState.shopState },
+        // Embed shopState and totalItemsSold inside player JSON so they persist on server without schema changes
+        player: { ...gameState.player, shopState: gameState.shopState, totalItemsSold: gameState.totalItemsSold },
         diamonds: gameState.diamonds,
         essence: gameState.essence,
         research: gameState.research,
@@ -728,8 +731,8 @@ function applyLoadedData(loaded) {
             gameState.research.completed = {};
             for (const [techId, level] of Object.entries(loaded.research.completed)) {
                 const tech = getTechById(techId);
-                if (tech && typeof level === 'number' && level >= 1 && level <= tech.maxLevel) {
-                    gameState.research.completed[techId] = level;
+                if (tech && typeof level === 'number' && level >= 1) {
+                    gameState.research.completed[techId] = Math.min(level, tech.maxLevel);
                 }
             }
         }
@@ -887,9 +890,10 @@ function applyLoadedData(loaded) {
         }
     }
 
-    // Restore items sold counter
-    if (typeof loaded.totalItemsSold === 'number' && loaded.totalItemsSold >= 0) {
-        gameState.totalItemsSold = Math.floor(loaded.totalItemsSold);
+    // Restore items sold counter (may be at top level or embedded in player JSON)
+    const totalSold = loaded.totalItemsSold ?? loaded.player?.totalItemsSold ?? 0;
+    if (typeof totalSold === 'number' && totalSold >= 0) {
+        gameState.totalItemsSold = Math.floor(totalSold);
     }
 
     // Restore forge upgrade timer
