@@ -16,6 +16,22 @@ export function getCurrentUser() {
     return currentUser;
 }
 
+export function isOfflineGuest() {
+    return !!currentUser?.offline;
+}
+
+/**
+ * Start a local-only session when no backend is reachable (e.g. the static
+ * GitHub Pages build). The core forge/arena loop runs fully client-side with
+ * localStorage saves; online features (PvP, clans) stay disabled until signed in.
+ */
+function startOfflineGuest() {
+    clearTokens();
+    currentUser = { username: 'Guest', isGuest: true, offline: true, pvpRating: 1000, pvpWins: 0, pvpLosses: 0 };
+    hideAuthScreen();
+    if (onAuthSuccess) onAuthSuccess(currentUser);
+}
+
 export async function performLogout() {
     try {
         const token = getStoredRefreshToken();
@@ -100,9 +116,9 @@ export function initAuth() {
             hideAuthScreen();
             if (onAuthSuccess) onAuthSuccess(currentUser);
         } catch (err) {
-            errorEl.textContent = t('auth.networkError');
-            btn.disabled = false;
-            btn.textContent = t('auth.playNow');
+            // No backend reachable (e.g. a static host) — start a local-only session
+            // so the core forge/arena loop is still playable offline.
+            startOfflineGuest();
         }
     });
 

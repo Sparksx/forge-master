@@ -11,6 +11,9 @@ import * as clan from './clan.js';
 import * as profile from './profile.js';
 
 const screens = [forge, arena, pvp, clan, profile];
+// screen.id -> container element. Kept here rather than on the screen modules,
+// because `import * as` namespace objects are frozen and can't take properties.
+const containers = new Map();
 let active = null;
 let header = null;
 
@@ -32,7 +35,7 @@ export function initApp(mountEl) {
         const container = h('div', { className: 'screen', dataset: { screen: s.id } });
         container.style.display = 'none';
         stage.appendChild(container);
-        s._container = container;
+        containers.set(s.id, container);
         s.render(container);
     });
 
@@ -49,7 +52,7 @@ export function initApp(mountEl) {
 export function switchTab(name) {
     const screen = screens.find((s) => s.id === name);
     if (!screen) return;
-    screens.forEach((s) => { s._container.style.display = s.id === name ? 'block' : 'none'; });
+    screens.forEach((s) => { containers.get(s.id).style.display = s.id === name ? 'block' : 'none'; });
     document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     active = screen;
     screen.onShow?.();
