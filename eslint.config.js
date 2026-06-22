@@ -27,6 +27,12 @@ export default [
                 FormData: 'readonly',
                 navigator: 'readonly',
                 confirm: 'readonly',
+                prompt: 'readonly',
+                AbortController: 'readonly',
+                requestAnimationFrame: 'readonly',
+                cancelAnimationFrame: 'readonly',
+                Image: 'readonly',
+                FileReader: 'readonly',
             },
         },
         rules: {

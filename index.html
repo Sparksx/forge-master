@@ -4,495 +4,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Anvil Legends</title>
+    <title>Forge Master</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1a1a2e">
-    <meta name="description" content="Forge equipment, conquer dungeons, and battle other players in this idle RPG!">
-
-    <!-- iOS PWA support -->
+    <meta name="theme-color" content="#0e0b1a">
+    <meta name="description" content="Forge legendary gear, climb the arena, duel real players, and rise with your clan.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Anvil Legends">
+    <meta name="apple-mobile-web-app-title" content="Forge Master">
     <link rel="apple-touch-icon" href="/icon-192.svg">
 
-    <!-- Game Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <!-- Auth Screen (shown before login) -->
-    <div class="auth-screen" id="auth-screen" role="main" aria-label="Authentication">
+    <!-- Auth screen (shown until authenticated) -->
+    <div class="auth-screen" id="auth-screen" role="main" aria-label="Sign in">
         <div class="auth-container">
-            <h1 class="auth-title" data-i18n="auth.title">Anvil Legends</h1>
-            <p class="auth-subtitle" data-i18n="auth.subtitle">Jump in and start forging!</p>
+            <div class="auth-logo">🔨</div>
+            <h1 class="auth-title">Forge Master</h1>
+            <p class="auth-subtitle">Forge gear · climb the arena · duel players · rise with your clan</p>
 
-            <!-- One-click auth buttons (default view) -->
             <div class="auth-oneclick" id="auth-oneclick">
-                <button class="auth-btn auth-btn-guest" id="guest-play-btn" type="button" data-i18n="auth.playNow">Play Now</button>
+                <button class="auth-btn auth-btn-primary" id="guest-play-btn" type="button">Play Now</button>
                 <div class="auth-error" id="guest-error" role="alert" aria-live="polite"></div>
 
-                <div class="auth-divider"><span data-i18n="auth.orConnectWith">or connect with</span></div>
+                <div class="auth-divider"><span>or connect with</span></div>
 
                 <div class="auth-oauth-row">
-                    <button class="auth-btn auth-btn-discord" id="discord-login-btn" type="button">
-                        <svg class="auth-oauth-icon" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-                        Discord
-                    </button>
-                    <button class="auth-btn auth-btn-google" id="google-login-btn" type="button">
-                        <svg class="auth-oauth-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                        Google
-                    </button>
+                    <button class="auth-btn auth-btn-discord" id="discord-login-btn" type="button">Discord</button>
+                    <button class="auth-btn auth-btn-google" id="google-login-btn" type="button">Google</button>
                 </div>
 
-                <p class="auth-switch"><span data-i18n="auth.haveAccount">Have an account?</span> <a href="#" id="show-login" data-i18n="auth.loginWithPassword">Login with password</a></p>
+                <p class="auth-switch">Have an account? <a href="#" id="show-login">Log in</a></p>
             </div>
 
-            <!-- Login Form (hidden by default) -->
             <form class="auth-form hidden" id="login-form" aria-label="Login form">
-                <label for="login-username" class="sr-only">Username or Email</label>
-                <input type="text" id="login-username" placeholder="Username or Email" data-i18n-placeholder="auth.usernameOrEmail" required autocomplete="username">
-                <label for="login-password" class="sr-only">Password</label>
-                <input type="password" id="login-password" placeholder="Password" data-i18n-placeholder="auth.password" required autocomplete="current-password">
+                <input type="text" id="login-username" placeholder="Username or Email" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
                 <div class="auth-error" id="login-error" role="alert" aria-live="polite"></div>
-                <button type="submit" class="auth-btn" data-i18n="auth.login">Login</button>
-                <p class="auth-switch"><a href="#" id="show-oneclick" data-i18n="auth.back">Back</a> | <span data-i18n="auth.noAccount">No account?</span> <a href="#" id="show-register" data-i18n="auth.register">Register</a></p>
+                <button type="submit" class="auth-btn auth-btn-primary">Log In</button>
+                <p class="auth-switch"><a href="#" id="show-oneclick">Back</a> · No account? <a href="#" id="show-register">Register</a></p>
             </form>
 
-            <!-- Register Form (hidden by default) -->
             <form class="auth-form hidden" id="register-form" aria-label="Register form">
-                <label for="register-username" class="sr-only">Username</label>
-                <input type="text" id="register-username" placeholder="Username" data-i18n-placeholder="auth.usernamePlaceholder" required minlength="3" maxlength="30" autocomplete="username">
-                <label for="register-email" class="sr-only">Email</label>
-                <input type="email" id="register-email" placeholder="Email" data-i18n-placeholder="auth.emailPlaceholder" required autocomplete="email">
-                <label for="register-password" class="sr-only">Password</label>
-                <input type="password" id="register-password" placeholder="Password (6+ characters)" data-i18n-placeholder="auth.passwordPlaceholder" required minlength="6" autocomplete="new-password">
+                <input type="text" id="register-username" placeholder="Username" required minlength="3" maxlength="30" autocomplete="username">
+                <input type="email" id="register-email" placeholder="Email" required autocomplete="email">
+                <input type="password" id="register-password" placeholder="Password (6+ characters)" required minlength="6" autocomplete="new-password">
                 <div class="auth-error" id="register-error" role="alert" aria-live="polite"></div>
-                <button type="submit" class="auth-btn" data-i18n="auth.register">Register</button>
-                <p class="auth-switch"><a href="#" id="show-oneclick-from-register" data-i18n="auth.back">Back</a> | <span data-i18n="auth.alreadyHaveAccount">Already have an account?</span> <a href="#" id="show-login-from-register" data-i18n="auth.login">Login</a></p>
+                <button type="submit" class="auth-btn auth-btn-primary">Create Account</button>
+                <p class="auth-switch"><a href="#" id="show-oneclick-from-register">Back</a> · Already registered? <a href="#" id="show-login-from-register">Log in</a></p>
             </form>
         </div>
     </div>
 
-    <!-- Game Container (hidden until authenticated) -->
-    <div class="hidden" id="game-container" role="main" aria-label="Game">
-        <!-- Persistent Header (always visible, even over modals) -->
-        <header class="app-header" id="app-header" role="banner">
-            <div class="header-row">
-                <button class="header-btn hidden" id="pwa-install-btn" aria-label="Install app" title="Install app">📲</button>
-                <button class="header-btn" id="profile-btn" aria-label="Open profile">👤</button>
-                <div class="header-level" id="header-level" aria-label="Player level">
-                    <span class="header-level-label" data-i18n="header.lv">Lv.</span>
-                    <span class="header-level-value" id="header-level-value">1</span>
-                    <div class="header-xp-bar" role="progressbar" aria-label="XP progress" aria-valuemin="0" aria-valuemax="100">
-                        <div class="header-xp-fill" id="header-xp-fill"></div>
-                    </div>
-                </div>
-                <div class="gold-display" id="gold-display" aria-label="Gold amount">
-                    <span class="gold-icon" aria-hidden="true">💰</span>
-                    <span class="gold-value" id="gold-amount">0</span>
-                    <button class="gold-add-btn" id="gold-add-btn" aria-label="Go to shop">+</button>
-                </div>
-                <div class="diamond-display" id="diamond-display" aria-label="Diamond amount">
-                    <span class="diamond-icon" aria-hidden="true">💎</span>
-                    <span class="diamond-value" id="diamond-amount">0</span>
-                    <button class="diamond-add-btn" id="diamond-add-btn" aria-label="Buy diamonds">+</button>
-                </div>
-            </div>
-        </header>
-
-        <!-- Tab Views -->
-        <section class="tab-view" id="view-pvp" role="tabpanel" aria-label="PvP Arena">
-            <div class="container">
-                <div class="pvp-error" id="pvp-error" role="alert" aria-live="polite"></div>
-
-                <!-- Idle: Lobby with player card + leaderboard -->
-                <div class="pvp-section" id="pvp-idle-section">
-                    <div class="pvp-lobby">
-                        <div class="pvp-player-card" id="pvp-player-card">
-                            <div class="pvp-player-card-rank">
-                                <span class="pvp-rank-icon" id="pvp-rank-icon"></span>
-                                <span class="pvp-rank-name" id="pvp-rank-name"></span>
-                            </div>
-                            <div class="pvp-player-card-stats">
-                                <div class="pvp-stat">
-                                    <span class="pvp-stat-label" data-i18n="pvp.elo">ELO</span>
-                                    <span class="pvp-stat-value" id="pvp-my-elo">1000</span>
-                                </div>
-                                <div class="pvp-stat">
-                                    <span class="pvp-stat-label" data-i18n="pvp.power">Power</span>
-                                    <span class="pvp-stat-value" id="pvp-my-power">0</span>
-                                </div>
-                                <div class="pvp-stat">
-                                    <span class="pvp-stat-label" data-i18n="pvp.wl">W / L</span>
-                                    <span class="pvp-stat-value" id="pvp-my-record">0 / 0</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button class="pvp-btn pvp-queue-btn" id="pvp-queue-btn" data-i18n="pvp.findMatch">Find Match</button>
-
-                        <div class="pvp-leaderboard" id="pvp-leaderboard">
-                            <h3 class="pvp-leaderboard-title" data-i18n="pvp.leaderboard">Leaderboard</h3>
-                            <div class="pvp-leaderboard-list" id="pvp-leaderboard-list"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Queue: Waiting -->
-                <div class="pvp-section hidden" id="pvp-queue-section">
-                    <div class="pvp-queue-content">
-                        <div class="pvp-spinner" role="status" aria-label="Searching for opponent"></div>
-                        <p data-i18n="pvp.searching">Searching for opponent...</p>
-                        <p class="pvp-queue-power-range" id="pvp-queue-power-range"></p>
-                        <button class="pvp-btn pvp-cancel-btn" id="pvp-cancel-btn" data-i18n="pvp.cancel">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Fight: Arena -->
-                <div class="pvp-section hidden" id="pvp-fight-section">
-                    <div class="pvp-arena" role="region" aria-label="PvP combat">
-                        <div class="pvp-fighter pvp-you">
-                            <div class="pvp-fighter-label" data-i18n="pvp.you">You</div>
-                            <div class="hp-bar-container" role="progressbar" aria-label="Your health" aria-valuemin="0" aria-valuemax="100">
-                                <div class="hp-bar hp-bar-player" id="pvp-your-hp"></div>
-                                <span class="hp-text" id="pvp-your-hp-text"></span>
-                            </div>
-                        </div>
-                        <div class="pvp-vs" aria-hidden="true">VS</div>
-                        <div class="pvp-fighter pvp-opponent">
-                            <div class="pvp-fighter-label" id="pvp-opponent-name">Opponent</div>
-                            <div class="pvp-fighter-info">
-                                <span class="pvp-fighter-rating" id="pvp-opponent-rating"></span>
-                                <span class="pvp-fighter-power" id="pvp-opponent-power"></span>
-                            </div>
-                            <div class="hp-bar-container" role="progressbar" aria-label="Opponent health" aria-valuemin="0" aria-valuemax="100">
-                                <div class="hp-bar hp-bar-monster" id="pvp-opponent-hp"></div>
-                                <span class="hp-text" id="pvp-opponent-hp-text"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pvp-turn-info" aria-live="polite">
-                        <span id="pvp-turn-timer">15s</span>
-                    </div>
-
-                    <div class="pvp-actions" role="group" aria-label="Combat actions">
-                        <button class="pvp-action-btn" data-action="attack" data-i18n="pvp.attack">Attack</button>
-                        <button class="pvp-action-btn" data-action="defend" data-i18n="pvp.defend">Defend</button>
-                        <button class="pvp-action-btn" data-action="special" data-i18n="pvp.special">Special</button>
-                    </div>
-
-                    <div class="pvp-combat-log" id="pvp-combat-log" role="log" aria-label="Combat log" aria-live="polite"></div>
-                </div>
-
-                <!-- Result -->
-                <div class="pvp-section hidden" id="pvp-result-section">
-                    <div class="pvp-result-content">
-                        <h2 class="pvp-result-title" id="pvp-result-title">Victory!</h2>
-                        <div class="pvp-rating-change" id="pvp-rating-change" aria-live="polite"></div>
-                        <button class="pvp-btn" id="pvp-back-btn" data-i18n="pvp.backToLobby">Back to Lobby</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="tab-view" id="view-dungeon" role="tabpanel" aria-label="Dungeon">
-            <div class="container">
-                <div class="placeholder-content">
-                    <p>Coming soon...</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="tab-view active" id="view-home" role="tabpanel" aria-label="Home">
-            <!-- Top Half: Combat Zone -->
-            <div class="combat-zone" id="combat-zone" role="region" aria-label="Combat">
-                <!-- Wave indicator -->
-                <div class="wave-indicator" aria-label="Wave progress">
-                    <span class="wave-label" id="wave-label" aria-live="polite">Wave 1-1</span>
-                </div>
-
-                <!-- Combat Arena -->
-                <div class="combat-arena" role="region" aria-label="Combat arena">
-                    <!-- Player Side -->
-                    <div class="combatant combatant-player" id="combatant-player">
-                        <div class="hp-bar-container" role="progressbar" aria-label="Player health" aria-valuemin="0" aria-valuemax="100">
-                            <div class="hp-bar hp-bar-player" id="player-hp-bar"></div>
-                        </div>
-                        <div class="combatant-emoji" id="player-emoji" aria-hidden="true">🧙</div>
-                        <div class="damage-numbers damage-numbers-player" id="damage-numbers-player" aria-hidden="true"></div>
-                    </div>
-
-                    <!-- VS indicator -->
-                    <div class="combat-vs" aria-hidden="true">
-                        <span class="vs-text">⚔️</span>
-                    </div>
-
-                    <!-- Monster Side (dynamically populated) -->
-                    <div class="monsters-side" id="monsters-side" role="region" aria-label="Enemies"></div>
-                </div>
-
-                <!-- Skill HUD (active skill buttons during combat) -->
-                <div class="skill-hud" id="skill-hud" role="toolbar" aria-label="Active skills"></div>
-
-                <!-- Combat result overlay -->
-                <div class="combat-result" id="combat-result" role="alert" aria-live="assertive"></div>
-
-                <!-- Achievements FAB (inside combat zone) -->
-                <button class="achievements-fab" id="achievements-fab" aria-label="Open achievements" title="Achievements">🏆</button>
-            </div>
-
-            <!-- Bottom Half: Equipment & Forge -->
-            <div class="forge-zone" id="forge-zone">
-
-                <!-- Equipment Display (compact) -->
-                <div class="equipment-display" role="region" aria-label="Equipment">
-                    <div class="body-container" role="list">
-                        <div class="equipment-slot" data-type="hat" role="listitem" tabindex="0" aria-label="Hat slot">
-                            <div class="slot-icon" aria-hidden="true">🎩</div>
-                            <div class="slot-content" id="slot-hat">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="necklace" role="listitem" tabindex="0" aria-label="Necklace slot">
-                            <div class="slot-icon" aria-hidden="true">📿</div>
-                            <div class="slot-content" id="slot-necklace">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="armor" role="listitem" tabindex="0" aria-label="Armor slot">
-                            <div class="slot-icon" aria-hidden="true">🛡️</div>
-                            <div class="slot-content" id="slot-armor">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="weapon" role="listitem" tabindex="0" aria-label="Weapon slot">
-                            <div class="slot-icon" aria-hidden="true">⚔️</div>
-                            <div class="slot-content" id="slot-weapon">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="gloves" role="listitem" tabindex="0" aria-label="Gloves slot">
-                            <div class="slot-icon" aria-hidden="true">🧤</div>
-                            <div class="slot-content" id="slot-gloves">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="ring" role="listitem" tabindex="0" aria-label="Ring slot">
-                            <div class="slot-icon" aria-hidden="true">💍</div>
-                            <div class="slot-content" id="slot-ring">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="belt" role="listitem" tabindex="0" aria-label="Belt slot">
-                            <div class="slot-icon" aria-hidden="true">📿</div>
-                            <div class="slot-content" id="slot-belt">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-
-                        <div class="equipment-slot" data-type="boots" role="listitem" tabindex="0" aria-label="Boots slot">
-                            <div class="slot-icon" aria-hidden="true">👢</div>
-                            <div class="slot-content" id="slot-boots">
-                                <span class="empty-slot" data-i18n="home.empty">Empty</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Row -->
-                <div class="action-row" role="toolbar" aria-label="Forge actions">
-                    <button class="forge-btn" id="forge-btn">⚒️ <span data-i18n="home.forge">Forge</span></button>
-                    <button class="action-icon-btn forge-level-btn" id="forge-upgrade-btn" title="Forge Upgrade" data-i18n-title="home.forgeUpgrade" aria-label="Forge upgrade level">
-                        <span class="forge-btn-level" id="forge-level">1</span>
-                    </button>
-                    <button class="action-icon-btn" id="auto-action-btn" title="Auto Forge" data-i18n-title="home.autoForge" aria-label="Toggle auto forge">🤖</button>
-                </div>
-
-                <!-- Chat Preview (2 lines, click to open full chat) -->
-                <div class="chat-preview" id="chat-preview" role="button" tabindex="0" aria-label="Open chat">
-                    <div class="chat-preview-icon" aria-hidden="true">💬</div>
-                    <div class="chat-preview-messages" id="chat-preview-messages">
-                        <div class="chat-preview-empty" data-i18n="chat.noMessages">No messages yet</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="tab-view" id="view-upgrade" role="tabpanel" aria-label="Upgrade">
-            <div class="container">
-                <div class="sub-tab-nav" id="upgrade-sub-nav" role="tablist" aria-label="Upgrade categories">
-                    <button class="sub-tab" data-subtab="skills" role="tab" aria-selected="false" aria-controls="subtab-skills">⚡ <span data-i18n-key="skills">Skills</span></button>
-                    <button class="sub-tab" data-subtab="pets" role="tab" aria-selected="false" aria-controls="subtab-pets">🐾 Pets</button>
-                    <button class="sub-tab active" data-subtab="techs" role="tab" aria-selected="true" aria-controls="subtab-techs">🔧 Techs</button>
-                </div>
-                <div class="sub-tab-content" id="subtab-skills" role="tabpanel" aria-labelledby="subtab-skills">
-                </div>
-                <div class="sub-tab-content" id="subtab-pets" role="tabpanel" aria-labelledby="subtab-pets">
-                    <div class="placeholder-content"><p>Pets coming soon...</p></div><!-- Pets not translatable yet -->
-                </div>
-                <div class="sub-tab-content active" id="subtab-techs" role="tabpanel" aria-labelledby="subtab-techs">
-                    <div class="tech-tree-container">
-                        <!-- Essence display -->
-                        <div class="tech-essence-display" id="tech-essence-display" aria-label="Essence amount">
-                            <span class="essence-icon" aria-hidden="true">🔮</span>
-                            <span class="tech-essence-label">Essence:</span>
-                            <span class="essence-value" id="essence-amount">0</span>
-                        </div>
-
-                        <!-- Active research banner -->
-                        <div class="tech-research-active" id="tech-research-active"></div>
-
-                        <!-- Branch sub-tabs -->
-                        <div class="tech-branch-nav" id="tech-branch-nav" role="tablist" aria-label="Tech branches"></div>
-
-                        <!-- Tech list for selected branch -->
-                        <div class="tech-list" id="tech-list" role="list" aria-label="Technologies"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="tab-view" id="view-shop" role="tabpanel" aria-label="Rewards">
-            <div class="container">
-                <p class="shop-subtitle" data-i18n="shop.freeRewards">Earn gold through daily rewards and milestones!</p>
-                <div class="shop-offers" id="shop-offers" role="list" aria-label="Reward offers">
-                    <!-- Dynamically rendered by shop.js -->
-                </div>
-            </div>
-        </section>
-
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav" id="bottom-nav" role="tablist" aria-label="Main navigation">
-            <button class="nav-tab" data-tab="pvp" role="tab" aria-selected="false" aria-controls="view-pvp">
-                <span class="nav-icon" aria-hidden="true">⚔️</span>
-                <span class="nav-label" data-i18n="nav.pvp">PvP</span>
-            </button>
-            <button class="nav-tab" data-tab="dungeon" role="tab" aria-selected="false" aria-controls="view-dungeon">
-                <span class="nav-icon" aria-hidden="true">🏰</span>
-                <span class="nav-label" data-i18n="nav.dungeon">Dungeon</span>
-            </button>
-            <button class="nav-tab active" data-tab="home" role="tab" aria-selected="true" aria-controls="view-home">
-                <span class="nav-icon" aria-hidden="true">🏠</span>
-                <span class="nav-label" data-i18n="nav.home">Home</span>
-            </button>
-            <button class="nav-tab" data-tab="upgrade" role="tab" aria-selected="false" aria-controls="view-upgrade">
-                <span class="nav-icon" aria-hidden="true">⬆️</span>
-                <span class="nav-label" data-i18n="nav.upgrade">Upgrade</span>
-            </button>
-            <button class="nav-tab" data-tab="shop" role="tab" aria-selected="false" aria-controls="view-shop">
-                <span class="nav-icon" aria-hidden="true">🛒</span>
-                <span class="nav-label" data-i18n="nav.shop">Shop</span>
-            </button>
-        </nav>
-
-        <!-- Achievements Modal -->
-        <div class="modal" id="achievements-modal" role="dialog" aria-label="Achievements" aria-modal="true">
-            <div class="modal-content">
-                <h2>🏆 Milestones</h2>
-                <div id="achievements-list" class="shop-offers" role="list" aria-label="Milestone achievements"></div>
-            </div>
-        </div>
-
-        <!-- Full-page Chat Overlay -->
-        <div class="chat-fullpage" id="chat-panel" role="dialog" aria-label="Chat" aria-modal="true">
-            <div class="chat-header">
-                <span>💬 <span data-i18n="chat.title">Chat</span></span>
-                <button class="chat-close-btn" id="chat-close" aria-label="Close chat">✕</button>
-            </div>
-            <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
-            <div class="chat-input-row">
-                <label for="chat-input" class="sr-only">Type a message</label>
-                <input type="text" class="chat-input" id="chat-input" placeholder="Type a message..." data-i18n-placeholder="chat.typeMessage" maxlength="500" autocomplete="off">
-                <button class="chat-send-btn" id="chat-send" data-i18n="chat.send">Send</button>
-            </div>
-        </div>
-
-        <!-- Modal for Equip/Sell Decision -->
-        <div class="modal" id="decision-modal" role="dialog" aria-label="Equipment decision" aria-modal="true">
-            <div class="modal-content">
-                <h2 data-i18n="forge.newEquipment">New Equipment Forged!</h2>
-                <div id="forged-item-info"></div>
-            </div>
-        </div>
-
-        <!-- Modal for Item Details -->
-        <div class="modal" id="item-detail-modal" role="dialog" aria-label="Equipment details" aria-modal="true">
-            <div class="modal-content">
-                <h2 data-i18n="forge.empty">Equipment Details</h2>
-                <div id="item-detail-info"></div>
-                <div class="modal-buttons">
-                    <button class="btn btn-equip" id="item-detail-close">Close</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Forge Upgrade Modal -->
-        <div class="modal" id="forge-upgrade-modal" role="dialog" aria-label="Forge upgrade" aria-modal="true">
-            <div class="modal-content">
-                <h2>⚒️ Forge</h2>
-                <div id="forge-upgrade-info"></div>
-            </div>
-        </div>
-
-        <!-- Auto Forge Modal -->
-        <div class="modal" id="auto-forge-modal" role="dialog" aria-label="Auto forge settings" aria-modal="true">
-            <div class="modal-content">
-                <h2>🤖 Auto Forge</h2>
-                <div id="auto-forge-info"></div>
-            </div>
-        </div>
-
-        <!-- Profile Modal -->
-        <div class="modal" id="profile-modal" role="dialog" aria-label="Player profile" aria-modal="true">
-            <div class="modal-content">
-                <div class="profile-tabs" role="tablist" aria-label="Profile sections">
-                    <button class="profile-tab active" data-profile-tab="profile" role="tab" aria-selected="true" data-i18n="profile.profile">Profile</button>
-                    <button class="profile-tab" data-profile-tab="settings" role="tab" aria-selected="false" data-i18n="profile.settings">Settings</button>
-                </div>
-                <div class="profile-tab-content active" id="profile-tab-profile">
-                    <div id="profile-info"></div>
-                </div>
-                <div class="profile-tab-content" id="profile-tab-settings">
-                    <div id="settings-info"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Admin/Moderator Panel -->
-    <button class="admin-fab hidden" id="admin-fab" aria-label="Open admin panel">ADM</button>
-    <div class="modal admin-modal" id="admin-modal" role="dialog" aria-label="Admin panel" aria-modal="true">
-        <div class="modal-content admin-modal-content">
-            <h2 id="admin-panel-title">Admin Panel</h2>
-            <div id="admin-panel-content"></div>
-        </div>
-    </div>
-
-    <!-- Player Profile Modal (from chat) -->
-    <div class="modal" id="chat-profile-modal" role="dialog" aria-label="Player profile" aria-modal="true">
-        <div class="modal-content chat-profile-modal-content" id="chat-profile-content"></div>
-    </div>
-
-    <!-- Combat Replay Modal -->
-    <div class="modal" id="chat-replay-modal" role="dialog" aria-label="Combat replay" aria-modal="true">
-        <div class="modal-content chat-replay-modal-content" id="chat-replay-content"></div>
-    </div>
-
-    <!-- Toast Container -->
-    <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+    <!-- Game (built by the app shell once authenticated) -->
+    <div class="hidden" id="game-container" role="main" aria-label="Forge Master"></div>
 
     <script type="module" src="src/main.js"></script>
 </body>
 
 </html>
+</content>

@@ -68,4 +68,7 @@ export const EVENTS = {
     SKILL_SHARDS_CHANGED: 'skill:shards_changed',
     // Locale
     LOCALE_CHANGED: 'locale:changed',
+    // Reforged
+    CLAN_CHANGED: 'clan:changed',
+    ARENA_RESULT: 'arena:result',
 };

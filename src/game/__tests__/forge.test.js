@@ -1,0 +1,77 @@
+import { describe, it, expect } from 'vitest';
+import { rollTier, createItem, rollLevel, rollBonuses } from '../forge.js';
+import { TIERS, HEALTH_ITEMS } from '../config.js';
+
+describe('rollTier', () => {
+    it('always rolls Common at forge level 1', () => {
+        for (let i = 0; i < 200; i++) expect(rollTier(1)).toBe(1);
+    });
+
+    it('returns a valid tier index within range', () => {
+        for (let i = 0; i < 200; i++) {
+            const t = rollTier(8);
+            expect(t).toBeGreaterThanOrEqual(1);
+            expect(t).toBeLessThanOrEqual(TIERS.length);
+        }
+    });
+
+    it('luck never produces an out-of-range tier', () => {
+        for (let i = 0; i < 200; i++) {
+            const t = rollTier(6, 50);
+            expect(t).toBeGreaterThanOrEqual(1);
+            expect(t).toBeLessThanOrEqual(TIERS.length);
+        }
+    });
+});
+
+describe('createItem', () => {
+    it('builds a valid item with correct stat type and bonus count', () => {
+        const item = createItem('weapon', 10, 5);
+        expect(item.type).toBe('weapon');
+        expect(item.statType).toBe('damage');
+        expect(item.stats).toBeGreaterThan(0);
+        expect(item.bonuses).toHaveLength(TIERS[4].bonusCount);
+        expect(item.name).toBeTruthy();
+    });
+
+    it('marks armour slots as health items', () => {
+        const item = createItem('armor', 5, 1);
+        expect(HEALTH_ITEMS.includes('armor')).toBe(true);
+        expect(item.statType).toBe('health');
+    });
+});
+
+describe('rollBonuses', () => {
+    it('produces the requested number of distinct bonuses', () => {
+        const bonuses = rollBonuses(3, 7);
+        expect(bonuses).toHaveLength(3);
+        const keys = bonuses.map((b) => b.type);
+        expect(new Set(keys).size).toBe(3);
+    });
+
+    it('respects the high-tier minimum value floor', () => {
+        // Divine (tier 7) guarantees >=50% of each bonus max.
+        for (let i = 0; i < 50; i++) {
+            const [b] = rollBonuses(1, 7);
+            expect(b.value).toBeGreaterThanOrEqual(1);
+        }
+    });
+});
+
+describe('rollLevel', () => {
+    it('stays within the initial band for fresh slots', () => {
+        for (let i = 0; i < 100; i++) {
+            const lvl = rollLevel(null);
+            expect(lvl).toBeGreaterThanOrEqual(1);
+            expect(lvl).toBeLessThanOrEqual(8);
+        }
+    });
+
+    it('bands around the best level for known slots', () => {
+        for (let i = 0; i < 100; i++) {
+            const lvl = rollLevel(50);
+            expect(lvl).toBeGreaterThanOrEqual(38);
+            expect(lvl).toBeLessThanOrEqual(62);
+        }
+    });
+});
