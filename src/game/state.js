@@ -1,0 +1,298 @@
+// Game state: equipment, gold, forge level, arena rank, avatar.
+// Persists via the existing /api/game/state endpoint (+ localStorage fallback).
+import {
+    EQUIPMENT_TYPES, HEALTH_ITEMS, MAX_TIER, MAX_ITEM_LEVEL, SAVE_KEY,
+    FORGE_LEVELS, MAX_FORGE_LEVEL, calculateItemStats,
+    calculateStats, calculatePowerScore, computeStatsFromEquipment,
+} from './config.js';
+import { itemName } from './items.js';
+import { gameEvents, EVENTS } from '../events.js';
+import { apiFetch, getAccessToken } from '../api.js';
+
+function emptyEquipment() {
+    const e = {};
+    EQUIPMENT_TYPES.forEach((t) => { e[t] = null; });
+    return e;
+}
+
+const state = {
+    equipment: emptyEquipment(),
+    gold: 0,
+    forgeLevel: 1,
+    bestLevels: {},        // { [type]: { [tier]: level } }
+    arenaRank: 1,
+    highestArenaRank: 1,
+    avatar: 'wizard',
+    // Clan perks, refreshed by clan.js after loading the player's clan.
+    perks: { goldBonusPct: 0, forgeLuckPct: 0 },
+};
+
+// ── Validation / migration ────────────────────────────────────────────────
+function isValidItem(item) {
+    if (!item || typeof item !== 'object') return false;
+    if (!EQUIPMENT_TYPES.includes(item.type)) return false;
+    if (typeof item.level !== 'number' || item.level < 1 || item.level > MAX_ITEM_LEVEL) return false;
+    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > MAX_TIER) return false;
+    return true;
+}
+
+function normalizeItem(raw) {
+    const type = raw.type;
+    const tier = Math.floor(raw.tier);
+    const level = Math.floor(raw.level);
+    const isHealth = HEALTH_ITEMS.includes(type);
+    const item = {
+        type, level, tier,
+        stats: calculateItemStats(level, tier, isHealth),
+        statType: isHealth ? 'health' : 'damage',
+        bonuses: Array.isArray(raw.bonuses)
+            ? raw.bonuses.filter((b) => b && typeof b.type === 'string' && typeof b.value === 'number')
+            : [],
+    };
+    item.name = raw.name || itemName(item);
+    return item;
+}
+
+// ── Getters ───────────────────────────────────────────────────────────────
+export const getGold = () => state.gold;
+export const getEquipment = () => state.equipment;
+export const getEquippedItem = (type) => state.equipment[type];
+export const getForgeLevel = () => state.forgeLevel;
+export const getArenaRank = () => state.arenaRank;
+export const getHighestArenaRank = () => state.highestArenaRank;
+export const getAvatar = () => state.avatar;
+export const getForgeLuckPct = () => state.perks.forgeLuckPct || 0;
+export const getGoldBonusPct = () => state.perks.goldBonusPct || 0;
+
+export function getCombatStats() {
+    return computeStatsFromEquipment(state.equipment);
+}
+
+export function getPowerScore() {
+    const { totalHealth, totalDamage, bonuses } = calculateStats(state.equipment);
+    return calculatePowerScore(totalHealth, totalDamage, bonuses);
+}
+
+export function getSellValue(item) {
+    if (!item) return 0;
+    return Math.floor(item.level * item.tier * (1 + item.tier * 0.4)) + 5;
+}
+
+export function getBestLevelForSlot(type, tier) {
+    return state.bestLevels[type]?.[tier] ?? null;
+}
+
+export function recordForgedLevel(type, tier, level) {
+    if (!state.bestLevels[type]) state.bestLevels[type] = {};
+    const cur = state.bestLevels[type][tier] ?? 0;
+    if (level > cur) state.bestLevels[type][tier] = level;
+}
+
+// ── Forge level ───────────────────────────────────────────────────────────
+export function getForgeUpgradeCost() {
+    if (state.forgeLevel >= MAX_FORGE_LEVEL) return null;
+    return FORGE_LEVELS[state.forgeLevel].cost; // cost to reach next level
+}
+
+export function getForgeChances(level = state.forgeLevel) {
+    return FORGE_LEVELS[Math.min(level, MAX_FORGE_LEVEL) - 1].chances;
+}
+
+export function upgradeForge() {
+    const cost = getForgeUpgradeCost();
+    if (cost == null || state.gold < cost) return false;
+    state.gold -= cost;
+    state.forgeLevel += 1;
+    save();
+    gameEvents.emit(EVENTS.FORGE_UPGRADED, state.forgeLevel);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+// ── Gold ──────────────────────────────────────────────────────────────────
+/** Award gold from a gameplay source, applying clan gold bonus. Returns granted amount. */
+export function grantGold(base) {
+    const amount = Math.floor(base * (1 + getGoldBonusPct() / 100));
+    state.gold += amount;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return amount;
+}
+
+export function spendGold(amount) {
+    if (state.gold < amount) return false;
+    state.gold -= amount;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
+// ── Equipment ─────────────────────────────────────────────────────────────
+/** Equip an item; the replaced item (if any) is auto-sold for gold. */
+export function equipItem(item) {
+    const old = state.equipment[item.type];
+    let refund = 0;
+    if (old) {
+        refund = getSellValue(old);
+        state.gold += refund;
+        gameEvents.emit(EVENTS.ITEM_SOLD, { item: old, goldEarned: refund });
+    }
+    state.equipment[item.type] = item;
+    save();
+    gameEvents.emit(EVENTS.ITEM_EQUIPPED, item);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return refund;
+}
+
+export function sellItem(item) {
+    const value = getSellValue(item);
+    state.gold += value;
+    save();
+    gameEvents.emit(EVENTS.ITEM_SOLD, { item, goldEarned: value });
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return value;
+}
+
+// ── Arena ─────────────────────────────────────────────────────────────────
+export function setArenaRank(rank) {
+    state.arenaRank = Math.max(1, rank);
+    if (state.arenaRank > state.highestArenaRank) state.highestArenaRank = state.arenaRank;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────
+export function setAvatar(id) {
+    state.avatar = id;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    if (getAccessToken()) {
+        apiFetch('/api/auth/profile-picture', { method: 'PUT', body: { profilePicture: id } }).catch(() => {});
+    }
+}
+
+// ── Clan perks (set by clan.js) ───────────────────────────────────────────
+export function setClanPerks(perks) {
+    state.perks = {
+        goldBonusPct: perks?.goldBonusPct || 0,
+        forgeLuckPct: perks?.forgeLuckPct || 0,
+    };
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+// ── Persistence ───────────────────────────────────────────────────────────
+function buildSave() {
+    return {
+        equipment: state.equipment,
+        gold: state.gold,
+        forgeLevel: state.forgeLevel,
+        forgeHighestLevel: state.bestLevels,
+        // Stub kept so the server's combat validator accepts the save.
+        combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
+        player: {
+            level: 1, xp: 0,
+            profilePicture: state.avatar,
+            arenaRank: state.arenaRank,
+            highestArenaRank: state.highestArenaRank,
+        },
+    };
+}
+
+let saveTimer = null;
+let saveInFlight = false;
+let dirtyWhileSaving = false;
+const SAVE_DEBOUNCE = 1500;
+
+export function save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); } catch { /* ignore */ }
+    if (!getAccessToken()) return;
+    if (saveInFlight) { dirtyWhileSaving = true; return; }
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE);
+}
+
+async function saveToServer() {
+    saveTimer = null;
+    saveInFlight = true;
+    dirtyWhileSaving = false;
+    try {
+        await apiFetch('/api/game/state', { method: 'PUT', body: buildSave() });
+    } catch (err) {
+        console.error('Save failed:', err);
+    } finally {
+        saveInFlight = false;
+        if (dirtyWhileSaving) { dirtyWhileSaving = false; saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE); }
+    }
+}
+
+function applyLoaded(data) {
+    if (!data || typeof data !== 'object') return;
+
+    EQUIPMENT_TYPES.forEach((type) => {
+        const raw = data.equipment?.[type];
+        state.equipment[type] = isValidItem(raw) ? normalizeItem(raw) : null;
+    });
+
+    if (typeof data.gold === 'number' && data.gold >= 0) state.gold = Math.floor(data.gold);
+    if (typeof data.forgeLevel === 'number' && data.forgeLevel >= 1) {
+        state.forgeLevel = Math.min(MAX_FORGE_LEVEL, Math.floor(data.forgeLevel));
+    }
+
+    if (data.forgeHighestLevel && typeof data.forgeHighestLevel === 'object') {
+        state.bestLevels = {};
+        EQUIPMENT_TYPES.forEach((type) => {
+            const slot = data.forgeHighestLevel[type];
+            if (slot && typeof slot === 'object') {
+                state.bestLevels[type] = {};
+                for (const [tier, lvl] of Object.entries(slot)) {
+                    if (typeof lvl === 'number' && lvl >= 1) state.bestLevels[type][tier] = Math.floor(lvl);
+                }
+            }
+        });
+    }
+
+    const player = data.player || {};
+    if (typeof player.profilePicture === 'string') state.avatar = player.profilePicture;
+    if (typeof player.arenaRank === 'number' && player.arenaRank >= 1) state.arenaRank = Math.floor(player.arenaRank);
+    if (typeof player.highestArenaRank === 'number' && player.highestArenaRank >= 1) {
+        state.highestArenaRank = Math.floor(player.highestArenaRank);
+    }
+    if (state.arenaRank > state.highestArenaRank) state.highestArenaRank = state.arenaRank;
+}
+
+export function loadLocal() {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (raw) applyLoaded(JSON.parse(raw));
+    } catch (err) {
+        console.error('Local load failed:', err);
+    }
+    gameEvents.emit(EVENTS.GAME_LOADED);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+export async function loadFromServer() {
+    try {
+        const res = await apiFetch('/api/game/state');
+        if (!res.ok) { loadLocal(); return; }
+        applyLoaded(await res.json());
+    } catch (err) {
+        console.error('Server load failed:', err);
+        loadLocal();
+        return;
+    }
+    gameEvents.emit(EVENTS.GAME_LOADED);
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+// Flush pending save on tab hide / unload.
+if (typeof document !== 'undefined') {
+    const flush = () => {
+        if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveToServer();
+        }
+    };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+    window.addEventListener('beforeunload', flush);
+}

@@ -1,163 +1,90 @@
-# Forge Master ⚒️
+# Forge Master 🔨
 
-> ⚠️ **Work In Progress** — Ce projet est en cours de développement. Des fonctionnalités peuvent être incomplètes ou changer à tout moment.
+> A full-stack web RPG about the thrill of the gear chase. **Forge** random equipment,
+> **equip** your best, prove your build in the **Arena** and live **PvP**, and rise
+> together in a **Clan**.
 
-**Forge Master** est un jeu web full-stack de craft d'équipement et de progression : forgez des objets aléatoires, équipez-les, combattez dans des donjons, affrontez d'autres joueurs en PvP et discutez en temps réel.
+🎮 **[Play on GitHub Pages](https://sparksx.github.io/forge-master/)**
 
-🎮 **[Jouer maintenant sur GitHub Pages](https://sparksx.github.io/forge-master/)**
+> ℹ️ This is the **Reforged** rebuild — a ground-up redesign of the gameplay and UI on
+> top of the original backend. See [`REDESIGN.md`](./REDESIGN.md) for the why & how.
 
-## Concept
+## The loop
 
-Forgez des équipements aléatoires (armes, armures, accessoires), équipez les meilleurs, vendez les autres et améliorez votre score de puissance. Progressez à travers 100 stages de donjon et affrontez d'autres joueurs en PvP temps réel.
+1. **Forge** — Tap the anvil for a random item with a punchy rarity reveal. Upgrade
+   the forge with gold (instant) to improve your odds at rarer gear.
+2. **Equip** — Every drop shows a side-by-side **Power** delta. Equip it or sell it.
+3. **Arena** — A PvE ladder of auto-resolved duels against scaling opponents. Win for
+   gold and climb the ranks; only better gear gets you deeper.
+4. **PvP** — Live, turn-based duels against real players over Socket.io. Elo ladder +
+   leaderboard.
+5. **Clan** — Create or join a clan, pool gold into a shared treasury to level it up,
+   and grant passive perks (**+gold**, **+forge luck**) to every member.
 
-## Fonctionnalités
+**One currency — Gold** — powers everything: forge upgrades, clan contributions, and
+it's what you earn from arena wins and selling gear.
 
-### Système de forge
-- Forge d'équipements aléatoires avec niveaux (1-100)
-- 8 emplacements d'équipement : Chapeau, Armure, Ceinture, Bottes, Gants, Collier, Anneau, Arme
-- **6 niveaux de rareté** : Common, Uncommon, Rare, Epic, Legendary, Mythic — chacun avec un code couleur
-- Bonus de stats aléatoires (0 à 3 selon la rareté) : Vitesse d'attaque, Chance de critique, Multiplicateur de critique, Multi santé, Multi dégâts, Régénération, Vol de vie
-- Comparaison visuelle des stats entre l'ancien et le nouvel objet (surbrillance verte/rouge)
-- **Auto-forge** : forge automatique avec filtres par rareté, auto-vente des objets non désirés
+## Features
 
-### Niveau de forge
-- 30 niveaux de forge débloquables avec de l'or
-- Chaque niveau améliore les chances d'obtenir des raretés supérieures
-- Système de timer avec possibilité d'accélérer contre de l'or
-- Comparaison côte à côte des probabilités actuelles vs suivantes
+- **Forge** — 8 equipment slots, 7 rarity tiers (Common → Divine), random stat & bonus
+  rolls, instant gold-gated forge upgrades that shift the rarity odds.
+- **Arena** — animated auto-battler PvE ladder with endless scaling.
+- **PvP** — real-time matchmaking, turn-based combat (attack / defend / special),
+  power-weighted Elo, top-players leaderboard. Stats are computed server-side (anti-cheat).
+- **Clans** — create/join, contribute to a treasury, clan levels & perks, member roster,
+  global clan leaderboard by total power.
+- **Accounts** — guest play, Discord & Google OAuth, username/password, JWT with refresh
+  rotation, server-side saves with a localStorage fallback.
+- **Profile** — avatars, power/arena/PvP stats at a glance.
+- **PWA** — installable, offline-capable shell, service worker.
+- **Admin/moderation** — separate dashboard at `/admin` (bans, mutes, audit log).
 
-### Système de combat (Donjon)
-- 10 vagues × 10 sous-vagues = 100 stages de progression
-- Moteur de combat tick-based (100ms) avec barres de vie en temps réel
-- Multi-monstres par sous-vague (1 à 3 selon la difficulté)
-- Système de ciblage : focus sur un monstre avec changement automatique
-- 10 thèmes de monstres (Rat, Loup, Araignée, Ogre, Squelette, Zombie, Spectre, Drake, Démon, Infernal)
-- Nombres de dégâts flottants avec effets de critique
-- Régénération de vie et vol de vie actifs en combat
-- Défaite = recul d'une sous-vague, victoire = progression automatique
+## Stack
 
-### PvP temps réel
-- File d'attente de matchmaking via Socket.io
-- Combat par tours avec timer (15s par tour)
-- 3 actions : Attaque, Défense, Spécial (haut risque/récompense)
-- Système de classement Elo (K=32)
-- Suivi victoires/défaites par joueur
-- Anti-triche : calcul des stats côté serveur à partir de l'équipement
-
-### Chat en temps réel
-- Canal de discussion global
-- Historique des 50 derniers messages
-- Aperçu des messages en bas de l'écran avec indicateur de non-lu
-- Overlay plein écran pour le chat complet
-
-### Authentification
-- Inscription (username, email, mot de passe hashé bcrypt)
-- Connexion par username ou email
-- JWT : access token (15min) + refresh token (7j) avec rotation
-- Restauration automatique de session
-- Sauvegarde du jeu côté serveur (avec fallback localStorage)
-- Jeu possible sans compte (sauvegarde locale uniquement)
-
-### Progression
-- Score de puissance calculé à partir de la santé effective, des dégâts effectifs et de tous les bonus
-- Système d'or : vente d'objets, boutique (4 paliers)
-- Sauvegarde automatique vers localStorage + serveur (debounced)
-
-### Interface
-- Navigation par onglets : PvP, Donjon, Accueil, Améliorations, Boutique
-- Modales de détail d'objet avec comparaison colorée
-- Design responsive optimisé mobile
-- Notifications toast (forge, vente)
-- Modal de profil avec stats détaillées et bonus
-
-### Qualité
-- Suite de tests unitaires (45+ tests avec Vitest)
-- CI/CD avec GitHub Actions (tests + build sur PR, déploiement auto sur push)
-- Déploiement automatique du frontend sur GitHub Pages
-- Backend déployable sur Railway
-
-## Stack technique
-
-### Frontend
-- JavaScript (ES6 modules)
-- Vite 6
-- CSS vanilla
-- Socket.io Client
-
-### Backend
-- Node.js + Express 5
-- Prisma ORM (PostgreSQL)
-- Socket.io
-- bcrypt (hash mots de passe)
-- jsonwebtoken (JWT)
-- express-validator
-
-### Tests & CI/CD
-- Vitest
-- GitHub Actions (CI + déploiement GitHub Pages)
-- Railway (backend)
+- **Frontend:** Vanilla JS (ES modules), Vite 6, custom EventEmitter, vanilla CSS.
+- **Backend:** Node.js + Express 5, Prisma ORM (PostgreSQL), Socket.io, bcrypt, JWT.
+- **Tests / CI:** Vitest, GitHub Actions (test + build on PR), GitHub Pages deploy.
 
 ## Architecture
 
 ```
-forge-master/
-├── src/                    # Frontend
-│   ├── main.js             # Point d'entrée, wiring des événements
-│   ├── config.js           # Constantes du jeu (équipements, tiers, niveaux de forge)
-│   ├── state.js            # Gestion de l'état du jeu (équipement, or, progression)
-│   ├── forge.js            # Création d'items, calcul de stats, roll de rareté
-│   ├── combat.js           # Moteur de combat tick-based multi-monstres
-│   ├── monsters.js         # Définitions et scaling des monstres
-│   ├── ui.js               # Manipulation du DOM et rendu
-│   ├── navigation.js       # Navigation par onglets
-│   ├── shop.js             # Boutique d'or
-│   ├── pvp.js              # Interface PvP (matchmaking, combat, résultats)
-│   ├── chat.js             # Interface chat temps réel
-│   ├── auth.js             # Écran login/register
-│   ├── api.js              # Client API avec gestion JWT et auto-refresh
-│   ├── socket-client.js    # Connexion WebSocket
-│   ├── events.js           # EventEmitter custom et registre d'événements
-│   └── __tests__/          # Tests unitaires
-├── server/                 # Backend
-│   ├── index.js            # Serveur Express + Socket.io
-│   ├── config.js           # Variables d'environnement
-│   ├── routes/
-│   │   ├── auth.js         # Endpoints d'authentification (register, login, refresh, logout)
-│   │   └── game.js         # Endpoints de sauvegarde/chargement de l'état du jeu
-│   ├── middleware/
-│   │   └── auth.js         # Middleware de vérification JWT
-│   └── socket/
-│       ├── index.js        # Configuration Socket.io
-│       ├── chat.js         # Handlers du chat temps réel
-│       └── pvp.js          # Matchmaking et combat PvP
-├── prisma/
-│   └── schema.prisma       # Modèles de données (User, GameState, ChatMessage, RefreshToken)
-└── .github/workflows/      # CI/CD
-    ├── ci.yml              # Tests automatiques sur PR
-    └── deploy.yml          # Déploiement GitHub Pages
+src/
+  main.js              entry — boots auth, loads state, mounts the app
+  api.js auth.js        ─┐ kept infra: JWT client, auth flows,
+  socket-client.js       ├─ socket connection, event bus, i18n (auth screen)
+  events.js  i18n/      ─┘
+  game/                  model layer (no DOM)
+    config.js items.js forge.js state.js arena.js clan.js pvp.js
+  screens/               view layer (DOM)
+    app.js forge.js arena.js pvp.js clan.js profile.js components.js item-view.js
+css/
+  reforged.css           one cohesive stylesheet
+shared/
+  stats.js               item stat & power math (used by client AND server)
+  clan-config.js         clan level/perk math (shared)
+server/
+  index.js routes/ socket/ middleware/ lib/   Express + Prisma + Socket.io
+  routes/clans.js        clan REST API (new)
+prisma/schema.prisma     Clan / ClanMember models added
 ```
 
 ## Scripts
 
 ```bash
-npm run dev          # Serveur de dev Vite (frontend)
-npm run dev:server   # Serveur Node.js (backend)
-npm run build        # Build de production
-npm start            # Déploiement : setup DB + serveur
-npm test             # Lancer les tests Vitest
-npm run test:watch   # Tests en mode watch
-npm run db:generate  # Générer le client Prisma
-npm run db:migrate   # Migration Prisma
-npm run db:push      # Push du schema vers la DB
+npm run dev          # Vite dev server (frontend)
+npm run dev:server   # Node backend
+npm run build        # production build
+npm start            # prisma db push + start server
+npm test             # Vitest
+npm run lint         # ESLint
 ```
 
-## Variables d'environnement
+## Environment
 
-Voir `.env.example` pour la configuration requise (DATABASE_URL, JWT secrets, port, etc.).
+See `.env.example` (DATABASE_URL, JWT secrets, OAuth client IDs, port).
 
-## Fonctionnalités à venir
+## Roadmap
 
-- Progression & endgame (niveaux joueur, XP, achievements)
-- Améliorations (Compétences, Familiers, Technologies)
-- Accessibilité (a11y)
-- ESLint + Prettier
+- Real-time clan chat (the chat socket already supports channels).
+- Re-wire i18n across the new screens (currently English-first).
+- Seasonal PvP resets, achievements, item enchanting.

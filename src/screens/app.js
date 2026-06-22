@@ -1,0 +1,90 @@
+// App shell — header, bottom nav, screen routing, toast/modal roots.
+import { h, clear, fmt, setToastRoot, setModalRoot } from './components.js';
+import { avatarEmoji } from '../game/config.js';
+import { getGold, getPowerScore, getAvatar } from '../game/state.js';
+import { gameEvents, EVENTS } from '../events.js';
+
+import * as forge from './forge.js';
+import * as arena from './arena.js';
+import * as pvp from './pvp.js';
+import * as clan from './clan.js';
+import * as profile from './profile.js';
+
+const screens = [forge, arena, pvp, clan, profile];
+let active = null;
+let header = null;
+
+export function initApp(mountEl) {
+    clear(mountEl);
+
+    header = buildHeader();
+    const stage = h('div', { className: 'screen-stage', id: 'screen-stage' });
+    const nav = buildNav();
+    const toastRoot = h('div', { className: 'toast-root' });
+    const modalRoot = h('div', { className: 'modal-root' });
+
+    mountEl.appendChild(h('div', { className: 'app-root' }, header.el, stage, nav, toastRoot, modalRoot));
+    setToastRoot(toastRoot);
+    setModalRoot(modalRoot);
+
+    // Mount every screen into its own container (rendered once, shown/hidden).
+    screens.forEach((s) => {
+        const container = h('div', { className: 'screen', dataset: { screen: s.id } });
+        container.style.display = 'none';
+        stage.appendChild(container);
+        s._container = container;
+        s.render(container);
+    });
+
+    gameEvents.on(EVENTS.STATE_CHANGED, () => {
+        updateHeader();
+        active?.refresh?.();
+    });
+    gameEvents.on(EVENTS.CLAN_CHANGED, updateHeader);
+
+    switchTab('forge');
+    updateHeader();
+}
+
+export function switchTab(name) {
+    const screen = screens.find((s) => s.id === name);
+    if (!screen) return;
+    screens.forEach((s) => { s._container.style.display = s.id === name ? 'block' : 'none'; });
+    document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    active = screen;
+    screen.onShow?.();
+    screen.refresh?.();
+}
+
+// ── Header ──────────────────────────────────────────────────────────────────
+function buildHeader() {
+    const avatarBtn = h('button', { className: 'hdr-avatar', text: avatarEmoji(getAvatar()), onclick: () => switchTab('profile') });
+    const gold = h('span', { className: 'hdr-gold-val', text: '0' });
+    const power = h('span', { className: 'hdr-power-val', text: '0' });
+    const el = h('header', { className: 'app-hdr' },
+        avatarBtn,
+        h('div', { className: 'hdr-title' }, h('span', { className: 'hdr-logo', text: '🔨' }), h('span', { text: 'Forge Master' })),
+        h('div', { className: 'hdr-stats' },
+            h('div', { className: 'hdr-pill hdr-power' }, h('span', { text: '💪' }), power),
+            h('div', { className: 'hdr-pill hdr-gold' }, h('span', { text: '💰' }), gold),
+        ),
+    );
+    return { el, avatarBtn, gold, power };
+}
+
+function updateHeader() {
+    if (!header) return;
+    header.gold.textContent = fmt(getGold());
+    header.power.textContent = fmt(getPowerScore());
+    header.avatarBtn.textContent = avatarEmoji(getAvatar());
+}
+
+// ── Bottom nav ───────────────────────────────────────────────────────────────
+function buildNav() {
+    return h('nav', { className: 'bottom-nav' },
+        ...screens.map((s) => h('button', { className: 'nav-btn', dataset: { tab: s.id }, onclick: () => switchTab(s.id) },
+            h('span', { className: 'nav-icon', text: s.icon }),
+            h('span', { className: 'nav-label', text: s.label }),
+        )),
+    );
+}
