@@ -12,7 +12,11 @@ export function h(tag, props = {}, ...children) {
         else if (k === 'onclick') el.addEventListener('click', v);
         else if (k === 'dataset') Object.assign(el.dataset, v);
         else if (k === 'attrs') for (const [a, val] of Object.entries(v)) el.setAttribute(a, val);
-        else if (k === 'style') Object.assign(el.style, v);
+        else if (k === 'style') for (const [sk, sv] of Object.entries(v)) {
+            // Custom properties (--x) must go through setProperty; direct assignment is ignored.
+            if (sk.startsWith('--')) el.style.setProperty(sk, sv);
+            else el.style[sk] = sv;
+        }
         else el.setAttribute(k, v);
     }
     for (const c of children.flat()) {

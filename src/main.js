@@ -9,9 +9,9 @@ import { loadMyClan } from './game/clan.js';
 import { initPvp } from './game/pvp.js';
 import { initApp } from './screens/app.js';
 
-// PWA service worker (best-effort).
+// PWA service worker (best-effort), resolved against the deploy base path.
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
 }
 
 let started = false;

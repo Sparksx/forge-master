@@ -2,7 +2,9 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-    base: '/',
+    // Relative base so the same build works whether it's served at the domain root
+    // (full-stack host) or under a subpath like /forge-master/ (GitHub Pages).
+    base: './',
     root: '.',
     build: {
         outDir: 'dist',
