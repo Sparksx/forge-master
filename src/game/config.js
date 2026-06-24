@@ -84,6 +84,23 @@ export function arenaXp(rank) {
     return Math.round(8 * Math.pow(rank, 0.85)) + 6;
 }
 
+// ── Gold economy: gold is deliberately scarce ────────────────────────────────
+// Gold is no longer a steady faucet. In the arena only *bosses* pay out — normal
+// packs drop nothing (see `encounterReward` in arena.js) — and gear can't be sold
+// back for gold (forged items are equipped or trashed). The one extra trickle is
+// the forge itself: each forge has a small chance to spit out a gold nugget
+// alongside the gear it produces.
+export const FORGE_GOLD_CHANCE = 0.08; // chance a single forge also drops gold
+
+/**
+ * Gold yielded by a lucky forge, scaled by forge level and the rarity rolled so
+ * the nugget stays relevant as you progress and a rare roll paired with a nugget
+ * is a genuine double win.
+ */
+export function forgeGoldDrop(forgeLevel, tier) {
+    return Math.round(40 * forgeLevel * (1 + (tier - 1) * 0.6));
+}
+
 // Forge a fresh item near this level band until the player has gear to scale from.
 export const INITIAL_LEVEL_MAX = 8;
 export const LEVEL_BAND = 12; // new rolls land within ±band of your best for that slot

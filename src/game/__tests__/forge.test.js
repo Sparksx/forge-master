@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { rollTier, createItem, rollLevel, rollBonuses } from '../forge.js';
-import { TIERS, HEALTH_ITEMS } from '../config.js';
+import { rollTier, createItem, rollLevel, rollBonuses, forge } from '../forge.js';
+import { TIERS, HEALTH_ITEMS, forgeGoldDrop } from '../config.js';
 
 describe('rollTier', () => {
     it('always rolls Common at forge level 1', () => {
@@ -66,6 +66,35 @@ describe('rollBonuses', () => {
             const [b] = rollBonuses(1, 7);
             expect(b.value).toBeGreaterThanOrEqual(1);
         }
+    });
+});
+
+describe('forgeGoldDrop', () => {
+    it('grows with forge level and rarity', () => {
+        expect(forgeGoldDrop(5, 1)).toBeGreaterThan(forgeGoldDrop(1, 1));
+        expect(forgeGoldDrop(3, 5)).toBeGreaterThan(forgeGoldDrop(3, 1));
+        expect(forgeGoldDrop(1, 1)).toBeGreaterThan(0);
+    });
+});
+
+describe('forge', () => {
+    it('always returns a valid item and a non-negative gold amount', () => {
+        for (let i = 0; i < 100; i++) {
+            const { item, gold } = forge();
+            expect(item).toBeTruthy();
+            expect(item.tier).toBeGreaterThanOrEqual(1);
+            expect(typeof gold).toBe('number');
+            expect(gold).toBeGreaterThanOrEqual(0);
+        }
+    });
+
+    it('only occasionally yields gold (gold is scarce)', () => {
+        let withGold = 0;
+        const N = 400;
+        for (let i = 0; i < N; i++) if (forge().gold > 0) withGold++;
+        // FORGE_GOLD_CHANCE is small (~8%): most forges drop no gold at all.
+        expect(withGold).toBeGreaterThan(0);
+        expect(withGold).toBeLessThan(N / 2);
     });
 });
 

@@ -2,6 +2,7 @@
 import {
     EQUIPMENT_TYPES, HEALTH_ITEMS, TIERS, BONUS_STATS, BONUS_STAT_KEYS,
     calculateItemStats, FORGE_LEVELS, forgeXpForRarity,
+    FORGE_GOLD_CHANCE, forgeGoldDrop,
     INITIAL_LEVEL_MAX, LEVEL_BAND, MAX_ITEM_LEVEL,
 } from './config.js';
 import { itemName } from './items.js';
@@ -79,13 +80,20 @@ export function rollLevel(best) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/** Forge one item using current game state (forge level, clan luck, best-level memory). */
+/**
+ * Forge one item using current game state (forge level, clan luck, best-level
+ * memory). Returns `{ item, gold }`: the gear that was forged plus a gold nugget
+ * amount (0 most of the time — the forge only occasionally yields gold, since
+ * gold is otherwise scarce).
+ */
 export function forge() {
+    const forgeLevel = getForgeLevel();
     const type = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
-    const tier = rollTier(getForgeLevel(), getForgeLuckPct());
+    const tier = rollTier(forgeLevel, getForgeLuckPct());
     const level = rollLevel(getBestLevelForSlot(type, tier));
     const item = createItem(type, level, tier);
     recordForgedLevel(type, tier, level);
     grantForgeXp(forgeXpForRarity(tier)); // rarer rolls advance the forge faster
-    return item;
+    const gold = Math.random() < FORGE_GOLD_CHANCE ? forgeGoldDrop(forgeLevel, tier) : 0;
+    return { item, gold };
 }

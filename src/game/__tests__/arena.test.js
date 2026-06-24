@@ -133,10 +133,14 @@ describe('real-time combat helpers', () => {
         expect(runC).not.toEqual(runA);
     });
 
-    it('encounterReward pays more for a win and scales with boss kind', () => {
-        const normalWin = encounterReward(10, 'normal', true);
-        expect(encounterReward(10, 'normal', false)).toBeLessThan(normalWin);
-        expect(encounterReward(10, 'boss', true)).toBeGreaterThan(normalWin);
-        expect(encounterReward(10, 'bigboss', true)).toBeGreaterThan(encounterReward(10, 'boss', true));
+    it('encounterReward only pays out for bosses, and only on a win', () => {
+        // Gold is scarce: normal packs never drop gold, win or lose.
+        expect(encounterReward(10, 'normal', true)).toBe(0);
+        expect(encounterReward(10, 'normal', false)).toBe(0);
+        // Bosses pay only when beaten — a loss drops nothing.
+        expect(encounterReward(10, 'boss', false)).toBe(0);
+        expect(encounterReward(10, 'boss', true)).toBeGreaterThan(0);
+        // Big bosses pay more than regular bosses at the same rank.
+        expect(encounterReward(50, 'bigboss', true)).toBeGreaterThan(encounterReward(50, 'boss', true));
     });
 });

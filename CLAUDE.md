@@ -16,8 +16,17 @@ deploy (`prisma generate` + `vite build`, then `node server/index.js`).
 ## Core game loop (current behavior)
 
 Forge gear → equip the best (Power delta) → idle-battle the PvE Arena → fight live PvP →
-pool gold in a Clan for passive perks. **One currency: Gold.** Diamonds/essence and the
-Stripe shop exist in the schema/server but are **dormant** — not part of the live loop.
+pool gold in a Clan for passive perks. **One currency: Gold — and it's deliberately
+scarce.** Diamonds/essence and the Stripe shop exist in the schema/server but are
+**dormant** — not part of the live loop.
+
+**Gold economy (scarce):** gold has only two sources — **boss kills** in the arena
+(`encounterReward` in `arena.js`: normal packs and every loss pay 0; only `boss`/`bigboss`
+wins pay out) and a small per-forge chance for a **gold nugget** (`FORGE_GOLD_CHANCE` /
+`forgeGoldDrop` in `config.js`; `forge()` returns `{ item, gold }`). Gear can **not** be
+sold for gold — a forged/equipped item is either equipped or **trashed** (`trashItem` in
+`state.js`); equipping no longer refunds the replaced item. Don't reintroduce a gold-for-gear
+faucet.
 
 - **Screens / bottom nav:** `pvp`, `home`, `clan` (Profile is reached via the header
   avatar). The old separate **Forge** and **Arena** tabs are **merged into `home.js`** —
@@ -28,7 +37,8 @@ Stripe shop exist in the schema/server but are **dormant** — not part of the l
   that levels the forge up for free; the gold-cost upgrade stays as an optional instant
   shortcut. No real-time timers. Optional auto-forge.
 - **Arena:** auto-resolved duels, endless power scaling (`arenaEnemyPower`/`arenaReward`
-  in `config.js`), 2× playback. Defeating enemies grants **player XP** (`arenaXp`); player
+  in `config.js`), 2× playback. Only **bosses** drop gold (see gold economy above).
+  Defeating enemies grants **player XP** (`arenaXp`); player
   level (`playerXpForLevel`, max `MAX_PLAYER_LEVEL`) raises only **base HP and base
   attack** (`playerBaseHealth`/`playerBaseDamage` in `shared/stats.js`) — all other base
   stats are unaffected. Player level feeds combat stats and PvP power everywhere.

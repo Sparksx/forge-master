@@ -131,11 +131,15 @@ export function computeHit(att, rnd = Math.random) {
     return { dmg, crit };
 }
 
-/** Gold reward for clearing (or losing) an encounter of the given kind/rank. */
+/**
+ * Gold reward for an encounter. Gold is scarce: only bosses pay out, and only on
+ * a win. Normal packs — and any loss — drop nothing.
+ */
 export function encounterReward(rank, kind, win) {
+    if (!win || kind === 'normal') return 0;
     const base = arenaReward(rank);
-    const mult = kind === 'bigboss' ? 3 : kind === 'boss' ? 1.8 : 1;
-    return win ? Math.round(base * mult) : Math.floor(base * 0.25);
+    const mult = kind === 'bigboss' ? 3 : 1.8;
+    return Math.round(base * mult);
 }
 
 const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0) / 100);

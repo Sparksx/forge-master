@@ -107,11 +107,6 @@ export function getPowerScore() {
     return playerPowerScore(state.equipment, state.playerLevel);
 }
 
-export function getSellValue(item) {
-    if (!item) return 0;
-    return Math.floor(item.level * item.tier * (1 + item.tier * 0.4)) + 5;
-}
-
 export function getBestLevelForSlot(type, tier) {
     return state.bestLevels[type]?.[tier] ?? null;
 }
@@ -224,29 +219,19 @@ export function resetProgress() {
 }
 
 // ── Equipment ─────────────────────────────────────────────────────────────
-/** Equip an item; the replaced item (if any) is auto-sold for gold. */
+/** Equip an item. Any item it replaces is discarded — gear can't be sold for gold. */
 export function equipItem(item) {
-    const old = state.equipment[item.type];
-    let refund = 0;
-    if (old) {
-        refund = getSellValue(old);
-        state.gold += refund;
-        gameEvents.emit(EVENTS.ITEM_SOLD, { item: old, goldEarned: refund });
-    }
     state.equipment[item.type] = item;
     save();
     gameEvents.emit(EVENTS.ITEM_EQUIPPED, item);
     gameEvents.emit(EVENTS.STATE_CHANGED);
-    return refund;
 }
 
-export function sellItem(item) {
-    const value = getSellValue(item);
-    state.gold += value;
+/** Discard an item. Gold can't be recovered from gear — gold is deliberately scarce. */
+export function trashItem(item) {
     save();
-    gameEvents.emit(EVENTS.ITEM_SOLD, { item, goldEarned: value });
+    gameEvents.emit(EVENTS.ITEM_TRASHED, { item });
     gameEvents.emit(EVENTS.STATE_CHANGED);
-    return value;
 }
 
 // ── Arena ─────────────────────────────────────────────────────────────────
