@@ -11,6 +11,21 @@ export const HEALTH_PER_LEVEL = 10;
 export const DAMAGE_PER_LEVEL = 2;
 export const GROWTH_EXPONENT = 1.2;
 
+// Player level: gained by defeating arena enemies. Only the base HP and base
+// attack grow with level — every other base stat is fixed. The forge level is a
+// separate track (see config.js) and is unaffected by player level.
+export const MAX_PLAYER_LEVEL = 500;
+
+/** Base health for a player at the given level (level 1 = BASE_HEALTH). */
+export function playerBaseHealth(level = 1) {
+    return BASE_HEALTH + (Math.max(1, level) - 1) * HEALTH_PER_LEVEL;
+}
+
+/** Base attack for a player at the given level (level 1 = BASE_DAMAGE). */
+export function playerBaseDamage(level = 1) {
+    return BASE_DAMAGE + (Math.max(1, level) - 1) * DAMAGE_PER_LEVEL;
+}
+
 export const BONUS_STATS = {
     attackSpeed:    { label: 'Attack Speed',    icon: '\u26A1', max: 15, unit: '%' },
     critChance:     { label: 'Crit Chance',     icon: '\uD83C\uDFAF', max: 10, unit: '%' },
@@ -98,7 +113,7 @@ export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
     return Math.round(effectiveHealth + effectiveDamage);
 }
 
-export function computeStatsFromEquipment(equipment) {
+export function computeStatsFromEquipment(equipment, playerLevel = 1) {
     let totalHealth = 0;
     let totalDamage = 0;
     const bonuses = {};
@@ -122,8 +137,8 @@ export function computeStatsFromEquipment(equipment) {
         }
     }
 
-    const maxHP = BASE_HEALTH + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
-    const damage = BASE_DAMAGE + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
+    const maxHP = playerBaseHealth(playerLevel) + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
+    const damage = playerBaseDamage(playerLevel) + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
 
     return {
         maxHP,
@@ -134,4 +149,14 @@ export function computeStatsFromEquipment(equipment) {
         lifeSteal: bonuses.lifeSteal || 0,
         attackSpeed: bonuses.attackSpeed || 0,
     };
+}
+
+/**
+ * Total power score from gear + player level base stats. Used by the UI power
+ * display and by server PvP matchmaking/ELO so player level counts everywhere.
+ */
+export function playerPowerScore(equipment, playerLevel = 1) {
+    const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
+    const gearPower = calculatePowerScore(totalHealth, totalDamage, bonuses);
+    return gearPower + playerBaseHealth(playerLevel) + playerBaseDamage(playerLevel);
 }

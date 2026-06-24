@@ -5,6 +5,7 @@
 export {
     EQUIPMENT_TYPES, HEALTH_ITEMS, DAMAGE_ITEMS,
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
+    MAX_PLAYER_LEVEL, playerBaseHealth, playerBaseDamage, playerPowerScore,
     calculateItemStats, calculateStats, calculatePowerScore, computeStatsFromEquipment,
 } from '../../shared/stats.js';
 
@@ -39,6 +40,32 @@ export const FORGE_LEVELS = [
     { cost: 6000000,  chances: [0,    3,    10,   20,   33,   24,  10] },
 ];
 export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
+
+// ── Forge XP ────────────────────────────────────────────────────────────────
+// Each forge grants XP toward the next forge level, so forging more makes the
+// forge stronger on its own. The gold-cost upgrades in FORGE_LEVELS still work
+// as an optional way to buy the next level immediately.
+export const FORGE_XP_PER_FORGE = 1;
+
+/** XP needed to advance the forge FROM `level` to level+1 (null once maxed). */
+export function forgeXpForLevel(level) {
+    if (level >= MAX_FORGE_LEVEL) return null;
+    return 8 + (level - 1) * 6 + Math.floor(Math.pow(level, 2.1));
+}
+
+// ── Player XP ───────────────────────────────────────────────────────────────
+// Defeating arena enemies grants player XP. Levelling up raises only base HP and
+// base attack (math in shared/stats.js); other base stats stay fixed.
+
+/** XP needed to advance the player FROM `level` to level+1. */
+export function playerXpForLevel(level) {
+    return Math.floor(50 * Math.pow(Math.max(1, level), 1.5));
+}
+
+/** XP awarded for defeating an arena enemy at the given rank. */
+export function arenaXp(rank) {
+    return Math.round(8 * Math.pow(rank, 0.85)) + 6;
+}
 
 // Forge a fresh item near this level band until the player has gear to scale from.
 export const INITIAL_LEVEL_MAX = 8;

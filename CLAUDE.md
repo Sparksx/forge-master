@@ -22,11 +22,15 @@ Stripe shop exist in the schema/server but are **dormant** — not part of the l
 - **Screens / bottom nav:** `pvp`, `home`, `clan` (Profile is reached via the header
   avatar). The old separate **Forge** and **Arena** tabs are **merged into `home.js`** —
   a unified idle auto-battler with the gear grid and forge below it.
-- **Forge:** 8 slots, 7 rarity tiers (Common → Divine), 12 instant gold-gated forge
-  levels that shift rarity odds (`FORGE_LEVELS` in `src/game/config.js`). No real-time
-  timers. Optional auto-forge.
+- **Forge:** 8 slots, 7 rarity tiers (Common → Divine), 12 forge levels that shift
+  rarity odds (`FORGE_LEVELS` in `src/game/config.js`). Forging grants **forge XP**
+  (`forgeXpForLevel`) that levels the forge up for free; the gold-cost upgrade stays as
+  an optional instant shortcut. No real-time timers. Optional auto-forge.
 - **Arena:** auto-resolved duels, endless power scaling (`arenaEnemyPower`/`arenaReward`
-  in `config.js`), 2× playback, free cooldown-gated 2×-gold Boost.
+  in `config.js`), 2× playback. Defeating enemies grants **player XP** (`arenaXp`); player
+  level (`playerXpForLevel`, max `MAX_PLAYER_LEVEL`) raises only **base HP and base
+  attack** (`playerBaseHealth`/`playerBaseDamage` in `shared/stats.js`) — all other base
+  stats are unaffected. Player level feeds combat stats and PvP power everywhere.
 - **PvP:** real-time turn-based over Socket.io, power→Elo matchmaking, actions
   attack/defend/special. Stats computed **server-side** (anti-cheat).
 - **Clans:** create/join, shared treasury, levels 1–30, perks (+gold, +forge luck, more
@@ -95,7 +99,8 @@ Always run `npm test`, `npm run lint`, and `npm run build` before committing —
   in `shared/__tests__/` and `src/game/__tests__/` accordingly.
 - **One currency in the live game: Gold.** Don't reintroduce diamonds/essence/IAP into the
   loop — they're intentionally dormant (see `REDESIGN.md`).
-- **No real-time timers** in the forge — upgrades are instant and gold-gated by design.
+- **No real-time timers** in the forge — levels come from forge XP (earned by forging) or
+  an instant optional gold upgrade; there are no real-time cooldowns by design.
 - **Auth:** guest / Discord / Google / username+password, JWT access + rotating refresh.
   Guests fall back to a localStorage save when the backend is unreachable.
 - **i18n** is wired through the auth screen; game-screen strings are English-first and

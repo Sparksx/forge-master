@@ -1,10 +1,11 @@
 // Forge logic — roll a random item. Stat math comes from shared/stats.js.
 import {
     EQUIPMENT_TYPES, HEALTH_ITEMS, TIERS, BONUS_STATS, BONUS_STAT_KEYS,
-    calculateItemStats, FORGE_LEVELS, INITIAL_LEVEL_MAX, LEVEL_BAND, MAX_ITEM_LEVEL,
+    calculateItemStats, FORGE_LEVELS, FORGE_XP_PER_FORGE,
+    INITIAL_LEVEL_MAX, LEVEL_BAND, MAX_ITEM_LEVEL,
 } from './config.js';
 import { itemName } from './items.js';
-import { getForgeLevel, getBestLevelForSlot, recordForgedLevel, getForgeLuckPct } from './state.js';
+import { getForgeLevel, getBestLevelForSlot, recordForgedLevel, getForgeLuckPct, grantForgeXp } from './state.js';
 
 // Minimum bonus value (as % of max) by tier: Legendary+ guarantees strong rolls.
 const BONUS_MIN_PCT = [0, 0, 0, 0, 15, 30, 50];
@@ -81,5 +82,6 @@ export function forge() {
     const level = rollLevel(getBestLevelForSlot(type, tier));
     const item = createItem(type, level, tier);
     recordForgedLevel(type, tier, level);
+    grantForgeXp(FORGE_XP_PER_FORGE); // forging makes the forge stronger over time
     return item;
 }

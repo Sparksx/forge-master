@@ -78,6 +78,14 @@
 
 ## 🟡 Priorité moyenne — UX & Gameplay
 
+- [ ] **Ré-ajouter le bouton Boost (x2 gold)** — Retiré du `home.js` car il prenait trop de
+  place et donnait un avantage gratuit sans coût. À ré-introduire **une fois la boutique
+  disponible**, en tant qu'achat/récompense (pub, or, ou premium) plutôt qu'un buff gratuit
+  en cooldown. Ancienne implémentation : buff 2 min / cooldown 4 min, multiplicateur ×2 sur
+  l'or d'arène (voir l'historique git de `src/screens/home.js`).
+- [ ] **Équilibrage XP forge & joueur** — Les courbes `forgeXpForLevel`, `playerXpForLevel`
+  et `arenaXp` (`src/game/config.js`) ainsi que `HEALTH_PER_LEVEL`/`DAMAGE_PER_LEVEL`
+  (`shared/stats.js`) sont des valeurs initiales. À affiner avec des données de jeu réelles.
 - [ ] **Confirmation sur actions coûteuses** — Pas de dialogue de confirmation avant de dépenser de grosses sommes d'essence ou d'or (changement de pseudo, speed-up de recherche). Ajouter une modale de confirmation
 - [ ] **Messages d'erreur explicites** — Quand une action échoue (queue pleine, essence insuffisante, tech non débloquée), aucun feedback utilisateur. Ajouter des notifications toast
 - [ ] **Indicateur de connexion serveur** — Aucun indicateur visuel quand le WebSocket se déconnecte ou que la sauvegarde serveur échoue. Ajouter un badge de statut dans le header

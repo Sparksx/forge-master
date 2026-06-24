@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { EQUIPMENT_TYPES, MAX_TIER } from '../../shared/stats.js';
+import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL } from '../../shared/stats.js';
 
 const router = Router();
 
@@ -49,8 +49,9 @@ function isValidForgeUpgrade(forgeUpgrade) {
 
 function isValidPlayer(player) {
     if (typeof player !== 'object' || Array.isArray(player) || player === null) return false;
-    if (typeof player.level !== 'number' || player.level < 1 || player.level > 100) return false;
+    if (typeof player.level !== 'number' || player.level < 1 || player.level > MAX_PLAYER_LEVEL) return false;
     if (typeof player.xp !== 'number' || player.xp < 0) return false;
+    if (player.forgeXp !== undefined && (typeof player.forgeXp !== 'number' || player.forgeXp < 0)) return false;
     return true;
 }
 

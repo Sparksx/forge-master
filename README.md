@@ -11,13 +11,13 @@
 
 ## The loop
 
-1. **Forge** — Tap the anvil for a random item with a punchy rarity reveal. Upgrade
-   the forge with gold (instant — **no timers**) to improve your odds at rarer gear.
-   Auto-forge can keep tapping for you.
+1. **Forge** — Tap the anvil for a random item with a punchy rarity reveal. Every forge
+   grants **forge XP** that levels the forge up (better odds at rarer gear) — or pay gold
+   to upgrade instantly (**no timers**). Auto-forge can keep tapping for you.
 2. **Equip** — Every drop shows a side-by-side **Power** delta. Equip it or sell it.
 3. **Battle (Arena)** — Your hero auto-fights an endless PvE ladder right on the home
-   screen. Win for gold and climb the ranks; only better gear gets you deeper. Toggle
-   2× speed or fire a free 2×-gold **Boost** (on a cooldown — no ads).
+   screen. Win for gold and **player XP**; levelling up raises your base HP and base
+   attack, and only better gear gets you deeper.
 4. **PvP** — Live, turn-based duels against real players over Socket.io. Power/Elo
    matchmaking + leaderboard.
 5. **Clan** — Create or join a clan, pool gold into a shared treasury to level it up,
@@ -29,11 +29,12 @@ it's what you earn from arena wins and selling gear.
 ## Features
 
 - **Forge** — 8 equipment slots, 7 rarity tiers (Common → Divine), random stat & bonus
-  rolls (7 bonus types), and 12 instant gold-gated forge levels that progressively shift
-  the rarity odds toward better gear. Optional auto-forge.
+  rolls (7 bonus types), and 12 forge levels that progressively shift the rarity odds
+  toward better gear. Forge levels are earned by forging (forge XP) or bought instantly
+  with gold. Optional auto-forge.
 - **Battle / Arena** — an idle, auto-resolved PvE ladder merged into the home screen,
-  with endless power scaling, cosmetic stage "chapters", 2× playback, and a free
-  cooldown-gated 2×-gold boost.
+  with endless power scaling, cosmetic stage "chapters", and 2× playback. Defeating
+  enemies grants player XP; player level raises your base HP and base attack.
 - **PvP** — real-time matchmaking (power- then Elo-based), turn-based combat
   (attack / defend / special), power-weighted Elo, top-players leaderboard. Stats are
   computed server-side (anti-cheat).

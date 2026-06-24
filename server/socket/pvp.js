@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';
-import { computeStatsFromEquipment, calculatePowerScore, calculateStats } from '../../shared/stats.js';
+import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
 import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_RANGE_INTERVAL, PVP_TURN_TIMEOUT } from '../../shared/pvp-config.js';
 import { storeCombatLog } from './chat.js';
 
@@ -452,9 +452,9 @@ async function getPlayerStats(userId) {
         if (!user || !user.gameState) return null;
 
         const equipment = user.gameState.equipment || {};
-        const { maxHP, damage, critChance, critMultiplier } = computeStatsFromEquipment(equipment);
-        const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
-        const power = calculatePowerScore(totalHealth, totalDamage, bonuses);
+        const level = user.gameState.player?.level || 1;
+        const { maxHP, damage, critChance, critMultiplier } = computeStatsFromEquipment(equipment, level);
+        const power = playerPowerScore(equipment, level);
 
         return {
             maxHP: Math.max(100, maxHP),
@@ -489,15 +489,15 @@ async function getLeaderboard() {
                 pvpRating: true,
                 pvpWins: true,
                 pvpLosses: true,
-                gameState: { select: { equipment: true } },
+                gameState: { select: { equipment: true, player: true } },
             },
         });
 
         const result = players.map(p => {
             let power = 0;
             if (p.gameState) {
-                const { totalHealth, totalDamage, bonuses } = calculateStats(p.gameState.equipment || {});
-                power = calculatePowerScore(totalHealth, totalDamage, bonuses);
+                const level = p.gameState.player?.level || 1;
+                power = playerPowerScore(p.gameState.equipment || {}, level);
             }
             return {
                 id: p.id,

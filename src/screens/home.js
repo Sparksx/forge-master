@@ -4,12 +4,13 @@
 //   stage track → live battle → progress bar → controls → gear → forge.
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
 import { renderItemCard, renderDeltaBadge, powerDelta } from './item-view.js';
-import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo } from '../game/config.js';
+import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp } from '../game/config.js';
 import { slotIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
     getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
     upgradeForge, equipItem, sellItem, getSellValue, getGold,
     getArenaRank, setArenaRank, getPowerScore, getAvatar, getCombatStats, grantGold,
+    grantPlayerXp, getForgeLevelProgress,
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import { fightArena, makeEnemy } from '../game/arena.js';
@@ -32,13 +33,6 @@ let forging = false;
 let autoForge = false;
 let autoForgeTimer = null;
 
-// Boost: a free, self-contained 2x-gold buff on a cooldown (no ads needed).
-const BOOST_DURATION = 120000; // 2 min active
-const BOOST_COOLDOWN = 240000; // 4 min lockout after it ends
-let boostUntil = 0;
-let boostReadyAt = 0;
-let tickTimer = null;
-
 export const id = 'home';
 export const icon = '🔨';
 export const label = 'Forge';
@@ -54,7 +48,6 @@ export function render(container) {
 export function onShow() {
     visible = true;
     refresh();
-    startTicker();
     dungeon?.start();
     dungeon?.setAuto(autoBattle);
     dungeon?.setFast(fast);
@@ -66,8 +59,7 @@ export function onHide() {
     visible = false;
     dungeon?.stop();
     clearTimeout(autoForgeTimer);
-    clearInterval(tickTimer);
-    autoForgeTimer = tickTimer = null;
+    autoForgeTimer = null;
 }
 
 export function refresh() {
@@ -75,7 +67,6 @@ export function refresh() {
     updateGearGrid();
     const chip = root.querySelector('.forge-level-chip');
     if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
-    updateBoostBtn();
     // Don't disturb a fight in progress; just keep the idle preview fresh.
     if (!battleBusy) syncPreview();
 }
@@ -89,11 +80,6 @@ function buildBattle() {
     return h('div', { className: 'battle-zone' },
         h('div', { className: 'stage-head' },
             h('div', { className: 'stage-title', text: 'Hard 1-1' }),
-            h('div', { className: 'stage-track' },
-                h('span', { className: 'stage-node prev' }),
-                h('span', { className: 'stage-node cur' }),
-                h('span', { className: 'stage-node next' }),
-            ),
         ),
         dungeonHost,
         h('div', { className: 'stage-progress' },
@@ -102,10 +88,6 @@ function buildBattle() {
                 h('span', { className: 'stage-bar-label', text: 'Stage 1 / 10' }),
                 h('span', { className: 'rank-chip', text: 'Rank 1' }),
             ),
-        ),
-        h('div', { className: 'battle-controls' },
-            h('button', { className: 'ctrl-btn boost-btn', onclick: activateBoost },
-                h('span', { className: 'ctrl-icon', text: '⚡' }), h('span', { className: 'boost-label', text: 'Boost x2' })),
         ),
     );
 }
@@ -187,53 +169,15 @@ async function runFight() {
 }
 
 function resolveFight(result) {
-    const mult = boostActive() ? 2 : 1;
-    const granted = grantGold(result.reward * mult);
+    const granted = grantGold(result.reward);
     dungeon.floater('player', `+${fmt(granted)}💰`, 'gold');
 
     if (result.win) {
         setArenaRank(result.rank + 1);
+        const xp = grantPlayerXp(arenaXp(result.rank));
+        if (xp) dungeon.floater('player', `+${fmt(xp)} XP`, 'xp');
     }
     gameEvents.emit(EVENTS.ARENA_RESULT, result);
-}
-
-// ── Boost ───────────────────────────────────────────────────────────────────
-const boostActive = () => Date.now() < boostUntil;
-const boostReady = () => Date.now() >= boostReadyAt;
-
-function activateBoost() {
-    if (boostActive()) { toast('Boost already active', 'info'); return; }
-    if (!boostReady()) { toast('Boost is recharging', 'error'); return; }
-    boostUntil = Date.now() + BOOST_DURATION;
-    boostReadyAt = boostUntil + BOOST_COOLDOWN;
-    toast('⚡ 2x gold for 2 minutes!', 'gold');
-    updateBoostBtn();
-}
-
-function updateBoostBtn() {
-    const btn = root?.querySelector('.boost-btn');
-    if (!btn) return;
-    const label = btn.querySelector('.boost-label');
-    if (boostActive()) {
-        btn.classList.add('active'); btn.classList.remove('cooling');
-        label.textContent = `x2 · ${clock(boostUntil - Date.now())}`;
-    } else if (!boostReady()) {
-        btn.classList.remove('active'); btn.classList.add('cooling');
-        label.textContent = clock(boostReadyAt - Date.now());
-    } else {
-        btn.classList.remove('active', 'cooling');
-        label.textContent = 'Boost x2';
-    }
-}
-
-function startTicker() {
-    clearInterval(tickTimer);
-    tickTimer = setInterval(() => { if (visible) updateBoostBtn(); }, 500);
-}
-
-function clock(ms) {
-    const s = Math.max(0, Math.ceil(ms / 1000));
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 // ── Forge zone ──────────────────────────────────────────────────────────────
@@ -396,9 +340,19 @@ function showForgeUpgrade() {
                 : null).filter(Boolean)),
     );
 
+    const prog = getForgeLevelProgress();
+    const xpBar = prog.maxed
+        ? null
+        : h('div', { className: 'forge-xp' },
+            h('div', { className: 'forge-xp-bar' },
+                h('div', { className: 'forge-xp-fill', style: { width: `${Math.round(prog.pct * 100)}%` } })),
+            h('div', { className: 'forge-xp-label muted', text: `Forge XP ${fmt(prog.xp)} / ${fmt(prog.need)} — keep forging to level up for free` }),
+        );
+
     const body = h('div', { className: 'forge-upgrade' },
         h('h3', { text: '⚒️ Forge Upgrade' }),
-        h('p', { className: 'muted', text: 'A higher forge level shifts the odds toward rarer gear. Upgrades are instant.' }),
+        h('p', { className: 'muted', text: 'A higher forge level shifts the odds toward rarer gear. Forging fills the XP bar to level up for free, or pay gold to upgrade instantly.' }),
+        xpBar,
         h('div', { className: 'odds-legend' },
             ...TIERS.map((t) => h('span', { className: 'legend-item' },
                 h('span', { className: 'legend-dot', style: { background: t.color } }), t.name))),

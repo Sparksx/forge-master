@@ -141,7 +141,8 @@ export function createDungeon({ onEngage } = {}) {
         const color = cls === 'crit' ? '#f5c451'
             : cls === 'heal' ? '#4ade80'
                 : cls === 'gold' ? '#f5c451'
-                    : side === 'player' ? '#ef5466' : '#ffd9de';
+                    : cls === 'xp' ? '#a78bfa'
+                        : side === 'player' ? '#ef5466' : '#ffd9de';
         floaters.push({ x: target.x, y: target.y - target.r - 6, vy: -34, text, color, bornAt: now() });
     }
 

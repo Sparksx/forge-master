@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireRole, logAudit } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+import { MAX_PLAYER_LEVEL } from '../../shared/stats.js';
 
 const router = Router();
 
@@ -397,8 +398,8 @@ router.post('/users/:id/level', requireRole('admin'), async (req, res) => {
     const userId = parseInt(req.params.id);
     const { level } = req.body;
     if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
-    if (typeof level !== 'number' || level < 1 || level > 100) {
-        return res.status(400).json({ error: 'Level must be between 1 and 100' });
+    if (typeof level !== 'number' || level < 1 || level > MAX_PLAYER_LEVEL) {
+        return res.status(400).json({ error: `Level must be between 1 and ${MAX_PLAYER_LEVEL}` });
     }
 
     try {
