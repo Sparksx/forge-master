@@ -4,7 +4,7 @@ Guidance for Claude Code (and other agents) working in this repository.
 
 ## What this is
 
-**Forge Master** is a full-stack web RPG (the "Reforged" rebuild — see `REDESIGN.md`).
+**Gear Master** is a full-stack web RPG (the "Reforged" rebuild — see `REDESIGN.md`).
 A single Node process serves a Vite-built vanilla-JS frontend plus an Express + Socket.io
 API backed by Prisma/PostgreSQL.
 
@@ -101,8 +101,8 @@ Always run `npm test`, `npm run lint`, and `npm run build` before committing —
 - **i18n** is wired through the auth screen; game-screen strings are English-first and
   being migrated — keep new user-facing strings centralized for later extraction.
 - **PWA:** `public/sw.js` is network-first for the shell, cache-first for hashed assets;
-  bump the cache name when changing caching behavior. (Note: `manifest.json` app name is
-  "Anvil Legends".)
+  bump the cache name (`CACHE`) when changing caching behavior or shipping new icons.
+  Icons live in `public/` as SVG (`icon-192`, `icon-512`, `icon-maskable-512`).
 - **Tests:** Vitest, colocated in `__tests__/` dirs (forge odds, arena sim, clan math,
   event bus).
 

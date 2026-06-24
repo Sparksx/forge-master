@@ -2,8 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-    // Relative base so the same build works whether it's served at the domain root
-    // (full-stack host) or under a subpath like /forge-master/ (GitHub Pages).
+    // Relative base so the build works served at the domain root by the full-stack
+    // host (Railway), or from any subpath.
     base: './',
     root: '.',
     build: {

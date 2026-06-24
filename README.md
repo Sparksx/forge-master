@@ -1,4 +1,4 @@
-# Forge Master 🔨
+# Gear Master 🔨
 
 > A full-stack web RPG about the thrill of the gear chase. **Forge** random equipment,
 > **equip** your best, let your hero **idle-battle** the PvE ladder, prove your build in
