@@ -26,6 +26,8 @@ model User {
 
   gameState      GameState?
   sentMessages   ChatMessage[]  @relation("sender")
+
+  @@index([pvpRating])
   refreshTokens  RefreshToken[]
   bans           Ban[]          @relation("bannedUser")
   mutes          Mute[]         @relation("mutedUser")

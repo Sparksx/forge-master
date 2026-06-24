@@ -44,6 +44,7 @@ router.get('/templates', async (req, res) => {
             });
         }
 
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json({ spriteSheets: sheets, templates });
     } catch (err) {
         console.error('Equipment templates error:', err);

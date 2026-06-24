@@ -13,6 +13,8 @@ export function setupSocket(server) {
         },
         pingInterval: 25000,
         pingTimeout: 30000,
+        perMessageDeflate: { threshold: 1024 },
+        maxHttpBufferSize: 1e6,
     });
 
     // Auth middleware for all socket connections
@@ -39,7 +41,7 @@ export function setupSocket(server) {
             next();
         } catch (err) {
             console.error('Ban check error:', err);
-            next();
+            next(new Error('Failed to verify user status'));
         }
     });
 

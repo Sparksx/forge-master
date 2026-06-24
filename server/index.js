@@ -1,9 +1,10 @@
-import { execSync } from 'child_process';
 import express from 'express';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
 import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.js';
@@ -19,19 +20,35 @@ import prisma from './lib/prisma.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
 
-// Sync Prisma schema to database and regenerate client on startup (non-fatal)
-try {
-    execSync('./node_modules/.bin/prisma db push --accept-data-loss', { stdio: 'inherit' });
-} catch (err) {
-    console.error('Prisma db push failed (non-fatal):', err.message);
-}
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    process.exit(1);
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = createServer(app);
 
-// Middleware
+// Security headers
+app.use(helmet({
+    contentSecurityPolicy: false,
+}));
+
+// CORS
 app.use(cors(CORS_ORIGIN === '*' ? {} : { origin: CORS_ORIGIN }));
+
+// Rate limiting on API routes (100 requests/min per IP)
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+});
+app.use('/api/', apiLimiter);
 
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
@@ -71,6 +88,12 @@ app.get('{*path}', (req, res, next) => {
         return next();
     }
     res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// Express error handler
+app.use((err, req, res, _next) => {
+    console.error('Unhandled route error:', err);
+    res.status(500).json({ error: 'Internal server error' });
 });
 
 server.listen(PORT, async () => {
