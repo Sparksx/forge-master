@@ -10,6 +10,9 @@ import * as clan from './clan.js';
 import * as profile from './profile.js';
 
 const screens = [home, pvp, clan, profile];
+// Bottom-nav order. Profile is omitted (reachable via the header avatar) and
+// Forge is centered between the two side tabs.
+const navScreens = [pvp, home, clan];
 // screen.id -> container element. Kept here rather than on the screen modules,
 // because `import * as` namespace objects are frozen and can't take properties.
 const containers = new Map();
@@ -85,7 +88,7 @@ function updateHeader() {
 // ── Bottom nav ───────────────────────────────────────────────────────────────
 function buildNav() {
     return h('nav', { className: 'bottom-nav' },
-        ...screens.map((s) => h('button', { className: 'nav-btn', dataset: { tab: s.id }, onclick: () => switchTab(s.id) },
+        ...navScreens.map((s) => h('button', { className: 'nav-btn', dataset: { tab: s.id }, onclick: () => switchTab(s.id) },
             h('span', { className: 'nav-icon', text: s.icon }),
             h('span', { className: 'nav-label', text: s.label }),
         )),
