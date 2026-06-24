@@ -43,14 +43,29 @@ export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
 
 // ── Forge XP ────────────────────────────────────────────────────────────────
 // Each forge grants XP toward the next forge level, so forging more makes the
-// forge stronger on its own. The gold-cost upgrades in FORGE_LEVELS still work
-// as an optional way to buy the next level immediately.
-export const FORGE_XP_PER_FORGE = 1;
+// forge stronger on its own. XP is rarity-weighted: a Common roll grants 1, a
+// Divine grants 7 — rarer rolls advance the forge faster. The gold-cost upgrades
+// in FORGE_LEVELS still work as an optional way to buy the next level instantly.
+
+/** Forge XP granted for forging an item of the given rarity tier (Common=1 … Divine=7). */
+export function forgeXpForRarity(tier) {
+    return Math.max(1, Math.floor(tier));
+}
+
+/** Average forge XP per forge at a given forge level, from its rarity odds. */
+function avgForgeXp(level) {
+    const chances = FORGE_LEVELS[Math.min(level, MAX_FORGE_LEVEL) - 1].chances;
+    return chances.reduce((sum, c, i) => sum + c * forgeXpForRarity(i + 1), 0) / 100;
+}
 
 /** XP needed to advance the forge FROM `level` to level+1 (null once maxed). */
 export function forgeXpForLevel(level) {
     if (level >= MAX_FORGE_LEVEL) return null;
-    return 8 + (level - 1) * 6 + Math.floor(Math.pow(level, 2.1));
+    // Base "forges needed" curve, scaled by the average rarity XP at this level
+    // so the expected number of forges per level matches a flat-1-XP pacing —
+    // rarity weighting then adds upside variance, not faster overall leveling.
+    const baseForges = 8 + (level - 1) * 6 + Math.floor(Math.pow(level, 2.1));
+    return Math.max(1, Math.round(baseForges * avgForgeXp(level)));
 }
 
 // ── Player XP ───────────────────────────────────────────────────────────────

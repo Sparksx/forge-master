@@ -12,8 +12,9 @@
 ## The loop
 
 1. **Forge** — Tap the anvil for a random item with a punchy rarity reveal. Every forge
-   grants **forge XP** that levels the forge up (better odds at rarer gear) — or pay gold
-   to upgrade instantly (**no timers**). Auto-forge can keep tapping for you.
+   grants **forge XP** (rarity-weighted — rarer rolls give more) that levels the forge up
+   for better odds — or pay gold to upgrade instantly (**no timers**). Auto-forge can keep
+   tapping for you.
 2. **Equip** — Every drop shows a side-by-side **Power** delta. Equip it or sell it.
 3. **Battle (Arena)** — Your hero auto-fights an endless PvE ladder right on the home
    screen. Win for gold and **player XP**; levelling up raises your base HP and base

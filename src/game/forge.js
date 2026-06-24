@@ -1,7 +1,7 @@
 // Forge logic — roll a random item. Stat math comes from shared/stats.js.
 import {
     EQUIPMENT_TYPES, HEALTH_ITEMS, TIERS, BONUS_STATS, BONUS_STAT_KEYS,
-    calculateItemStats, FORGE_LEVELS, FORGE_XP_PER_FORGE,
+    calculateItemStats, FORGE_LEVELS, forgeXpForRarity,
     INITIAL_LEVEL_MAX, LEVEL_BAND, MAX_ITEM_LEVEL,
 } from './config.js';
 import { itemName } from './items.js';
@@ -82,6 +82,6 @@ export function forge() {
     const level = rollLevel(getBestLevelForSlot(type, tier));
     const item = createItem(type, level, tier);
     recordForgedLevel(type, tier, level);
-    grantForgeXp(FORGE_XP_PER_FORGE); // forging makes the forge stronger over time
+    grantForgeXp(forgeXpForRarity(tier)); // rarer rolls advance the forge faster
     return item;
 }

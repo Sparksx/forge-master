@@ -23,9 +23,10 @@ Stripe shop exist in the schema/server but are **dormant** — not part of the l
   avatar). The old separate **Forge** and **Arena** tabs are **merged into `home.js`** —
   a unified idle auto-battler with the gear grid and forge below it.
 - **Forge:** 8 slots, 7 rarity tiers (Common → Divine), 12 forge levels that shift
-  rarity odds (`FORGE_LEVELS` in `src/game/config.js`). Forging grants **forge XP**
-  (`forgeXpForLevel`) that levels the forge up for free; the gold-cost upgrade stays as
-  an optional instant shortcut. No real-time timers. Optional auto-forge.
+  rarity odds (`FORGE_LEVELS` in `src/game/config.js`). Forging grants rarity-weighted
+  **forge XP** (`forgeXpForRarity`: Common 1 → Divine 7; thresholds in `forgeXpForLevel`)
+  that levels the forge up for free; the gold-cost upgrade stays as an optional instant
+  shortcut. No real-time timers. Optional auto-forge.
 - **Arena:** auto-resolved duels, endless power scaling (`arenaEnemyPower`/`arenaReward`
   in `config.js`), 2× playback. Defeating enemies grants **player XP** (`arenaXp`); player
   level (`playerXpForLevel`, max `MAX_PLAYER_LEVEL`) raises only **base HP and base

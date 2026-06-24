@@ -1,13 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import {
-    MAX_FORGE_LEVEL, forgeXpForLevel, playerXpForLevel, arenaXp, FORGE_XP_PER_FORGE,
+    MAX_FORGE_LEVEL, MAX_TIER, forgeXpForLevel, forgeXpForRarity, playerXpForLevel, arenaXp,
 } from '../config.js';
 
-describe('forge XP curve', () => {
-    it('grants positive XP per forge', () => {
-        expect(FORGE_XP_PER_FORGE).toBeGreaterThan(0);
+describe('forge XP rarity weighting', () => {
+    it('grants at least 1 XP for the lowest rarity', () => {
+        expect(forgeXpForRarity(1)).toBeGreaterThanOrEqual(1);
     });
 
+    it('grants more XP for rarer rolls', () => {
+        expect(forgeXpForRarity(MAX_TIER)).toBeGreaterThan(forgeXpForRarity(1));
+        for (let t = 2; t <= MAX_TIER; t++) {
+            expect(forgeXpForRarity(t)).toBeGreaterThanOrEqual(forgeXpForRarity(t - 1));
+        }
+    });
+});
+
+describe('forge XP curve', () => {
     it('requires more XP at higher forge levels', () => {
         expect(forgeXpForLevel(2)).toBeGreaterThan(forgeXpForLevel(1));
         expect(forgeXpForLevel(MAX_FORGE_LEVEL - 1)).toBeGreaterThan(forgeXpForLevel(1));
