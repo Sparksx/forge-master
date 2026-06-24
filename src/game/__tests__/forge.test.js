@@ -39,6 +39,17 @@ describe('createItem', () => {
         expect(HEALTH_ITEMS.includes('armor')).toBe(true);
         expect(item.statType).toBe('health');
     });
+
+    it('gives weapons a melee or ranged attack style', () => {
+        for (let i = 0; i < 50; i++) {
+            const w = createItem('weapon', 10, 3);
+            expect(['melee', 'ranged']).toContain(w.attackStyle);
+        }
+        // Explicit style is honoured.
+        expect(createItem('weapon', 10, 3, 'ranged').attackStyle).toBe('ranged');
+        // Non-weapons carry no attack style.
+        expect(createItem('armor', 10, 3).attackStyle).toBeUndefined();
+    });
 });
 
 describe('rollBonuses', () => {

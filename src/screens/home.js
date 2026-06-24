@@ -5,7 +5,7 @@
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
 import { renderItemCard, renderDeltaBadge, powerDelta } from './item-view.js';
 import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp } from '../game/config.js';
-import { slotIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
+import { slotIcon, itemIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
     getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
     upgradeForge, equipItem, sellItem, getSellValue, getGold,
@@ -13,7 +13,7 @@ import {
     grantPlayerXp, getForgeLevelProgress,
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
-import { fightArena, makeEnemy } from '../game/arena.js';
+import { fightArena, makeEncounter } from '../game/arena.js';
 import { createDungeon } from './dungeon.js';
 import { gameEvents, EVENTS } from '../events.js';
 
@@ -89,19 +89,27 @@ function buildBattle() {
 // Build the matchup payload for the current rank and sync the stage header text.
 function matchupPayload() {
     const rank = getArenaRank();
-    const enemy = makeEnemy(rank);
+    const encounter = makeEncounter(rank);
     const player = getCombatStats();
 
-    root.querySelector('.stage-title').textContent = stageInfo(rank).label;
+    const tag = encounter.kind === 'bigboss' ? ' · 💀 BIG BOSS'
+        : encounter.kind === 'boss' ? ' · ☠️ BOSS' : '';
+    root.querySelector('.stage-title').textContent = stageInfo(rank).label + tag;
 
     return {
         rank,
         playerEmoji: avatarEmoji(getAvatar()),
         playerLabel: `You · ${fmt(getPowerScore())}`,
         playerHP: player.maxHP,
-        enemyEmoji: enemy.emoji,
-        enemyLabel: `${enemy.name} · ${fmt(enemy.power)}`,
-        enemyHP: enemy.maxHP,
+        playerRanged: !!player.ranged,
+        enemies: encounter.enemies.map((e) => ({
+            id: e.id,
+            emoji: e.emoji,
+            label: `${e.name} · ${fmt(e.power)}`,
+            maxHP: e.maxHP,
+            ranged: e.ranged,
+            role: e.role,
+        })),
     };
 }
 
@@ -124,38 +132,45 @@ async function runFight() {
     dungeon.setEngaged(true);
 
     const result = fightArena();
-    const { events, player, enemy } = result;
+    const { events, encounter } = result;
+    const player = getCombatStats();
     const info = stageInfo(result.rank);
-    root.querySelector('.stage-title').textContent = info.label;
-    dungeon.setHp('player', player.maxHP, player.maxHP);
-    dungeon.setHp('enemy', enemy.maxHP, enemy.maxHP);
+    const tag = encounter.kind === 'bigboss' ? ' · 💀 BIG BOSS'
+        : encounter.kind === 'boss' ? ' · ☠️ BOSS' : '';
+    root.querySelector('.stage-title').textContent = info.label + tag;
 
-    // Compress long fights so playback stays snappy; honor the 2x speed toggle.
-    const step = events.length > 20 ? Math.ceil(events.length / 20) : 1;
-    const beat = fast ? 55 : 110;
-    for (let i = 0; i < events.length; i += step) {
+    // Reset every HP bar to full at the opening bell.
+    dungeon.setHp('player', player.maxHP, player.maxHP);
+    encounter.enemies.forEach((e) => dungeon.setHp(e.id, e.maxHP, e.maxHP));
+
+    // Playback follows the battle's own seconds time line (~0.5 hits/sec base),
+    // lightly accelerated so idle fights stay readable but never drag.
+    const perSecond = fast ? 620 : 950; // ms of real time per battle-second
+    let prevT = 0;
+    const killed = new Set();
+    for (const ev of events) {
         if (!visible) break;
-        const ev = events[i];
-        await sleep(beat);
-        if (ev.by === 'player') {
-            dungeon.setHp('enemy', ev.eHp, enemy.maxHP);
-            dungeon.floater('enemy', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
-            if (ev.heal) dungeon.floater('player', `+${fmt(ev.heal)}`, 'heal');
-        } else {
-            dungeon.setHp('player', ev.pHp, player.maxHP);
-            dungeon.floater('player', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
+        const wait = Math.min(1500, Math.max(60, (ev.t - prevT) * perSecond));
+        prevT = ev.t;
+        await sleep(wait);
+        dungeon.attack(ev.by, ev.target, { ranged: ev.ranged });
+        if (ev.ranged) await sleep(fast ? 90 : 150); // let the arrow land first
+        dungeon.setHp(ev.target, ev.targetHp);
+        if (ev.attackerHp != null) dungeon.setHp(ev.by, ev.attackerHp);
+        dungeon.floater(ev.target, `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
+        if (ev.heal) dungeon.floater(ev.by, `+${fmt(ev.heal)}`, 'heal');
+        if (ev.targetSide === 'enemy' && ev.targetHp <= 0 && !killed.has(ev.target)) {
+            killed.add(ev.target);
+            dungeon.killEnemy(ev.target);
         }
     }
-    const last = events[events.length - 1];
-    if (last) { dungeon.setHp('player', last.pHp, player.maxHP); dungeon.setHp('enemy', last.eHp, enemy.maxHP); }
 
     await sleep(fast ? 120 : 220);
     resolveFight(result);
-    if (result.win) await dungeon.killEnemy();
 
     dungeon.setEngaged(false);
     battleBusy = false;
-    if (visible) updateStage(); // spawn the next opponent (advanced rank on a win)
+    if (visible) updateStage(); // spawn the next pack (advanced rank on a win)
 }
 
 function resolveFight(result) {
@@ -293,7 +308,7 @@ function updateGearGrid() {
         if (item) {
             slot.style.setProperty('--rarity', rarityColor(item.tier));
             slot.classList.add('filled');
-            slot.appendChild(h('span', { className: 'gear-slot-icon', text: slotIcon(type) }));
+            slot.appendChild(h('span', { className: 'gear-slot-icon', text: itemIcon(item) }));
             slot.appendChild(h('span', { className: 'gear-slot-lvl', text: `Lv ${item.level}` }));
         } else {
             slot.classList.remove('filled');

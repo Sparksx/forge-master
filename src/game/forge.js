@@ -27,7 +27,7 @@ export function rollBonuses(count, tier) {
     return bonuses;
 }
 
-export function createItem(type, level, tier = 1) {
+export function createItem(type, level, tier = 1, attackStyle = null) {
     const isHealth = HEALTH_ITEMS.includes(type);
     const stats = calculateItemStats(level, tier, isHealth);
     const item = {
@@ -38,6 +38,10 @@ export function createItem(type, level, tier = 1) {
         statType: isHealth ? 'health' : 'damage',
         bonuses: rollBonuses(TIERS[tier - 1].bonusCount, tier),
     };
+    // Weapons are melee or ranged; ranged ones open fights sooner in combat.
+    if (type === 'weapon') {
+        item.attackStyle = attackStyle || (Math.random() < 0.5 ? 'ranged' : 'melee');
+    }
     item.name = itemName(item);
     return item;
 }

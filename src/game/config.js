@@ -7,6 +7,8 @@ export {
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
     MAX_PLAYER_LEVEL, playerBaseHealth, playerBaseDamage, playerPowerScore,
     calculateItemStats, calculateStats, calculatePowerScore, computeStatsFromEquipment,
+    BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, ATTACK_STYLES, RANGED_OPENING_FRACTION,
+    weaponStyle,
 } from '../../shared/stats.js';
 
 export const SAVE_KEY = 'fm_reforged_save';
@@ -97,6 +99,40 @@ export function arenaEnemyPower(rank) {
 
 export function arenaReward(rank) {
     return Math.round(ARENA_BASE_REWARD * Math.pow(rank, 1.25)) + 10;
+}
+
+// ── Encounters: who you face at a given rank ─────────────────────────────────
+// Home mode is 1 hero vs a *group* of enemies. The group is pre-generated and
+// deterministic per rank (same rank → same line-up). A regular rank fields a
+// small pack of minions; every 10th rank is a Boss and every 50th a Big Boss.
+export const BOSS_INTERVAL = 10;
+export const BIG_BOSS_INTERVAL = 50;
+
+// How much of the rank's power budget the lead enemy carries, and the share
+// each escort minion gets. Tuned so an encounter's *total* threat tracks the
+// old single-enemy curve, with bosses a deliberate spike.
+export const BOSS_LEAD_SHARE = 1.45;       // boss core power, ×arenaEnemyPower
+export const BIG_BOSS_LEAD_SHARE = 2.3;    // big-boss core power, ×arenaEnemyPower
+export const ESCORT_SHARE = 0.28;          // each boss escort, ×arenaEnemyPower
+export const MAX_GROUP = 4;                 // never spawn more than this at once
+
+/** Boss / big-boss / normal classification for a rank. */
+export function rankKind(rank) {
+    if (rank % BIG_BOSS_INTERVAL === 0) return 'bigboss';
+    if (rank % BOSS_INTERVAL === 0) return 'boss';
+    return 'normal';
+}
+
+// Tiny deterministic PRNG (mulberry32) so encounters are stable per rank without
+// storing them — "pre-generated" purely as a function of the rank seed.
+export function seededRng(seed) {
+    let a = (seed >>> 0) || 1;
+    return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
 }
 
 // Stage display: group ranks into "chapters" of substages, so the ladder reads

@@ -1,7 +1,7 @@
 // Shared item rendering: cards, bonus lists, and power-delta math.
 import { h, fmt } from './components.js';
-import { itemName, rarityName, rarityColor, slotIcon, slotLabel, bonusLabel } from '../game/items.js';
-import { calculateStats, calculatePowerScore, HEALTH_ITEMS } from '../game/config.js';
+import { itemName, rarityName, rarityColor, itemIcon, slotLabel, bonusLabel } from '../game/items.js';
+import { calculateStats, calculatePowerScore, HEALTH_ITEMS, weaponStyle } from '../game/config.js';
 import { getEquipment } from '../game/state.js';
 
 export function statTypeLabel(item) {
@@ -34,12 +34,15 @@ export function renderItemCard(item, { showSlot = true } = {}) {
     const color = rarityColor(item.tier);
     return h('div', { className: 'item-card', style: { '--rarity': color } },
         h('div', { className: 'item-card-head' },
-            h('div', { className: 'item-icon', text: slotIcon(item.type) }),
+            h('div', { className: 'item-icon', text: itemIcon(item) }),
             h('div', { className: 'item-titles' },
                 h('div', { className: 'item-name', text: itemName(item) }),
                 h('div', { className: 'item-sub' },
                     h('span', { className: 'rarity-tag', style: { color }, text: rarityName(item.tier) }),
                     showSlot ? h('span', { className: 'slot-tag', text: ` · ${slotLabel(item.type)} · Lv ${item.level}` }) : null,
+                    item.type === 'weapon'
+                        ? h('span', { className: 'slot-tag', text: ` · ${weaponStyle(item) === 'ranged' ? '🏹 Ranged' : '⚔️ Melee'}` })
+                        : null,
                 ),
             ),
         ),

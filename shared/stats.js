@@ -11,6 +11,23 @@ export const HEALTH_PER_LEVEL = 10;
 export const DAMAGE_PER_LEVEL = 2;
 export const GROWTH_EXPONENT = 1.2;
 
+// --- Combat cadence & range ---
+// Fights are paced so every combatant lands roughly one hit every two seconds
+// (0.5 hits/sec) at zero Attack Speed. Attack Speed shortens the interval.
+export const BASE_ATTACK_PERIOD = 2.0;          // seconds between attacks at 0% AS
+export const MAX_BATTLE_SECONDS = 22;           // hard cap; resolve by HP% past this
+
+// Weapons (and enemies) are either melee or ranged. Ranged fighters open the
+// fight sooner — they get shots off while the gap is still closing — modelled
+// as a head start on their first attack.
+export const ATTACK_STYLES = ['melee', 'ranged'];
+export const RANGED_OPENING_FRACTION = 0.35;    // ranged first strike at 35% of a period
+
+/** Resolve a weapon's attack style, defaulting to melee. */
+export function weaponStyle(weapon) {
+    return weapon && weapon.attackStyle === 'ranged' ? 'ranged' : 'melee';
+}
+
 // Player level: gained by defeating arena enemies. Only the base HP and base
 // attack grow with level — every other base stat is fixed. The forge level is a
 // separate track (see config.js) and is unaffected by player level.
@@ -148,6 +165,8 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1) {
         healthRegen: bonuses.healthRegen || 0,
         lifeSteal: bonuses.lifeSteal || 0,
         attackSpeed: bonuses.attackSpeed || 0,
+        // Combat style comes from the equipped weapon (melee by default).
+        ranged: weaponStyle(equipment.weapon) === 'ranged',
     };
 }
 
