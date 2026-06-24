@@ -96,8 +96,8 @@ export async function startExpedition(defKey) {
     return clan;
 }
 
-export function joinExpedition(id) {
-    return readJson(apiFetch(`/api/clans/expeditions/${id}/join`, { method: 'POST' }));
+export async function joinExpedition(id) {
+    return readJson(await apiFetch(`/api/clans/expeditions/${id}/join`, { method: 'POST' }));
 }
 
 // ── Missions ──────────────────────────────────────────────────────────────────

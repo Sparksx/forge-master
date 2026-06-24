@@ -137,11 +137,17 @@ function serializeMission(m) {
     };
 }
 
-/** Resolve an expedition whose timer has elapsed: roll outcome, pay XP + gold. */
-async function resolveExpedition(expId) {
-    await prisma.$transaction(async (tx) => {
+/**
+ * Resolve an expedition whose timer has elapsed: roll outcome, pay XP + gold.
+ * Idempotent — the in-transaction `status` re-check means concurrent readers
+ * never double-pay. Returns the gold credited to `forUserId` (0 if they weren't
+ * aboard or the run was already resolved) so the triggering client can reconcile
+ * its locally-authoritative gold without clobbering the reward on its next save.
+ */
+async function resolveExpedition(expId, forUserId = null) {
+    return prisma.$transaction(async (tx) => {
         const exp = await tx.expedition.findUnique({ where: { id: expId }, include: { members: true } });
-        if (!exp || exp.status !== 'active') return;
+        if (!exp || exp.status !== 'active') return 0;
         const def = expeditionDef(exp.defKey);
         const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
         const filledSlots = exp.members.length;
@@ -155,10 +161,13 @@ async function resolveExpedition(expId) {
         });
         if (xpGain > 0) await tx.clan.update({ where: { id: exp.clanId }, data: { xp: { increment: xpGain } } });
         const xpEach = filledSlots > 0 ? Math.round(xpGain / filledSlots) : 0;
+        let goldForUser = 0;
         for (const m of exp.members) {
             if (goldEach > 0) await tx.gameState.updateMany({ where: { userId: m.userId }, data: { gold: { increment: goldEach } } });
             if (xpEach > 0) await tx.clanMember.updateMany({ where: { userId: m.userId, clanId: exp.clanId }, data: { xpContributed: { increment: xpEach } } });
+            if (goldEach > 0 && m.userId === forUserId) goldForUser = goldEach;
         }
+        return goldForUser;
     });
 }
 
@@ -216,12 +225,15 @@ router.get('/expeditions', requireAuth, async (req, res) => {
         const membership = await getMembership(req.user.userId);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
-        // Lazily resolve any expedition whose timer has elapsed.
+        // Lazily resolve any expedition whose timer has elapsed. The reward gold the
+        // caller earns is summed so the client can credit its local save (server-granted
+        // gold is otherwise clobbered by the client's next state save).
         const due = await prisma.expedition.findMany({
             where: { clanId: membership.clanId, status: 'active', endsAt: { lte: new Date() } },
             select: { id: true },
         });
-        for (const e of due) await resolveExpedition(e.id);
+        let goldGained = 0;
+        for (const e of due) goldGained += await resolveExpedition(e.id, req.user.userId);
 
         const list = await prisma.expedition.findMany({
             where: { clanId: membership.clanId, OR: [{ status: 'active' }, { resolvedAt: { not: null } }] },
@@ -234,6 +246,7 @@ router.get('/expeditions', requireAuth, async (req, res) => {
             catalog: EXPEDITIONS,
             myUserId: req.user.userId,
             myRole: membership.role,
+            goldGained,
         });
     } catch (err) {
         console.error('List expeditions error:', err);

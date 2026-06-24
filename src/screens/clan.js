@@ -2,12 +2,12 @@
 // member ranks, roster & perks.
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
 import { CLAN_CREATE_COST, avatarEmoji } from '../game/config.js';
-import { getGold, spendGold } from '../game/state.js';
+import { getGold, spendGold, creditServerGold } from '../game/state.js';
 import { getCurrentUser } from '../auth.js';
 import {
     listClans, createClan, joinClan, leaveClan, contribute,
     getMyClanCached, loadMyClan, hasLoadedClan, canUseClans,
-    listExpeditions, startExpedition, joinExpedition,
+    listExpeditions, startExpedition, joinExpedition, refreshMyClan,
     listMissions, startMission,
     promoteMember, demoteMember, kickMember, transferLeadership,
 } from '../game/clan.js';
@@ -20,6 +20,9 @@ let activeTab = 'overview';
 let expeditionsData = null;
 let missionsData = null;
 let timerInterval = null;
+// Expeditions we've observed as 'active' this session, so we can tell when one
+// flips to 'resolved' on a later poll and refresh the (now-stale) clan XP banner.
+const seenActiveExpeditions = new Set();
 
 export const id = 'clan';
 export const icon = '🏰';
@@ -169,7 +172,36 @@ function buildExpeditions(clan, myRole) {
 
 async function loadExpeditions() {
     try { expeditionsData = await listExpeditions(); } catch { expeditionsData = null; }
+    handleExpeditionResolutions();
     renderExpeditionList();
+}
+
+/**
+ * Reconcile the effects of any expedition that resolved server-side on this poll:
+ *  - credit the reward gold the server granted us (else our next save clobbers it),
+ *  - refresh the clan so the XP banner reflects the just-earned clan XP.
+ * Both are gated so they fire once per resolution, not on every poll.
+ */
+function handleExpeditionResolutions() {
+    const exps = expeditionsData?.expeditions || [];
+    let justResolved = false;
+    for (const e of exps) {
+        if (e.status === 'resolved' && seenActiveExpeditions.has(e.id)) {
+            seenActiveExpeditions.delete(e.id);
+            justResolved = true;
+        }
+    }
+    for (const e of exps) if (e.status === 'active') seenActiveExpeditions.add(e.id);
+
+    const gained = Math.floor(Number(expeditionsData?.goldGained) || 0);
+    if (gained > 0) {
+        creditServerGold(gained);
+        toast(`Expedition paid ${fmt(gained)} gold!`, 'success');
+    }
+    // A server-side resolution moved clan XP; pull the fresh clan into the banner.
+    // (refreshMyClan emits CLAN_CHANGED → rerender; the resolved id is already out
+    // of seenActiveExpeditions, so the re-fetch won't loop.)
+    if (justResolved || gained > 0) refreshMyClan();
 }
 
 function renderExpeditionList() {
