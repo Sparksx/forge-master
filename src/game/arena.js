@@ -1,6 +1,6 @@
 // Arena: a PvE ladder. The hero faces a pre-generated, level-dependent *group*
 // of enemies (home mode is 1 hero vs many). Combat is auto-resolved on a real
-// time line — every fighter lands ~0.5 hits/sec at base — and ranged fighters
+// time line — every fighter lands ~1 hit/sec at base — and ranged fighters
 // (bows, casters, distance mobs) open the fight sooner than melee.
 import {
     arenaEnemyPower, rankKind, seededRng, BOSS_INTERVAL,
@@ -146,8 +146,9 @@ const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0) / 100
 
 /**
  * Simulate a group battle (N allies vs M enemies) on a seconds time line.
- * Each fighter attacks every ~BASE_ATTACK_PERIOD seconds (0.5 hits/sec base);
- * ranged fighters fire their first shot early. Fighters focus-fire the first
+ * Each fighter attacks every ~BASE_ATTACK_PERIOD seconds (1 hit/sec base);
+ * everyone fires the instant they have focus — ranged at t=0, melee after a
+ * short approach — then a full period between shots. Fighters focus-fire the first
  * living foe. Returns { win, events, duration, allies, enemies }.
  *
  * events: [{ t, by, bySide, target, targetSide, dmg, crit, heal, ranged,
@@ -159,8 +160,9 @@ export function simulateBattle(allies, enemies) {
         id: c.id || `${side}${i}`,
         side,
         hp: c.maxHP,
-        // Ranged fighters get a head start; melee wait a full period.
-        next: (c.ranged ? RANGED_OPENING_FRACTION : 1) * attackPeriod(c),
+        // Fire on focus: ranged have it at range (t=0); melee fire after a short
+        // approach. After each shot `next` advances one full period.
+        next: (c.ranged ? 0 : RANGED_OPENING_FRACTION) * attackPeriod(c),
     });
     const A = allies.map((c, i) => mk(c, 'ally', i));
     const E = enemies.map((c, i) => mk(c, 'enemy', i));

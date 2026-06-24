@@ -6,12 +6,12 @@
 // independent, and a far-off enemy keeps doing its own thing while the hero
 // trades blows with the one beside it.
 //
-// Combat math (damage rolls, ~0.5 hits/sec cadence) comes from the model
+// Combat math (damage rolls, ~1 hit/sec cadence) comes from the model
 // (src/game/arena.js + shared/stats.js); this module owns positions, timing,
 // and rendering. It reports the outcome back to the owning screen via
 // onResolve({ win }) once a fight ends.
 import { computeHit } from '../game/arena.js';
-import { BASE_ATTACK_PERIOD, RANGED_OPENING_FRACTION, seededRng } from '../game/config.js';
+import { BASE_ATTACK_PERIOD, seededRng } from '../game/config.js';
 
 // Fixed simulation step (seconds). The fight is stepped in fixed increments,
 // decoupled from the render framerate, so a given (input, seed) always yields
@@ -137,7 +137,7 @@ export function createDungeon({ onResolve } = {}) {
         rng = seededRng(payload.seed != null ? payload.seed : seedFromPayload(payload));
         floaters.length = 0; slashes.length = 0; shots.length = 0;
 
-        // Hero on the left, full HP, ready to act after one opening beat.
+        // Hero on the left, full HP, ready to strike the instant focus is acquired.
         applyStats(player, payload.player);
         player.alive = true;
         player.deathAt = 0;
@@ -145,7 +145,7 @@ export function createDungeon({ onResolve } = {}) {
         player.lungeAt = 0;
         player.hp = player.maxHP;
         player.facing = 1;
-        player.cooldown = player.ranged ? attackPeriod(player) * RANGED_OPENING_FRACTION : attackPeriod(player);
+        player.cooldown = 0;            // fire on first contact, then a full period between shots
         const hp = tileCenter(2, Math.floor(ROWS / 2));
         player.x = hp.x; player.y = hp.y;
 
@@ -158,7 +158,7 @@ export function createDungeon({ onResolve } = {}) {
             e.alive = true;
             e.aggro = false;
             e.facing = -1;
-            e.cooldown = e.ranged ? attackPeriod(e) * RANGED_OPENING_FRACTION : attackPeriod(e);
+            e.cooldown = 0;            // fires the instant it reaches firing range
             const sp = rightSpawn(i, payload.enemies.length);
             e.x = sp.x; e.y = sp.y;
             return e;
@@ -248,12 +248,16 @@ export function createDungeon({ onResolve } = {}) {
             // in reach, strike IT (never a far-off mob).
             const target = nearestEnemy();
             if (player.alive && target) {
+                // The cooldown ticks down while closing in too, so the "wait a
+                // period" happens during the approach — once in reach (focus
+                // acquired) the hit lands immediately, then a full period apart.
+                // Clamped at 0 so time spent walking can't bank up extra shots.
+                player.cooldown = Math.max(0, player.cooldown - dt);
                 const reach = reachOf(player, target);
                 if (dist(player, target) > reach) {
                     seek(player, target, 3.4 * tile, dt, reach);
                 } else {
                     player.facing = (target.x - player.x) < 0 ? -1 : 1;
-                    player.cooldown -= dt;
                     if (player.cooldown <= 0) {
                         doAttack(player, target);
                         player.cooldown += attackPeriod(player);
@@ -297,12 +301,14 @@ export function createDungeon({ onResolve } = {}) {
             spawnFloater(e, '!', 'alert', false);
         }
         if (e.aggro && player.alive) {
+            // Same as the hero: the period elapses while closing in, so the shot
+            // fires the instant it reaches range. Clamped at 0 to avoid banking.
+            e.cooldown = Math.max(0, e.cooldown - dt);
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) {
                 seek(e, player, 2.3 * tile, dt, reach);
             } else {
                 e.facing = (player.x - e.x) < 0 ? -1 : 1;
-                e.cooldown -= dt;
                 if (e.cooldown <= 0) {
                     doAttack(e, player);
                     e.cooldown += attackPeriod(e);
