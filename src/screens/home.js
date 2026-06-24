@@ -4,7 +4,7 @@
 //   stage label → live battle → gear grid → forge controls + forge-XP bar.
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
 import { renderItemCard, renderDeltaBadge, powerDelta } from './item-view.js';
-import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp } from '../game/config.js';
+import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp, arenaFallbackRank } from '../game/config.js';
 import { slotIcon, itemIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
     getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
@@ -137,6 +137,12 @@ function onFightResolved({ win }) {
         setArenaRank(enc.rank + 1);
         const xp = grantPlayerXp(arenaXp(enc.rank));
         if (xp) dungeon.floater('player', `+${fmt(xp)} XP`, 'xp');
+    } else {
+        // On a loss, fall back one sub-stage so the player isn't stuck refighting
+        // a deterministic fight they keep losing — but never drop a chapter: the
+        // floor is sub-stage 1 of the current chapter (e.g. 3-5 → 3-4, 3-1 → 3-1).
+        const fallback = arenaFallbackRank(enc.rank);
+        if (fallback !== enc.rank) setArenaRank(fallback);
     }
     gameEvents.emit(EVENTS.ARENA_RESULT, { win, rank: enc.rank });
 
