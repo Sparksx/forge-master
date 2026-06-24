@@ -5,14 +5,17 @@ import { CLAN_CREATE_COST, avatarEmoji } from '../game/config.js';
 import { getGold, spendGold, creditServerGold } from '../game/state.js';
 import { getCurrentUser } from '../auth.js';
 import {
-    listClans, createClan, joinClan, leaveClan, contribute,
+    listClans, createClan, joinClan, leaveClan,
     getMyClanCached, loadMyClan, hasLoadedClan, canUseClans,
-    listExpeditions, startExpedition, joinExpedition, refreshMyClan,
+    listExpeditions, startExpedition, joinExpedition, cancelExpedition, refreshMyClan,
     listMissions, startMission,
     promoteMember, demoteMember, kickMember, transferLeadership,
 } from '../game/clan.js';
 import { can, rankInfo, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
-import { maxActiveExpeditions } from '../../shared/clan-activities.js';
+import {
+    maxActiveExpeditions, expeditionSlots, expeditionPlan, clampExpeditionHours,
+    EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS,
+} from '../../shared/clan-activities.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 let root = null;
@@ -139,14 +142,7 @@ function buildOverview(clan, myRole) {
             perkChip('💪', `+${p.statBonusPct}% HP & damage`),
             perkChip('👥', `${p.maxMembers} member cap`),
         ),
-        h('div', { className: 'clan-treasury' },
-            h('div', { className: 'treasury-head' },
-                h('span', { text: `🏛️ Clan Bank: ${fmt(clan.treasury)} gold` }),
-                h('span', { className: 'muted', text: 'Shared vault' }),
-            ),
-            h('p', { className: 'muted small', text: 'A shared clan vault saved for future perks. Expeditions are free to launch — clan level (from XP on expeditions and missions, never gold) unlocks tougher runs. The bank never buys clan power.' }),
-            h('button', { className: 'btn btn-primary btn-block', text: 'Deposit Gold', onclick: showContribute }),
-        ),
+        h('p', { className: 'muted small clan-perks-note', text: 'Level the clan by playing together — expeditions and missions earn clan XP (never gold) and unlock these perks for everyone.' }),
         h('button', { className: 'btn btn-danger btn-block', text: myRole === 'owner' ? 'Disband / Leave Clan' : 'Leave Clan', onclick: confirmLeave }),
     );
 }
@@ -216,7 +212,8 @@ function renderExpeditionList() {
         return;
     }
     const myUserId = expeditionsData?.myUserId;
-    items.forEach((e) => list.appendChild(renderExpeditionCard(e, myUserId)));
+    const myRole = expeditionsData?.myRole;
+    items.forEach((e) => list.appendChild(renderExpeditionCard(e, myUserId, myRole)));
     if (done.length) {
         list.appendChild(h('h4', { className: 'activity-subhead', text: 'Recent' }));
         done.forEach((e) => list.appendChild(renderResolvedExpedition(e)));
@@ -224,20 +221,24 @@ function renderExpeditionList() {
     startTimers();
 }
 
-function renderExpeditionCard(e, myUserId) {
+function renderExpeditionCard(e, myUserId, myRole) {
     const joined = (e.members || []).some((m) => m.userId === myUserId);
     const full = e.filled >= e.slots;
     const powerPct = Math.min(100, Math.round((e.totalPower / Math.max(1, e.powerReq)) * 100));
+    const each = e.filled > 0 ? Math.round(e.rewardGold / e.filled) : e.rewardGold;
+    // The launcher can always call off their own run; leadership can cancel any.
+    const canCancel = e.startedBy === myUserId || can(myRole, 'cancelActivity');
     return h('div', { className: 'activity-card' },
         h('div', { className: 'activity-head' },
             h('span', { className: 'activity-name', text: `${e.name} · ${e.difficulty}` }),
             h('span', { className: 'activity-timer', dataset: { ends: String(new Date(e.endsAt).getTime()) }, text: fmtDuration(e.msLeft) }),
         ),
-        h('div', { className: 'activity-sub muted', text: `${e.filled}/${e.slots} slots · ${fmt(e.totalPower)}/${fmt(e.powerReq)} power (${powerPct}%) · 🏆 ${fmt(e.rewardXp)} XP, ${fmt(e.rewardGold)}g each` }),
+        h('div', { className: 'activity-sub muted', text: `${e.filled}/${e.slots} slots · ${fmt(e.totalPower)}/${fmt(e.powerReq)} power (${powerPct}%) · 🏆 ${fmt(e.rewardXp)} clan XP · ${fmt(e.rewardGold)}g pot (~${fmt(each)}g each)` }),
         h('div', { className: 'activity-bar' }, h('div', { className: 'activity-fill', style: { width: `${powerPct}%` } })),
         joined
             ? h('button', { className: 'btn btn-ghost btn-sm btn-block', text: '✓ Registered', attrs: { disabled: 'true' } })
             : h('button', { className: 'btn btn-primary btn-sm btn-block', text: full ? 'Full' : 'Join Expedition', attrs: full ? { disabled: 'true' } : {}, onclick: () => doJoinExpedition(e.id) }),
+        canCancel ? h('button', { className: 'btn btn-ghost btn-sm btn-block activity-cancel', text: '✕ Cancel expedition', onclick: () => doCancelExpedition(e.id) }) : null,
     );
 }
 
@@ -247,7 +248,7 @@ function renderResolvedExpedition(e) {
             h('span', { className: 'activity-name', text: `${e.name}` }),
             h('span', { text: e.success ? '✅ Success' : '❌ Failed' }),
         ),
-        h('div', { className: 'activity-sub muted', text: `${e.filled} members · ${e.success ? `paid ${fmt(e.rewardGold)}g each` : 'salvaged a little'}` }),
+        h('div', { className: 'activity-sub muted', text: `${e.filled} members · ${e.success ? `${fmt(e.rewardGold)}g pot split` : 'salvaged a little'}` }),
     );
 }
 
@@ -256,30 +257,71 @@ async function doJoinExpedition(id) {
     catch (err) { toast(err.message || 'Failed to join', 'error'); }
 }
 
+async function doCancelExpedition(id) {
+    const ok = await confirmDialog({
+        title: 'Cancel expedition?',
+        message: 'Everyone registered will be released and the run ends with no reward. This cannot be undone.',
+        confirmText: 'Cancel run',
+        cancelText: 'Keep going',
+    });
+    if (!ok) return;
+    try { await cancelExpedition(id); toast('Expedition cancelled', 'info'); await loadExpeditions(); }
+    catch (err) { toast(err.message || 'Failed to cancel', 'error'); }
+}
+
 function showStartExpedition(clan) {
     const catalog = expeditionsData?.catalog || [];
     // Running expeditions only (expired-but-unresolved ones don't count toward the cap).
     const running = (expeditionsData?.expeditions || []).filter((e) => e.status === 'active' && e.msLeft > 0).length;
     const cap = maxActiveExpeditions(clan.level);
     const atCap = running >= cap;
-    const body = h('div', { className: 'start-activity' },
-        h('h3', { text: '🗺️ Launch an Expedition' }),
-        h('p', { className: 'muted', text: `Free to launch · ${running}/${cap} running · harder runs unlock as the clan levels up` }),
-        ...catalog.map((def) => {
+    const slots = expeditionSlots(clan.memberCount);
+    let hours = clampExpeditionHours(4); // sensible default within the allowed band
+
+    const durValue = h('span', { className: 'muted', text: `${hours}h` });
+    const slider = h('input', {
+        className: 'range-input',
+        attrs: { type: 'range', min: String(EXPEDITION_MIN_HOURS), max: String(EXPEDITION_MAX_HOURS), step: '1', value: String(hours) },
+    });
+    const tierList = h('div', { className: 'expedition-tiers' });
+
+    const renderTiers = () => {
+        clear(tierList);
+        catalog.forEach((def) => {
+            const plan = expeditionPlan(def, hours, slots);
+            const each = Math.round(plan.rewardGold / slots);
             const locked = clan.level < def.minClanLevel;
             const disabled = locked || atCap;
-            return h('button', {
+            tierList.appendChild(h('button', {
                 className: 'btn btn-ghost btn-block activity-pick',
                 attrs: disabled ? { disabled: 'true' } : {},
                 onclick: async () => {
-                    try { await startExpedition(def.key); closeModal(); toast(`${def.name} launched!`, 'success'); await loadExpeditions(); }
+                    try { await startExpedition(def.key, hours); closeModal(); toast(`${def.name} launched!`, 'success'); await loadExpeditions(); }
                     catch (err) { toast(err.message || 'Failed', 'error'); }
                 },
             },
                 h('div', { className: 'activity-pick-name', text: `${def.name} · ${def.difficulty}${locked ? ` · 🔒 Lv ${def.minClanLevel}` : ''}` }),
-                h('div', { className: 'muted small', text: `${def.slots} slots · ${fmtDuration(def.durationMs)} · 🏆 ${fmt(def.rewardXp)} XP, ${fmt(def.rewardGold)}g each` }),
-            );
-        }),
+                h('div', { className: 'muted small', text: `${slots} slots · ${hours}h · 🏆 ${fmt(plan.rewardXp)} clan XP · ${fmt(plan.rewardGold)}g pot (~${fmt(each)}g each)` }),
+            ));
+        });
+    };
+
+    slider.addEventListener('input', () => {
+        hours = clampExpeditionHours(slider.value);
+        durValue.textContent = `${hours}h`;
+        renderTiers();
+    });
+    renderTiers();
+
+    const body = h('div', { className: 'start-activity' },
+        h('h3', { text: '🗺️ Launch an Expedition' }),
+        h('p', { className: 'muted', text: `Free to launch · ${running}/${cap} running · ${slots} slots (scales with clan size)` }),
+        h('div', { className: 'expedition-duration' },
+            h('div', { className: 'activity-head' }, h('span', { text: '⏱️ Duration' }), durValue),
+            slider,
+            h('p', { className: 'muted small', text: 'Longer runs pay more clan XP and a bigger gold pot — and the pot is split across everyone who joins.' }),
+        ),
+        tierList,
         atCap ? h('p', { className: 'muted small', text: `Max ${cap} expedition${cap === 1 ? '' : 's'} running — level the clan to run more at once.` }) : null,
         h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
     );
@@ -439,30 +481,6 @@ function fmtDuration(ms) {
     if (h2 > 0) return `${h2}h ${m2}m`;
     if (m2 > 0) return `${m2}m ${sec}s`;
     return `${sec}s`;
-}
-
-// ── Bank deposit ──────────────────────────────────────────────────────────────
-function showContribute() {
-    const input = h('input', { className: 'text-input', attrs: { type: 'number', min: '1', placeholder: 'Amount' } });
-    const quick = (amt) => h('button', { className: 'btn btn-ghost', text: fmt(amt), onclick: () => { input.value = String(Math.min(amt, getGold())); } });
-    const body = h('div', { className: 'contribute' },
-        h('h3', { text: '🏛️ Deposit Gold' }),
-        h('p', { className: 'muted', text: `You have ${fmt(getGold())} gold. The clan bank is a shared vault saved for future perks — it does not buy clan power.` }),
-        h('div', { className: 'quick-amounts' }, quick(100), quick(1000), quick(10000), quick(getGold())),
-        input,
-        h('div', { className: 'confirm-actions' },
-            h('button', { className: 'btn btn-ghost', text: 'Cancel', onclick: closeModal }),
-            h('button', { className: 'btn btn-primary', text: 'Deposit', onclick: async () => {
-                const amount = Math.floor(Number(input.value));
-                if (!amount || amount <= 0) { toast('Enter an amount', 'error'); return; }
-                if (getGold() < amount) { toast('Not enough gold', 'error'); return; }
-                spendGold(amount);
-                try { await contribute(amount); closeModal(); toast(`Deposited ${fmt(amount)} gold!`, 'success'); }
-                catch (err) { toast(err.message || 'Failed', 'error'); }
-            } }),
-        ),
-    );
-    openModal(body);
 }
 
 async function confirmLeave() {

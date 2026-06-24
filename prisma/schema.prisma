@@ -86,9 +86,10 @@ model Expedition {
   difficulty String   @db.VarChar(20)
   slots      Int
   rewardXp   Int
-  rewardGold Int
+  rewardGold Int      // total gold pot, split across participants on resolve
   powerReq   Int
-  status     String   @default("active") @db.VarChar(20) // active | resolved
+  startedBy  Int? // userId of the launcher (may cancel their own run)
+  status     String   @default("active") @db.VarChar(20) // active | resolved | cancelled
   success    Boolean?
   startedAt  DateTime @default(now())
   endsAt     DateTime

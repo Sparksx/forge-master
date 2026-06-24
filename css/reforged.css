@@ -426,6 +426,14 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .activity-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s; }
 .activity-pick { text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 10px 12px; }
 .activity-pick-name { font-weight: 800; }
+.activity-cancel { color: var(--danger, #ff2d68); opacity: .85; }
+.activity-cancel:hover { opacity: 1; }
+
+/* Launch modal: duration picker + scaling reward previews */
+.expedition-duration { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.expedition-tiers { display: flex; flex-direction: column; gap: 8px; }
+.range-input { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.clan-perks-note { margin-top: 2px; }
 
 .member-actions { display: flex; gap: 4px; align-items: center; }
 .icon-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line); cursor: pointer; font-size: .9rem; }

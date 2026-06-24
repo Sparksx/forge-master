@@ -30,6 +30,7 @@ export const ASSIGNABLE_RANKS = ['coleader', 'officer', 'member'];
 /** Minimum rank order allowed to perform a non-target action. */
 const ACTION_MIN_ORDER = {
     startActivity: rankOrder('officer'), // launch expeditions / missions
+    cancelActivity: rankOrder('coleader'), // cancel any running expedition (the launcher can always cancel their own)
     editClan: rankOrder('coleader'), // edit emblem/description
     disband: rankOrder('owner'),
     transfer: rankOrder('owner'),

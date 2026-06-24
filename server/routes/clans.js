@@ -6,6 +6,7 @@ import { clanLevelFromXp, clanPerks, clanLevelProgress } from '../../shared/clan
 import { can, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
 import {
     EXPEDITIONS, expeditionDef, expeditionOutcome, maxActiveExpeditions,
+    expeditionSlots, expeditionPlan,
     MISSIONS, missionDef, MISSION_PROGRESS_MAX_PER_REPORT,
 } from '../../shared/clan-activities.js';
 
@@ -108,7 +109,8 @@ function serializeExpedition(exp, now = Date.now()) {
         totalPower: members.reduce((s, m) => s + m.power, 0),
         powerReq: exp.powerReq,
         rewardXp: exp.rewardXp,
-        rewardGold: exp.rewardGold,
+        rewardGold: exp.rewardGold, // total pot; per-head share = pot / participants
+        startedBy: exp.startedBy,
         status: exp.status,
         success: exp.success,
         endsAt: exp.endsAt,
@@ -148,12 +150,14 @@ async function resolveExpedition(expId, forUserId = null) {
     return prisma.$transaction(async (tx) => {
         const exp = await tx.expedition.findUnique({ where: { id: expId }, include: { members: true } });
         if (!exp || exp.status !== 'active') return 0;
-        const def = expeditionDef(exp.defKey);
         const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
         const filledSlots = exp.members.length;
-        const outcome = expeditionOutcome(def, { totalPower, filledSlots }, Math.random());
+        // `exp` carries the stored powerReq + slots, so outcome reflects this run's party size.
+        const outcome = expeditionOutcome(exp, { totalPower, filledSlots }, Math.random());
         const xpGain = Math.round(exp.rewardXp * outcome.rewardMult);
-        const goldEach = Math.round(exp.rewardGold * outcome.rewardMult);
+        // rewardGold is the total pot — split it evenly across everyone who joined.
+        const goldPot = Math.round(exp.rewardGold * outcome.rewardMult);
+        const goldEach = filledSlots > 0 ? Math.round(goldPot / filledSlots) : 0;
 
         await tx.expedition.update({
             where: { id: exp.id },
@@ -254,9 +258,10 @@ router.get('/expeditions', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/clans/expeditions { defKey } — launch (officer+). Free to launch:
-// gated by clan level (harder runs unlock as the clan grows) and a cap on how
-// many can run at once — never by gold, to keep clans non-pay-to-win.
+// POST /api/clans/expeditions { defKey, durationHours } — launch (officer+). Free to
+// launch: gated by clan level (harder runs unlock as the clan grows) and a cap on how
+// many can run at once — never by gold, to keep clans non-pay-to-win. Slots scale with
+// clan size and the reward scales with the chosen duration.
 router.post('/expeditions', requireAuth, async (req, res) => {
     try {
         const membership = await getMembership(req.user.userId);
@@ -267,7 +272,10 @@ router.post('/expeditions', requireAuth, async (req, res) => {
         if (!def) return res.status(400).json({ error: 'Unknown expedition' });
 
         await prisma.$transaction(async (tx) => {
-            const clan = await tx.clan.findUnique({ where: { id: membership.clanId }, select: { xp: true } });
+            const clan = await tx.clan.findUnique({
+                where: { id: membership.clanId },
+                select: { xp: true, _count: { select: { members: true } } },
+            });
             if (!clan) throw Object.assign(new Error('Clan not found'), { status: 404 });
             const level = clanLevelFromXp(clan.xp);
             if (level < def.minClanLevel) {
@@ -281,16 +289,20 @@ router.post('/expeditions', requireAuth, async (req, res) => {
             if (activeCount >= cap) {
                 throw Object.assign(new Error(`Your clan can only run ${cap} expedition${cap === 1 ? '' : 's'} at once`), { status: 409 });
             }
+
+            const slots = expeditionSlots(clan._count.members);
+            const plan = expeditionPlan(def, req.body?.durationHours, slots);
             await tx.expedition.create({
                 data: {
                     clanId: membership.clanId,
                     defKey: def.key,
                     difficulty: def.difficulty,
-                    slots: def.slots,
-                    rewardXp: def.rewardXp,
-                    rewardGold: def.rewardGold,
-                    powerReq: def.powerReq,
-                    endsAt: new Date(Date.now() + def.durationMs),
+                    slots: plan.slots,
+                    rewardXp: plan.rewardXp,
+                    rewardGold: plan.rewardGold,
+                    powerReq: plan.powerReq,
+                    startedBy: req.user.userId,
+                    endsAt: new Date(Date.now() + plan.durationMs),
                 },
             });
         });
@@ -328,6 +340,34 @@ router.post('/expeditions/:id/join', requireAuth, async (req, res) => {
         if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Join expedition error:', err);
         res.status(500).json({ error: 'Failed to join expedition' });
+    }
+});
+
+// POST /api/clans/expeditions/:id/cancel — call off a running expedition. Allowed for
+// the launcher (its author) or clan leadership (Leader / Co-Leader). No refund: launching
+// is free. Cancelled runs leave the roster and free up a concurrency slot.
+router.post('/expeditions/:id/cancel', requireAuth, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid expedition id' });
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+
+        await prisma.$transaction(async (tx) => {
+            const exp = await tx.expedition.findUnique({ where: { id } });
+            if (!exp || exp.clanId !== membership.clanId) throw Object.assign(new Error('Expedition not found'), { status: 404 });
+            if (exp.status !== 'active') throw Object.assign(new Error('This expedition is no longer running'), { status: 409 });
+            const isAuthor = exp.startedBy === req.user.userId;
+            if (!isAuthor && !can(membership.role, 'cancelActivity')) {
+                throw Object.assign(new Error('Only the launcher or clan leadership can cancel this'), { status: 403 });
+            }
+            await tx.expedition.update({ where: { id }, data: { status: 'cancelled' } });
+        });
+        res.json({ ok: true });
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        console.error('Cancel expedition error:', err);
+        res.status(500).json({ error: 'Failed to cancel expedition' });
     }
 });
 

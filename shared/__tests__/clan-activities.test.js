@@ -1,20 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import {
     EXPEDITIONS, expeditionDef, expeditionOutcome, maxActiveExpeditions,
+    expeditionSlots, clampExpeditionHours, expeditionPlan,
+    EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS, EXPEDITION_MIN_SLOTS, EXPEDITION_MAX_SLOTS,
     MISSIONS, missionDef, MISSION_TYPES, MISSION_PROGRESS_MAX_PER_REPORT,
 } from '../clan-activities.js';
 
 describe('expedition templates', () => {
-    it('every expedition has sane fields and unique keys', () => {
+    it('every expedition has sane rate fields and unique keys', () => {
         const keys = new Set();
         for (const e of EXPEDITIONS) {
-            expect(e.slots).toBeGreaterThan(0);
-            expect(e.durationMs).toBeGreaterThan(0);
-            expect(e.rewardXp).toBeGreaterThan(0);
-            expect(e.powerReq).toBeGreaterThan(0);
+            expect(e.powerPerSlot).toBeGreaterThan(0);
+            expect(e.xpPerHour).toBeGreaterThan(0);
+            expect(e.goldPerHour).toBeGreaterThan(0);
+            expect(e.minClanLevel).toBeGreaterThanOrEqual(1);
             // Launching is free (no gold gate); access is gated by clan level instead.
             expect(e.costGold).toBeUndefined();
-            expect(e.minClanLevel).toBeGreaterThanOrEqual(1);
             expect(keys.has(e.key)).toBe(false);
             keys.add(e.key);
         }
@@ -38,6 +39,51 @@ describe('maxActiveExpeditions', () => {
         expect(maxActiveExpeditions(0)).toBeGreaterThanOrEqual(1); // clamps low input
         expect(maxActiveExpeditions(5)).toBeGreaterThan(maxActiveExpeditions(1));
         expect(maxActiveExpeditions(30)).toBeGreaterThan(maxActiveExpeditions(10));
+    });
+});
+
+describe('expeditionSlots', () => {
+    it('clamps clan size into the collaboration band', () => {
+        expect(expeditionSlots(0)).toBe(EXPEDITION_MIN_SLOTS);
+        expect(expeditionSlots(1)).toBe(EXPEDITION_MIN_SLOTS);
+        expect(expeditionSlots(999)).toBe(EXPEDITION_MAX_SLOTS);
+    });
+    it('tracks member count inside the band', () => {
+        const mid = Math.round((EXPEDITION_MIN_SLOTS + EXPEDITION_MAX_SLOTS) / 2);
+        expect(expeditionSlots(mid)).toBe(mid);
+    });
+});
+
+describe('clampExpeditionHours', () => {
+    it('clamps to the allowed whole-hour range', () => {
+        expect(clampExpeditionHours(0)).toBe(EXPEDITION_MIN_HOURS);
+        expect(clampExpeditionHours(9999)).toBe(EXPEDITION_MAX_HOURS);
+        expect(clampExpeditionHours(3.9)).toBe(3);
+        expect(clampExpeditionHours('not a number')).toBe(EXPEDITION_MIN_HOURS);
+    });
+});
+
+describe('expeditionPlan', () => {
+    const def = EXPEDITIONS[0];
+
+    it('scales reward linearly with duration', () => {
+        const one = expeditionPlan(def, 1, 4);
+        const four = expeditionPlan(def, 4, 4);
+        expect(four.rewardXp).toBe(one.rewardXp * 4);
+        expect(four.rewardGold).toBe(one.rewardGold * 4);
+        expect(four.durationMs).toBe(one.durationMs * 4);
+    });
+
+    it('scales power requirement with party size', () => {
+        const small = expeditionPlan(def, 2, EXPEDITION_MIN_SLOTS);
+        const big = expeditionPlan(def, 2, EXPEDITION_MAX_SLOTS);
+        expect(big.powerReq).toBeGreaterThan(small.powerReq);
+        expect(big.powerReq).toBe(def.powerPerSlot * EXPEDITION_MAX_SLOTS);
+        expect(big.slots).toBe(EXPEDITION_MAX_SLOTS);
+    });
+
+    it('clamps an out-of-range duration', () => {
+        expect(expeditionPlan(def, 999, 4).hours).toBe(EXPEDITION_MAX_HOURS);
     });
 });
 
