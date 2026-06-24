@@ -145,7 +145,7 @@ function syncPreview() {
 }
 
 // ── Battle loop ─────────────────────────────────────────────────────────────
-// Triggered by the dungeon when the hero reaches the mob (auto-walk or steered).
+// Triggered by the dungeon when the hero auto-walks into the mob.
 async function runFight() {
     if (battleBusy || !visible) return;
     battleBusy = true;

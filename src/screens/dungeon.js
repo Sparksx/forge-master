@@ -1,6 +1,8 @@
-// Dungeon — a 2D top-down combat zone rendered on a canvas. The hero and the
-// mob actually move around a tiled room: the hero walks to the mob (auto) or is
-// steered with the on-screen d-pad / WASD (manual), and contact starts a fight.
+// Dungeon — a 2D top-down combat zone rendered on a canvas. The combat zone is
+// fully automatic: there is NO player control. The hero pathfinds around the
+// room's obstacles toward the closest enemy on its own, and contact starts a
+// fight. Enemies stay passive (idle patrol) until the hero steps inside their
+// aggressive area, at which point they wake up and close in.
 //
 // This is purely the *view*. The owning screen (home.js) keeps driving the
 // authoritative combat (fightArena) and pushes HP/damage into the dungeon via
@@ -15,6 +17,8 @@ const ROWS = 9;
 const PILLARS = [
     [4, 3], [4, 5], [10, 3], [10, 5], [7, 4],
 ];
+// How close (in tiles) the hero must get before a passive enemy aggros.
+const AGGRO_TILES = 3;
 
 const now = () => Date.now();
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -30,29 +34,24 @@ export function createDungeon({ onEngage } = {}) {
     canvas.className = 'dungeon-canvas';
     const ctx = canvas.getContext('2d');
 
-    const dpad = buildDpad();
     const el = document.createElement('div');
     el.className = 'dungeon';
     el.appendChild(canvas);
-    el.appendChild(dpad.el);
 
     // ── World state ──────────────────────────────────────────────────────────
     let tile = 24;          // px per tile (recomputed on resize)
     const walls = buildWalls();
     const player = { x: 0, y: 0, r: 10, emoji: '🧙', label: '', hp: 1, maxHP: 1, lungeAt: 0, lungeDir: { x: 1, y: 0 }, facing: 1 };
-    const enemy = { x: 0, y: 0, r: 10, emoji: '👹', label: '', hp: 1, maxHP: 1, lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 } };
+    const enemy = { x: 0, y: 0, r: 10, emoji: '👹', label: '', hp: 1, maxHP: 1, lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 }, aggro: false };
     const floaters = [];    // { x, y, vy, text, color, bornAt }
     const slashes = [];     // { x, y, bornAt, hostile }
 
-    let auto = true;
+    let auto = true;        // combat zone is always automatic; no player control
     let fast = false;
     let engaged = false;    // locked in melee (combat playing out)
     let awaitingEngage = true;
     let started = false;
     let curRank = -1;       // which arena rank the mob represents
-
-    // Manual input (keyboard + d-pad), as held-direction flags.
-    const keys = { up: false, down: false, left: false, right: false };
 
     // ── Sizing ───────────────────────────────────────────────────────────────
     function resize() {
@@ -96,6 +95,7 @@ export function createDungeon({ onEngage } = {}) {
         enemy.hp = m.enemyHP;
         enemy.alive = true;
         enemy.deathAt = 0;
+        enemy.aggro = false;   // fresh mobs start passive until the hero gets close
 
         // First spawn: drop the hero near the left side of the room.
         if (player.x === 0 && player.y === 0) {
@@ -157,8 +157,6 @@ export function createDungeon({ onEngage } = {}) {
         started = true;
         resize();
         window.addEventListener('resize', resize);
-        document.addEventListener('keydown', onKey);
-        document.addEventListener('keyup', onKey);
         last = now();
         raf = requestAnimationFrame(loop);
     }
@@ -166,33 +164,8 @@ export function createDungeon({ onEngage } = {}) {
     function stop() {
         started = false;
         window.removeEventListener('resize', resize);
-        document.removeEventListener('keydown', onKey);
-        document.removeEventListener('keyup', onKey);
         if (raf) cancelAnimationFrame(raf);
         raf = null;
-        keys.up = keys.down = keys.left = keys.right = false;
-    }
-
-    // ── Input ────────────────────────────────────────────────────────────────
-    function onKey(e) {
-        const tag = e.target?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
-        const down = e.type === 'keydown';
-        switch (e.key) {
-            case 'ArrowUp': case 'w': case 'W': keys.up = down; break;
-            case 'ArrowDown': case 's': case 'S': keys.down = down; break;
-            case 'ArrowLeft': case 'a': case 'A': keys.left = down; break;
-            case 'ArrowRight': case 'd': case 'D': keys.right = down; break;
-            default: return;
-        }
-        e.preventDefault();
-    }
-
-    function inputVec() {
-        let x = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-        let y = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
-        if (x || y) { const l = Math.hypot(x, y); x /= l; y /= l; }
-        return { x, y };
     }
 
     // ── Simulation ───────────────────────────────────────────────────────────
@@ -211,19 +184,13 @@ export function createDungeon({ onEngage } = {}) {
     function update(dt) {
         const t = now();
         const speedScale = fast ? 1.7 : 1;
-        const manual = inputVec();
-        const moving = manual.x || manual.y;
 
         if (!engaged) {
-            // Hero: manual steering overrides auto-walk toward the mob.
-            if (moving) {
-                stepEntity(player, manual.x, manual.y, 4.0 * speedScale * tile, dt);
-                if (manual.x) player.facing = manual.x < 0 ? -1 : 1;
-            } else if (auto && enemy.alive) {
-                seek(player, enemy, 3.4 * speedScale * tile, dt);
-            }
-            // Mob roams, and drifts toward the hero so they actually meet.
-            if (enemy.alive) wanderEnemy(dt, speedScale);
+            // Hero: fully automatic — pathfinds around obstacles to the closest
+            // enemy. There is no manual control of the combat zone.
+            if (auto && enemy.alive) seek(player, enemy, 3.4 * speedScale * tile, dt);
+            // Mob stays passive until the hero enters its aggressive area.
+            if (enemy.alive) updateEnemy(dt, speedScale);
 
             // Contact → fight.
             if (enemy.alive && awaitingEngage && dist(player, enemy) <= player.r + enemy.r + 4) {
@@ -244,30 +211,115 @@ export function createDungeon({ onEngage } = {}) {
         }
     }
 
-    // Move `e` toward `target`, stopping at melee range.
+    // Move `e` toward `target`, routing around walls/pillars and stopping at
+    // melee range. Walks straight when it has line of sight; otherwise follows a
+    // BFS path through the room so it never gets stuck on an obstacle.
     function seek(e, target, speed, dt) {
-        const dx = target.x - e.x, dy = target.y - e.y;
-        const d = Math.hypot(dx, dy) || 1;
+        const d = dist(e, target);
         if (d <= e.r + target.r + 2) return;
-        stepEntity(e, dx / d, dy / d, speed, dt);
-        e.facing = dx < 0 ? -1 : 1;
+
+        let aimX = target.x, aimY = target.y;
+        if (!clearPath(e.x, e.y, target.x, target.y, e.r)) {
+            const wp = nextWaypoint(e, target);
+            if (wp) { aimX = wp.x; aimY = wp.y; }
+        }
+        const dx = aimX - e.x, dy = aimY - e.y;
+        const l = Math.hypot(dx, dy) || 1;
+        stepEntity(e, dx / l, dy / l, speed, dt);
+        // Always face the actual target, not the intermediate waypoint.
+        e.facing = (target.x - e.x) < 0 ? -1 : 1;
     }
 
-    function wanderEnemy(dt, speedScale) {
-        const t = now();
-        const toPlayer = dist(player, enemy);
-        // Close enough to notice the hero → advance on them; otherwise wander.
-        if (toPlayer < tile * 5) {
-            seek(enemy, player, 2.3 * speedScale * tile, dt);
-            return;
+    // Enemy AI: passive (idle patrol) until the hero steps inside its aggressive
+    // area, then it wakes up and chases the hero — also avoiding obstacles.
+    function updateEnemy(dt, speedScale) {
+        if (!enemy.aggro && dist(player, enemy) <= AGGRO_TILES * tile) {
+            enemy.aggro = true;
+            // Surprise alert so the wake-up reads clearly.
+            floaters.push({ x: enemy.x, y: enemy.y - enemy.r - 6, vy: -34, text: '!', color: '#f5c451', bornAt: now() });
         }
+        if (enemy.aggro) {
+            seek(enemy, player, 2.3 * speedScale * tile, dt);
+        } else {
+            idleEnemy(dt, speedScale);
+        }
+    }
+
+    // Passive wandering — small, aimless drift in place; never seeks the hero.
+    function idleEnemy(dt, speedScale) {
+        const t = now();
         if (t > enemy.wanderAt) {
             enemy.wanderAt = t + 900 + Math.random() * 1200;
             const ang = Math.random() * Math.PI * 2;
             enemy.wander = { x: Math.cos(ang), y: Math.sin(ang) };
         }
-        stepEntity(enemy, enemy.wander.x, enemy.wander.y, 1.5 * speedScale * tile, dt);
+        stepEntity(enemy, enemy.wander.x, enemy.wander.y, 1.1 * speedScale * tile, dt);
         if (enemy.wander.x) enemy.facing = enemy.wander.x < 0 ? -1 : 1;
+    }
+
+    // ── Pathfinding (BFS over the tile grid) ──────────────────────────────────
+    function tileOf(p) {
+        return { c: clamp(Math.floor(p.x / tile), 0, COLS - 1), r: clamp(Math.floor(p.y / tile), 0, ROWS - 1) };
+    }
+
+    function walkable(c, r) {
+        return c >= 0 && r >= 0 && c < COLS && r < ROWS && !walls[r][c];
+    }
+
+    // True if a straight line from (ax,ay)→(bx,by) is clear of walls for radius r.
+    function clearPath(ax, ay, bx, by, r) {
+        const steps = Math.max(1, Math.ceil(dist({ x: ax, y: ay }, { x: bx, y: by }) / (tile * 0.25)));
+        for (let i = 1; i <= steps; i++) {
+            const k = i / steps;
+            if (hitsWall(ax + (bx - ax) * k, ay + (by - ay) * k, r)) return false;
+        }
+        return true;
+    }
+
+    // Center of the next tile `e` should head for to reach `target`. Picks the
+    // furthest BFS waypoint still in line of sight so motion stays smooth.
+    function nextWaypoint(e, target) {
+        const path = findPath(tileOf(e), tileOf(target));
+        if (!path || !path.length) return null;
+        let wp = path[0];
+        for (const node of path) {
+            const c = tileCenter(node.c, node.r);
+            if (clearPath(e.x, e.y, c.x, c.y, e.r)) wp = node; else break;
+        }
+        return tileCenter(wp.c, wp.r);
+    }
+
+    // Breadth-first search; returns the list of tiles from start (exclusive) to
+    // goal (inclusive), or null if unreachable.
+    function findPath(start, goal) {
+        if (start.c === goal.c && start.r === goal.r) return [];
+        const key = (c, r) => r * COLS + c;
+        const prev = new Map();
+        const seen = new Set([key(start.c, start.r)]);
+        const queue = [start];
+        const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        while (queue.length) {
+            const cur = queue.shift();
+            for (const [dc, dr] of dirs) {
+                const nc = cur.c + dc, nr = cur.r + dr;
+                if (!walkable(nc, nr)) continue;
+                const k = key(nc, nr);
+                if (seen.has(k)) continue;
+                seen.add(k);
+                prev.set(k, cur);
+                if (nc === goal.c && nr === goal.r) {
+                    const path = [];
+                    let node = { c: nc, r: nr };
+                    while (!(node.c === start.c && node.r === start.r)) {
+                        path.push(node);
+                        node = prev.get(key(node.c, node.r));
+                    }
+                    return path.reverse();
+                }
+                queue.push({ c: nc, r: nr });
+            }
+        }
+        return null;
     }
 
     // Per-axis move with wall collision (slides along walls / around pillars).
@@ -309,6 +361,7 @@ export function createDungeon({ onEngage } = {}) {
     function draw() {
         ctx.clearRect(0, 0, COLS * tile, ROWS * tile);
         drawFloor();
+        drawAggroArea();
 
         // Draw back-to-front by y so overlaps look right.
         const order = [];
@@ -319,6 +372,21 @@ export function createDungeon({ onEngage } = {}) {
 
         for (const s of slashes) drawSlash(s);
         for (const f of floaters) drawFloater(f);
+    }
+
+    // Faint dashed ring showing a passive mob's aggressive area. Disappears the
+    // moment it wakes up and starts chasing.
+    function drawAggroArea() {
+        if (!enemy.alive || enemy.aggro) return;
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = 'rgba(239,84,102,.5)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, AGGRO_TILES * tile, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     function drawFloor() {
@@ -423,29 +491,6 @@ export function createDungeon({ onEngage } = {}) {
         ctx.textBaseline = 'middle';
         ctx.fillText(f.text, f.x, f.y);
         ctx.globalAlpha = 1;
-    }
-
-    // ── D-pad (touch / click steering) ───────────────────────────────────────
-    function buildDpad() {
-        const wrap = document.createElement('div');
-        wrap.className = 'dungeon-dpad';
-        const mk = (dir, glyph) => {
-            const b = document.createElement('button');
-            b.className = `dpad-btn dpad-${dir}`;
-            b.textContent = glyph;
-            b.setAttribute('aria-label', dir);
-            const set = (v) => (ev) => { ev.preventDefault(); keys[dir] = v; };
-            b.addEventListener('pointerdown', set(true));
-            b.addEventListener('pointerup', set(false));
-            b.addEventListener('pointerleave', set(false));
-            b.addEventListener('pointercancel', set(false));
-            return b;
-        };
-        wrap.appendChild(mk('up', '▲'));
-        wrap.appendChild(mk('left', '◀'));
-        wrap.appendChild(mk('down', '▼'));
-        wrap.appendChild(mk('right', '▶'));
-        return { el: wrap };
     }
 
     return { el, mount, start, stop, setAuto, setFast, setEngaged, nextMatchup, refreshMatchup, setHp, floater, killEnemy };

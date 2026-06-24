@@ -159,24 +159,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .dungeon { position: relative; line-height: 0; }
 .dungeon-canvas { display: block; width: 100%; height: auto; touch-action: none; }
 
-/* On-screen d-pad for steering the hero on touch devices */
-.dungeon-dpad {
-    position: absolute; right: 8px; bottom: 8px;
-    display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px);
-    gap: 2px; opacity: .85; z-index: 2;
-}
-.dpad-btn {
-    border: 1px solid var(--line); background: rgba(33,26,58,.78); color: var(--text);
-    border-radius: 8px; font-size: .72rem; cursor: pointer; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    -webkit-user-select: none; user-select: none; touch-action: none;
-}
-.dpad-btn:active { background: var(--accent); border-color: var(--accent); }
-.dpad-up { grid-column: 2; grid-row: 1; }
-.dpad-left { grid-column: 1; grid-row: 2; }
-.dpad-down { grid-column: 2; grid-row: 3; }
-.dpad-right { grid-column: 3; grid-row: 2; }
-
 /* Stage progress bar + rank chip */
 .stage-progress { display: flex; flex-direction: column; gap: 6px; }
 .stage-bar { height: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
