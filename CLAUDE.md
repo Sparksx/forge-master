@@ -21,17 +21,19 @@ scarce.** Diamonds/essence and the Stripe shop exist in the schema/server but ar
 **dormant** — not part of the live loop.
 
 **Gold economy (scarce — every payout is a tiny "gift"):** in-game gold is a trickle,
-never a faucet. Players start with `STARTING_GOLD` (100). The only two in-game sources are
-**boss kills** in the arena (`encounterReward` in `arena.js`: normal packs and every loss
-pay 0; only `boss`/`bigboss` wins pay out, and only a small, slowly-scaling handful of gold)
-and a small per-forge chance for a tiny **gold nugget** (`FORGE_GOLD_CHANCE` /
-`forgeGoldDrop` in `config.js`; `forge()` returns `{ item, gold }`). Gear can **not** be
-sold for gold — a forged/equipped item is either equipped or **trashed** (`trashItem` in
-`state.js`); equipping no longer refunds the replaced item. Sinks are deliberately small to
-match: the forge instant-upgrade curve starts at 10 gold (`FORGE_LEVELS`) and founding a clan
-costs `CLAN_CREATE_COST` (500). Accumulating gold in real quantity is intended to come from
-the (future, currently dormant) **gold shop**, not grinding. Don't reintroduce a
-gold-for-gear faucet or inflate the boss/forge gifts.
+never a faucet. Players start with `STARTING_GOLD` (100). The in-game sources are all
+small: **boss kills** in the arena (`encounterReward` in `arena.js`: normal packs and every
+loss pay 0; only `boss`/`bigboss` wins pay out, and only a small, slowly-scaling handful of
+gold), a small per-forge chance for a tiny **gold nugget** (`FORGE_GOLD_CHANCE` /
+`forgeGoldDrop` in `config.js`; `forge()` returns `{ item, gold }`), and a modest **clan
+expedition pot** (`goldPerHour` in `shared/clan-activities.js`) — a passive trickle split
+across participants, deliberately kept well below active boss farming per hour. Gear can
+**not** be sold for gold — a forged/equipped item is either equipped or **trashed**
+(`trashItem` in `state.js`); equipping no longer refunds the replaced item. Sinks are
+deliberately small to match: the forge instant-upgrade curve starts at 10 gold
+(`FORGE_LEVELS`) and founding a clan costs `CLAN_CREATE_COST` (500). Accumulating gold in
+real quantity is intended to come from the (future, currently dormant) **gold shop**, not
+grinding. Don't reintroduce a gold-for-gear faucet or inflate the boss/forge/expedition gifts.
 
 - **Screens / bottom nav:** `pvp`, `home`, `clan` (Profile is reached via the header
   avatar). The old separate **Forge** and **Arena** tabs are **merged into `home.js`** —

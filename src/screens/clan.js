@@ -319,7 +319,7 @@ function showStartExpedition(clan) {
         h('div', { className: 'expedition-duration' },
             h('div', { className: 'activity-head' }, h('span', { text: '⏱️ Duration' }), durValue),
             slider,
-            h('p', { className: 'muted small', text: 'Longer runs pay more clan XP and a bigger gold pot — and the pot is split across everyone who joins.' }),
+            h('p', { className: 'muted small', text: 'Longer runs pay better per hour (a duration bonus). Gold is a small shared pot, split across everyone who joins.' }),
         ),
         tierList,
         atCap ? h('p', { className: 'muted small', text: `Max ${cap} expedition${cap === 1 ? '' : 's'} running — level the clan to run more at once.` }) : null,
