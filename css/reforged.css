@@ -149,20 +149,35 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .stage-node.prev { background: var(--accent); border-color: var(--accent); }
 .stage-node.cur { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 12px var(--gold); transform: scale(1.25); }
 
-/* Battle stage — a richer skin over the shared .arena-stage */
-.battle-stage {
-    background:
-        radial-gradient(120% 90% at 50% 0%, rgba(139,92,246,.18), transparent 60%),
-        linear-gradient(180deg, #1a2440, #14102a);
-    border-color: var(--accent);
+/* Battle stage — a 2D top-down dungeon the hero & mobs move around in */
+.dungeon-host {
+    position: relative;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
     box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,.4);
-    min-height: 150px; align-items: center;
+    overflow: hidden;
+    background: #14102a;
 }
-.battle-stage.fighting .fighter-avatar { animation: bob .6s ease-in-out infinite; }
-.battle-stage .fighter-avatar { font-size: 3.4rem; }
-@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-.floater.gold { color: var(--gold); }
-.floater.heal { color: var(--success); }
+.dungeon { position: relative; line-height: 0; }
+.dungeon-canvas { display: block; width: 100%; height: auto; touch-action: none; }
+
+/* On-screen d-pad for steering the hero on touch devices */
+.dungeon-dpad {
+    position: absolute; right: 8px; bottom: 8px;
+    display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px);
+    gap: 2px; opacity: .85; z-index: 2;
+}
+.dpad-btn {
+    border: 1px solid var(--line); background: rgba(33,26,58,.78); color: var(--text);
+    border-radius: 8px; font-size: .72rem; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-user-select: none; user-select: none; touch-action: none;
+}
+.dpad-btn:active { background: var(--accent); border-color: var(--accent); }
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-down { grid-column: 2; grid-row: 3; }
+.dpad-right { grid-column: 3; grid-row: 2; }
 
 /* Stage progress bar + rank chip */
 .stage-progress { display: flex; flex-direction: column; gap: 6px; }

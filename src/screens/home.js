@@ -13,16 +13,17 @@ import {
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import { fightArena, makeEnemy } from '../game/arena.js';
+import { createDungeon } from './dungeon.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 let root = null;
 let visible = false;
+let dungeon = null;
 
 // Battle loop
 let battleBusy = false;
-let autoBattle = true; // idle-first: the hero fights on its own by default
+let autoBattle = true; // idle-first: the hero walks to mobs and fights on its own
 let fast = false; // 2x playback speed
-let nextFightTimer = null;
 
 // Forge
 let forging = false;
@@ -52,16 +53,19 @@ export function onShow() {
     visible = true;
     refresh();
     startTicker();
-    if (autoBattle) scheduleNextFight(400);
+    dungeon?.start();
+    dungeon?.setAuto(autoBattle);
+    dungeon?.setFast(fast);
+    updateStage(); // spawn the current matchup; auto-walk will engage it
     if (autoForge) scheduleAutoForge();
 }
 
 export function onHide() {
     visible = false;
-    clearTimeout(nextFightTimer);
+    dungeon?.stop();
     clearTimeout(autoForgeTimer);
     clearInterval(tickTimer);
-    nextFightTimer = autoForgeTimer = tickTimer = null;
+    autoForgeTimer = tickTimer = null;
 }
 
 export function refresh() {
@@ -71,11 +75,15 @@ export function refresh() {
     if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
     updateBoostBtn();
     // Don't disturb a fight in progress; just keep the idle preview fresh.
-    if (!battleBusy) updateStage();
+    if (!battleBusy) syncPreview();
 }
 
 // ── Battle zone ─────────────────────────────────────────────────────────────
 function buildBattle() {
+    const dungeonHost = h('div', { className: 'dungeon-host' });
+    dungeon = createDungeon({ onEngage: () => runFight() });
+    dungeon.mount(dungeonHost);
+
     return h('div', { className: 'battle-zone' },
         h('div', { className: 'stage-head' },
             h('div', { className: 'stage-title', text: 'Hard 1-1' }),
@@ -85,11 +93,7 @@ function buildBattle() {
                 h('span', { className: 'stage-node next' }),
             ),
         ),
-        h('div', { className: 'arena-stage battle-stage' },
-            fighter('player'),
-            h('div', { className: 'arena-vs', text: 'VS' }),
-            fighter('enemy'),
-        ),
+        dungeonHost,
         h('div', { className: 'stage-progress' },
             h('div', { className: 'stage-bar' }, h('div', { className: 'stage-bar-fill' })),
             h('div', { className: 'stage-meta' },
@@ -104,23 +108,12 @@ function buildBattle() {
                 h('span', { className: 'ctrl-icon', text: '⏩' }), h('span', { className: 'speed-label', text: '1x' })),
             h('button', { className: 'ctrl-btn boost-btn', onclick: activateBoost },
                 h('span', { className: 'ctrl-icon', text: '⚡' }), h('span', { className: 'boost-label', text: 'Boost x2' })),
-            h('button', { className: 'ctrl-btn fight-once hidden', onclick: () => runFight() },
-                h('span', { className: 'ctrl-icon', text: '⚔️' }), h('span', { text: 'Fight' })),
         ),
     );
 }
 
-function fighter(side) {
-    return h('div', { className: `fighter fighter-${side}` },
-        h('div', { className: 'fighter-avatar', dataset: { side }, text: side === 'player' ? avatarEmoji(getAvatar()) : '👹' }),
-        h('div', { className: 'fighter-name', dataset: { side }, text: '' }),
-        h('div', { className: 'hpbar' }, h('div', { className: 'hpfill', dataset: { side } }), h('span', { className: 'hptext', dataset: { side } })),
-        h('div', { className: 'fighter-floaters', dataset: { side } }),
-    );
-}
-
-// Refresh the idle preview (between fights): current opponent + stage labels.
-function updateStage() {
+// Build the matchup payload for the current rank and sync the stage header text.
+function matchupPayload() {
     const rank = getArenaRank();
     const enemy = makeEnemy(rank);
     const player = getCombatStats();
@@ -131,47 +124,41 @@ function updateStage() {
     root.querySelector('.stage-bar-label').textContent = `Stage ${info.sub} / 10`;
     root.querySelector('.rank-chip').textContent = `Rank ${rank}`;
 
-    setFighter('player', avatarEmoji(getAvatar()), `You · ${fmt(getPowerScore())}`, player.maxHP, player.maxHP);
-    setFighter('enemy', enemy.emoji, `${enemy.name} · ${fmt(enemy.power)}`, enemy.maxHP, enemy.maxHP);
+    return {
+        rank,
+        playerEmoji: avatarEmoji(getAvatar()),
+        playerLabel: `You · ${fmt(getPowerScore())}`,
+        playerHP: player.maxHP,
+        enemyEmoji: enemy.emoji,
+        enemyLabel: `${enemy.name} · ${fmt(enemy.power)}`,
+        enemyHP: enemy.maxHP,
+    };
 }
 
-function setFighter(side, emoji, name, hp, maxHP) {
-    root.querySelector(`.fighter-avatar[data-side="${side}"]`).textContent = emoji;
-    root.querySelector(`.fighter-name[data-side="${side}"]`).textContent = name;
-    setHp(side, hp, maxHP);
+// Spawn the next opponent (onShow / after a fight): the mob respawns and, with
+// auto on, the hero walks over to engage it.
+function updateStage() {
+    if (dungeon) dungeon.nextMatchup(matchupPayload());
 }
 
-function setHp(side, hp, maxHP) {
-    const pct = Math.max(0, Math.min(100, (hp / maxHP) * 100));
-    root.querySelector(`.hpfill[data-side="${side}"]`).style.width = `${pct}%`;
-    root.querySelector(`.hptext[data-side="${side}"]`).textContent = `${fmt(Math.max(0, Math.round(hp)))}/${fmt(maxHP)}`;
-}
-
-function floater(side, text, cls = '') {
-    const wrap = root.querySelector(`.fighter-floaters[data-side="${side}"]`);
-    if (!wrap) return;
-    const f = h('span', { className: `floater ${cls}`, text });
-    wrap.appendChild(f);
-    setTimeout(() => f.remove(), 800);
+// Lightweight refresh on a state change (gear/gold) — never moves the mob.
+function syncPreview() {
+    if (dungeon) dungeon.refreshMatchup(matchupPayload());
 }
 
 // ── Battle loop ─────────────────────────────────────────────────────────────
-function scheduleNextFight(delay) {
-    clearTimeout(nextFightTimer);
-    nextFightTimer = setTimeout(() => { if (visible && autoBattle) runFight(); }, delay);
-}
-
+// Triggered by the dungeon when the hero reaches the mob (auto-walk or steered).
 async function runFight() {
     if (battleBusy || !visible) return;
     battleBusy = true;
-    root.querySelector('.battle-stage')?.classList.add('fighting');
+    dungeon.setEngaged(true);
 
     const result = fightArena();
     const { events, player, enemy } = result;
     const info = stageInfo(result.rank);
     root.querySelector('.stage-title').textContent = info.label;
-    setFighter('player', avatarEmoji(getAvatar()), `You · ${fmt(getPowerScore())}`, player.maxHP, player.maxHP);
-    setFighter('enemy', enemy.emoji, `${enemy.name} · ${fmt(enemy.power)}`, enemy.maxHP, enemy.maxHP);
+    dungeon.setHp('player', player.maxHP, player.maxHP);
+    dungeon.setHp('enemy', enemy.maxHP, enemy.maxHP);
 
     // Compress long fights so playback stays snappy; honor the 2x speed toggle.
     const step = events.length > 20 ? Math.ceil(events.length / 20) : 1;
@@ -181,30 +168,30 @@ async function runFight() {
         const ev = events[i];
         await sleep(beat);
         if (ev.by === 'player') {
-            setHp('enemy', ev.eHp, enemy.maxHP);
-            floater('enemy', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
-            if (ev.heal) floater('player', `+${fmt(ev.heal)}`, 'heal');
+            dungeon.setHp('enemy', ev.eHp, enemy.maxHP);
+            dungeon.floater('enemy', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
+            if (ev.heal) dungeon.floater('player', `+${fmt(ev.heal)}`, 'heal');
         } else {
-            setHp('player', ev.pHp, player.maxHP);
-            floater('player', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
+            dungeon.setHp('player', ev.pHp, player.maxHP);
+            dungeon.floater('player', `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
         }
     }
     const last = events[events.length - 1];
-    if (last) { setHp('player', last.pHp, player.maxHP); setHp('enemy', last.eHp, enemy.maxHP); }
+    if (last) { dungeon.setHp('player', last.pHp, player.maxHP); dungeon.setHp('enemy', last.eHp, enemy.maxHP); }
 
     await sleep(fast ? 120 : 220);
     resolveFight(result);
+    if (result.win) await dungeon.killEnemy();
 
-    root.querySelector('.battle-stage')?.classList.remove('fighting');
+    dungeon.setEngaged(false);
     battleBusy = false;
-    if (visible && autoBattle) scheduleNextFight(fast ? 350 : 750);
-    else if (visible) updateStage(); // reset the idle preview to the next opponent
+    if (visible) updateStage(); // spawn the next opponent (advanced rank on a win)
 }
 
 function resolveFight(result) {
     const mult = boostActive() ? 2 : 1;
     const granted = grantGold(result.reward * mult);
-    floater('player', `+${fmt(granted)}💰`, 'gold');
+    dungeon.floater('player', `+${fmt(granted)}💰`, 'gold');
 
     if (result.win) {
         setArenaRank(result.rank + 1);
@@ -214,17 +201,17 @@ function resolveFight(result) {
 
 function toggleAutoBattle() {
     autoBattle = !autoBattle;
-    const btn = root.querySelector('.auto-battle');
-    btn.classList.toggle('on', autoBattle);
-    root.querySelector('.fight-once').classList.toggle('hidden', autoBattle);
-    if (autoBattle && !battleBusy) scheduleNextFight(150);
+    root.querySelector('.auto-battle').classList.toggle('on', autoBattle);
+    dungeon.setAuto(autoBattle);
+    if (autoBattle) toast('Auto-walk on — the hero seeks out mobs', 'info');
+    else toast('Manual — steer with the d-pad or WASD', 'info');
 }
 
 function toggleSpeed() {
     fast = !fast;
-    const btn = root.querySelector('.speed-btn');
-    btn.classList.toggle('on', fast);
+    root.querySelector('.speed-btn').classList.toggle('on', fast);
     root.querySelector('.speed-label').textContent = fast ? '2x' : '1x';
+    dungeon.setFast(fast);
 }
 
 // ── Boost ───────────────────────────────────────────────────────────────────
