@@ -25,25 +25,60 @@ export const SLOT_LABELS = {
     boots: 'Boots', belt: 'Belt', necklace: 'Amulet', ring: 'Ring',
 };
 
-// Forge: instant gold upgrades that improve rarity odds. NO real-time timers.
-// chances = [Common, Uncommon, Rare, Epic, Legendary, Mythic, Divine] (sum 100).
-// Costs are deliberately small — gold is scarce, so a few cheap early levels are
-// affordable from the starting purse, then the curve roughly doubles. Levels are
-// also earned for free via forge XP, so these gold costs are only an optional
-// instant shortcut (most realistically paid for with shop gold late on).
+// Forge: 35 levels of rarity odds. NO real-time timers. Levels come mainly from
+// forge XP (earned by forging — see the XP curve below); the gold `cost` is only
+// an optional instant shortcut. chances = [Common, Uncommon, Rare, Epic,
+// Legendary, Mythic, Divine] (each row sums to 100).
+//
+// These rows are GENERATED from a single math model, not hand-tuned — see
+// docs/forge-balance.md for the full reasoning and the generator. In short: a
+// Gaussian "traveling bump" over the 7 rarities slides upward as the forge
+// levels, capped to at most 4 active rarities at any level. Consequences (all
+// intentional, do not "fix" them piecemeal — re-run the generator instead):
+//   • L1 is 100% Common; each new rarity enters low and late (Rare not until L8,
+//     Divine not until L32) so you out-gear your set before the next tier matters.
+//   • At most 4 rarities are ever rollable at once; the lowest decays to exactly 0
+//     (Common gone by L23, Uncommon by L27, Rare by L32).
+//   • At max level Divine sits at 20% — pinned on the bump's rising edge as the
+//     permanent jackpot, never the mode.
+// The gold `cost` curve is the cheap "fast lane" (10 → ~122k) deliberately left
+// far below the forge-XP grind, intended as a shop-gold sink (see REDESIGN.md).
 export const FORGE_LEVELS = [
-    { cost: 0,      chances: [100,  0,    0,    0,    0,    0,   0] },
-    { cost: 10,     chances: [90,   10,   0,    0,    0,    0,   0] },
-    { cost: 50,     chances: [78,   18,   4,    0,    0,    0,   0] },
-    { cost: 120,    chances: [66,   22,   10,   2,    0,    0,   0] },
-    { cost: 250,    chances: [54,   24,   15,   6,    1,    0,   0] },
-    { cost: 500,    chances: [42,   24,   19,   11,   4,    0,   0] },
-    { cost: 1000,   chances: [32,   22,   21,   16,   8,    1,   0] },
-    { cost: 2000,   chances: [22,   19,   22,   20,   14,   3,   0] },
-    { cost: 4000,   chances: [14,   15,   21,   23,   20,   6,   1] },
-    { cost: 8000,   chances: [8,    11,   18,   24,   25,   12,  2] },
-    { cost: 16000,  chances: [3,    7,    14,   23,   30,   18,  5] },
-    { cost: 32000,  chances: [0,    3,    10,   20,   33,   24,  10] },
+    { cost:      0, chances: [100,  0,  0,  0,  0,  0,  0] },
+    { cost:     10, chances: [ 92,  8,  0,  0,  0,  0,  0] },
+    { cost:     15, chances: [ 91,  9,  0,  0,  0,  0,  0] },
+    { cost:     20, chances: [ 90, 10,  0,  0,  0,  0,  0] },
+    { cost:     25, chances: [ 88, 12,  0,  0,  0,  0,  0] },
+    { cost:     30, chances: [ 87, 13,  0,  0,  0,  0,  0] },
+    { cost:     40, chances: [ 84, 16,  0,  0,  0,  0,  0] },
+    { cost:     55, chances: [ 81, 18,  1,  0,  0,  0,  0] },
+    { cost:     75, chances: [ 77, 22,  1,  0,  0,  0,  0] },
+    { cost:    100, chances: [ 73, 25,  2,  0,  0,  0,  0] },
+    { cost:    130, chances: [ 68, 30,  2,  0,  0,  0,  0] },
+    { cost:    175, chances: [ 61, 35,  4,  0,  0,  0,  0] },
+    { cost:    230, chances: [ 55, 40,  5,  0,  0,  0,  0] },
+    { cost:    305, chances: [ 47, 45,  8,  0,  0,  0,  0] },
+    { cost:    405, chances: [ 39, 49, 12,  0,  0,  0,  0] },
+    { cost:    540, chances: [ 31, 52, 16,  1,  0,  0,  0] },
+    { cost:    720, chances: [ 24, 52, 22,  2,  0,  0,  0] },
+    { cost:    960, chances: [ 17, 51, 29,  3,  0,  0,  0] },
+    { cost:   1275, chances: [ 11, 47, 36,  6,  0,  0,  0] },
+    { cost:   1695, chances: [  7, 40, 44,  9,  0,  0,  0] },
+    { cost:   2255, chances: [  4, 33, 49, 14,  0,  0,  0] },
+    { cost:   3000, chances: [  2, 25, 52, 21,  0,  0,  0] },
+    { cost:   3990, chances: [  0, 18, 51, 28,  3,  0,  0] },
+    { cost:   5305, chances: [  0, 11, 46, 37,  6,  0,  0] },
+    { cost:   7055, chances: [  0,  7, 39, 44, 10,  0,  0] },
+    { cost:   9385, chances: [  0,  4, 31, 50, 15,  0,  0] },
+    { cost:  12480, chances: [  0,  0, 23, 52, 23,  2,  0] },
+    { cost:  16600, chances: [  0,  0, 15, 49, 32,  4,  0] },
+    { cost:  22080, chances: [  0,  0,  9, 43, 41,  7,  0] },
+    { cost:  29365, chances: [  0,  0,  5, 34, 48, 13,  0] },
+    { cost:  39055, chances: [  0,  0,  3, 25, 52, 20,  0] },
+    { cost:  51945, chances: [  0,  0,  0, 17, 50, 30,  3] },
+    { cost:  69090, chances: [  0,  0,  0, 10, 45, 39,  6] },
+    { cost:  91885, chances: [  0,  0,  0,  5, 36, 47, 12] },
+    { cost: 122210, chances: [  0,  0,  0,  2, 26, 52, 20] },
 ];
 export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
 
@@ -52,6 +87,17 @@ export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
 // forge stronger on its own. XP is rarity-weighted: a Common roll grants 1, a
 // Divine grants 7 — rarer rolls advance the forge faster. The gold-cost upgrades
 // in FORGE_LEVELS still work as an optional way to buy the next level instantly.
+//
+// The pacing is expressed as an EXPECTED-FORGES curve (FORGE_BASE_FORGES growing
+// geometrically by FORGE_FORGE_GROWTH per level). The XP threshold for a level is
+// that expected-forge count times the average rarity XP a forge grants at that
+// level, so on average it really does take ~that many forges — rarity weighting
+// only adds upside variance, not faster overall leveling. Tuned so L1→L2 ≈ 100
+// forges and reaching the cap (level 35) costs ~1.04M forges in total — a true
+// long-haul, sized for the future "multiple gear per forge" upgrades that will
+// accelerate the rate. See docs/forge-balance.md for the derivation.
+export const FORGE_BASE_FORGES = 100;    // expected forges for L1 → L2
+export const FORGE_FORGE_GROWTH = 1.262; // per-level geometric growth of that count
 
 /** Forge XP granted for forging an item of the given rarity tier (Common=1 … Divine=7). */
 export function forgeXpForRarity(tier) {
@@ -64,14 +110,18 @@ function avgForgeXp(level) {
     return chances.reduce((sum, c, i) => sum + c * forgeXpForRarity(i + 1), 0) / 100;
 }
 
+/** Expected number of forges to advance FROM `level` to level+1 (geometric curve). */
+export function forgesForLevel(level) {
+    return Math.round(FORGE_BASE_FORGES * Math.pow(FORGE_FORGE_GROWTH, level - 1));
+}
+
 /** XP needed to advance the forge FROM `level` to level+1 (null once maxed). */
 export function forgeXpForLevel(level) {
     if (level >= MAX_FORGE_LEVEL) return null;
-    // Base "forges needed" curve, scaled by the average rarity XP at this level
-    // so the expected number of forges per level matches a flat-1-XP pacing —
+    // Threshold = expected forges at this level × average rarity XP per forge, so
+    // the expected number of forges per level matches the forgesForLevel() curve;
     // rarity weighting then adds upside variance, not faster overall leveling.
-    const baseForges = 8 + (level - 1) * 6 + Math.floor(Math.pow(level, 2.1));
-    return Math.max(1, Math.round(baseForges * avgForgeXp(level)));
+    return Math.max(1, Math.round(forgesForLevel(level) * avgForgeXp(level)));
 }
 
 // ── Player XP ───────────────────────────────────────────────────────────────
