@@ -150,6 +150,17 @@ export function stageInfo(rank) {
     };
 }
 
+/**
+ * Rank to retry after a loss: drop one sub-stage, but never below the current
+ * chapter's first sub-stage (you can lose ground inside a chapter, never fall
+ * back a chapter). e.g. 3-5 → 3-4, 3-1 → 3-1.
+ */
+export function arenaFallbackRank(rank) {
+    const sub = ((rank - 1) % STAGES_PER_CHAPTER) + 1;
+    const chapterFloor = rank - (sub - 1);
+    return Math.max(1, chapterFloor, rank - 1);
+}
+
 // Cost to found a clan (deducted from gold, client-side).
 export const CLAN_CREATE_COST = 5000;
 
