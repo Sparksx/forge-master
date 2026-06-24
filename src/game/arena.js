@@ -115,15 +115,19 @@ export function makeEnemy(rank) {
     return makeEncounter(rank).enemies[0];
 }
 
-/** Roll one attack's damage for a fighter (crit + ±10% variance). */
-export function computeHit(att) {
+/**
+ * Roll one attack's damage for a fighter (crit + ±10% variance).
+ * `rnd` is an injectable [0,1) generator so callers can drive it from a seeded
+ * PRNG and get deterministic, replayable results (defaults to Math.random).
+ */
+export function computeHit(att, rnd = Math.random) {
     let dmg = att.damage;
     let crit = false;
-    if (att.critChance > 0 && Math.random() * 100 < att.critChance) {
+    if (att.critChance > 0 && rnd() * 100 < att.critChance) {
         dmg = Math.floor(dmg * (1 + att.critMultiplier / 100));
         crit = true;
     }
-    dmg = Math.max(1, Math.floor(dmg * (0.9 + Math.random() * 0.2)));
+    dmg = Math.max(1, Math.floor(dmg * (0.9 + rnd() * 0.2)));
     return { dmg, crit };
 }
 
