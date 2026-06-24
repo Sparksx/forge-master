@@ -1,16 +1,20 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { calculateStats, calculatePowerScore } from '../../shared/stats.js';
+import { gearPowerFromEquipment } from '../../shared/stats.js';
 import { clanLevelFromTreasury, clanPerks } from '../../shared/clan-config.js';
 
 const router = Router();
 
-/** Power score for a single member from their saved equipment. */
+/**
+ * Power score for a single member from their saved equipment. Uses the
+ * tamper-resistant calculation (recomputed from each item's slot/level/tier,
+ * ignoring any client-supplied raw `stats`) so a modified save can't inflate a
+ * member's standing on the clan leaderboard.
+ */
 function memberPower(gameState) {
     if (!gameState || !gameState.equipment) return 0;
-    const { totalHealth, totalDamage, bonuses } = calculateStats(gameState.equipment);
-    return calculatePowerScore(totalHealth, totalDamage, bonuses);
+    return gearPowerFromEquipment(gameState.equipment);
 }
 
 /** Serialize a clan (with members) into the client shape. */
@@ -158,18 +162,21 @@ router.post('/:id/join', requireAuth, async (req, res) => {
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid clan id' });
 
-        const existing = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
-        if (existing) return res.status(409).json({ error: 'You are already in a clan' });
+        // Use interactive transaction to prevent race conditions
+        await prisma.$transaction(async (tx) => {
+            const existing = await tx.clanMember.findUnique({ where: { userId: req.user.userId } });
+            if (existing) throw Object.assign(new Error('You are already in a clan'), { status: 409 });
 
-        const clan = await prisma.clan.findUnique({ where: { id }, include: { _count: { select: { members: true } } } });
-        if (!clan) return res.status(404).json({ error: 'Clan not found' });
+            const clan = await tx.clan.findUnique({ where: { id }, include: { _count: { select: { members: true } } } });
+            if (!clan) throw Object.assign(new Error('Clan not found'), { status: 404 });
 
-        const { maxMembers } = clanPerks(clanLevelFromTreasury(clan.treasury));
-        if (clan._count.members >= maxMembers) {
-            return res.status(409).json({ error: 'This clan is full' });
-        }
+            const { maxMembers } = clanPerks(clanLevelFromTreasury(clan.treasury));
+            if (clan._count.members >= maxMembers) {
+                throw Object.assign(new Error('This clan is full'), { status: 409 });
+            }
 
-        await prisma.clanMember.create({ data: { clanId: id, userId: req.user.userId, role: 'member' } });
+            await tx.clanMember.create({ data: { clanId: id, userId: req.user.userId, role: 'member' } });
+        });
 
         const full = await prisma.clan.findUnique({
             where: { id },
@@ -178,6 +185,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
         res.json(serializeClan(full, { withMembers: true }));
     } catch (err) {
         if (err.code === 'P2002') return res.status(409).json({ error: 'You are already in a clan' });
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Join clan error:', err);
         res.status(500).json({ error: 'Failed to join clan' });
     }
@@ -216,7 +224,6 @@ router.post('/leave', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/contribute — add gold to the clan treasury
-// Gold is deducted on the client (the game economy is client-authoritative, as elsewhere).
 router.post('/contribute', requireAuth, async (req, res) => {
     try {
         const amount = Math.floor(Number(req.body?.amount));
@@ -226,17 +233,25 @@ router.post('/contribute', requireAuth, async (req, res) => {
         const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
-        await prisma.$transaction([
-            prisma.clanMember.update({ where: { userId: req.user.userId }, data: { contributed: { increment: amount } } }),
-            prisma.clan.update({ where: { id: membership.clanId }, data: { treasury: { increment: amount } } }),
-        ]);
+        // Gold check + deduction inside one interactive transaction to prevent race conditions
+        const remainingGold = await prisma.$transaction(async (tx) => {
+            const gameState = await tx.gameState.findUnique({ where: { userId: req.user.userId }, select: { gold: true } });
+            if (!gameState || gameState.gold < amount) {
+                throw Object.assign(new Error('Insufficient gold'), { status: 400 });
+            }
+            await tx.gameState.update({ where: { userId: req.user.userId }, data: { gold: { decrement: amount } } });
+            await tx.clanMember.update({ where: { userId: req.user.userId }, data: { contributed: { increment: amount } } });
+            await tx.clan.update({ where: { id: membership.clanId }, data: { treasury: { increment: amount } } });
+            return gameState.gold - amount;
+        });
 
         const full = await prisma.clan.findUnique({
             where: { id: membership.clanId },
             include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
         });
-        res.json(serializeClan(full, { withMembers: true }));
+        res.json({ ...serializeClan(full, { withMembers: true }), gold: remainingGold });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Contribute error:', err);
         res.status(500).json({ error: 'Failed to contribute' });
     }

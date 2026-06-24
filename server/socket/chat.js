@@ -2,9 +2,10 @@ import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment } from '../../shared/stats.js';
 import { getActiveMute, logAudit } from '../middleware/auth.js';
 
-// In-memory combat log store with 24h TTL
+// In-memory combat log store with 24h TTL and size cap
 const combatLogs = new Map();
 const COMBAT_LOG_TTL = 24 * 60 * 60 * 1000; // 24h
+const MAX_COMBAT_LOGS = 5000;
 
 // Cleanup expired logs every hour
 setInterval(() => {
@@ -17,6 +18,11 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 export function storeCombatLog(combatId, logData) {
+    // Evict oldest entries if at capacity
+    if (combatLogs.size >= MAX_COMBAT_LOGS) {
+        const oldest = combatLogs.keys().next().value;
+        combatLogs.delete(oldest);
+    }
     combatLogs.set(combatId, { ...logData, createdAt: Date.now() });
 }
 
@@ -30,7 +36,12 @@ export function getCombatLog(combatId) {
     return log;
 }
 
+const ALLOWED_CHANNELS = ['general', 'trading', 'clans'];
+const CHAT_COOLDOWN_MS = 1500;
+
 export function registerChatHandlers(io, socket) {
+    let lastMessageAt = 0;
+
     // Join the general channel by default
     socket.join('chat:general');
 
@@ -39,7 +50,15 @@ export function registerChatHandlers(io, socket) {
 
     // Handle new message
     socket.on('chat:message', async (data) => {
+        const now = Date.now();
+        if (now - lastMessageAt < CHAT_COOLDOWN_MS) {
+            socket.emit('chat:error', { message: 'Please wait before sending another message' });
+            return;
+        }
+        lastMessageAt = now;
+
         const { content, channel = 'general' } = data || {};
+        if (!ALLOWED_CHANNELS.includes(channel)) return;
 
         if (!content || typeof content !== 'string') return;
         const trimmed = content.trim().slice(0, 500);
@@ -93,6 +112,7 @@ export function registerChatHandlers(io, socket) {
     // Share a PVP combat in chat
     socket.on('chat:share-combat', async (data) => {
         const { combatId, channel = 'general' } = data || {};
+        if (!ALLOWED_CHANNELS.includes(channel)) return;
         if (!combatId || typeof combatId !== 'string') return;
 
         const log = getCombatLog(combatId);
@@ -271,7 +291,7 @@ export function registerChatHandlers(io, socket) {
     // Join a specific channel
     socket.on('chat:join', (data) => {
         const { channel } = data || {};
-        if (channel && typeof channel === 'string') {
+        if (channel && typeof channel === 'string' && ALLOWED_CHANNELS.includes(channel)) {
             socket.join(`chat:${channel}`);
             sendHistory(socket, channel);
         }

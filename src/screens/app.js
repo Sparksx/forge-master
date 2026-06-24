@@ -43,9 +43,15 @@ export function initApp(mountEl) {
         s.render(container);
     });
 
+    let refreshQueued = false;
     gameEvents.on(EVENTS.STATE_CHANGED, () => {
-        updateHeader();
-        active?.refresh?.();
+        if (refreshQueued) return;
+        refreshQueued = true;
+        requestAnimationFrame(() => {
+            refreshQueued = false;
+            updateHeader();
+            active?.refresh?.();
+        });
     });
     gameEvents.on(EVENTS.CLAN_CHANGED, updateHeader);
 

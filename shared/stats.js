@@ -40,6 +40,12 @@ export const MAX_PLAYER_LEVEL = 500;
 // many entries — a test asserts it. Bump both together (re-run the generator).
 export const MAX_FORGE_LEVEL = 35;
 
+// Highest level a single forged item can reach. Lives here (not just in the
+// client config) so the server's save validator and the tamper-resistant power
+// math below agree with the client on the maximum. The client re-exports this
+// from src/game/config.js.
+export const MAX_ITEM_LEVEL = 100;
+
 /** Base health for a player at the given level (level 1 = BASE_HEALTH). */
 export function playerBaseHealth(level = 1) {
     return BASE_HEALTH + (Math.max(1, level) - 1) * HEALTH_PER_LEVEL;
@@ -185,4 +191,47 @@ export function playerPowerScore(equipment, playerLevel = 1) {
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
     const gearPower = calculatePowerScore(totalHealth, totalDamage, bonuses);
     return gearPower + playerBaseHealth(playerLevel) + playerBaseDamage(playerLevel);
+}
+
+/** Clamp a value to an integer within [min, max], treating junk as min. */
+function clampInt(value, min, max) {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n)) return min;
+    return Math.min(max, Math.max(min, n));
+}
+
+/**
+ * Tamper-resistant gear power. Unlike `calculateStats`, this recomputes every
+ * item's raw stat from its slot, level and tier (ignoring any client-supplied
+ * `stats`/`statType`) and only counts *known* bonus stats, each clamped to its
+ * legal max. The server uses this so a modified client can't inflate clan/PvP
+ * power by saving lies in the `stats` field or out-of-range bonus values.
+ */
+export function gearPowerFromEquipment(equipment) {
+    let totalHealth = 0;
+    let totalDamage = 0;
+    const bonuses = {};
+
+    if (equipment && typeof equipment === 'object' && !Array.isArray(equipment)) {
+        for (const [slot, item] of Object.entries(equipment)) {
+            if (!item || typeof item !== 'object' || !EQUIPMENT_TYPES.includes(slot)) continue;
+            const tier = clampInt(item.tier, 1, MAX_TIER);
+            const level = clampInt(item.level, 1, MAX_ITEM_LEVEL);
+            const isHealth = HEALTH_ITEMS.includes(slot);
+            const stat = calculateItemStats(level, tier, isHealth);
+            if (isHealth) totalHealth += stat;
+            else totalDamage += stat;
+
+            if (Array.isArray(item.bonuses)) {
+                for (const b of item.bonuses) {
+                    if (!b || !BONUS_STATS[b.type]) continue; // unknown stat → ignored
+                    const max = BONUS_STATS[b.type].max;
+                    const value = Math.max(0, Math.min(max, Number(b.value) || 0));
+                    bonuses[b.type] = (bonuses[b.type] || 0) + value;
+                }
+            }
+        }
+    }
+
+    return calculatePowerScore(totalHealth, totalDamage, bonuses);
 }

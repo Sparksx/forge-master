@@ -35,10 +35,11 @@ const server = createServer(app);
 // Security headers
 app.use(helmet({
     contentSecurityPolicy: false,
+    hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // CORS
-app.use(cors(CORS_ORIGIN === '*' ? {} : { origin: CORS_ORIGIN }));
+app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
 
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
@@ -53,7 +54,7 @@ app.use('/api/', apiLimiter);
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -68,7 +69,7 @@ app.use('/api/clans', clanRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', env: NODE_ENV });
+    res.json({ status: 'ok' });
 });
 
 // Setup Socket.io
@@ -105,17 +106,34 @@ server.listen(PORT, async () => {
     // Seed equipment templates into DB if tables are empty (first run)
     await seedEquipmentIfEmpty();
 
-    // Cleanup expired refresh tokens on startup
-    try {
-        const { count } = await prisma.refreshToken.deleteMany({
-            where: { expiresAt: { lt: new Date() } }
-        });
-        if (count > 0) {
-            console.log(`Cleaned up ${count} expired refresh token(s)`);
+    // Cleanup expired refresh tokens on startup + every 24h
+    async function cleanupExpiredTokens() {
+        try {
+            const { count } = await prisma.refreshToken.deleteMany({
+                where: { expiresAt: { lt: new Date() } }
+            });
+            if (count > 0) {
+                console.log(`Cleaned up ${count} expired refresh token(s)`);
+            }
+        } catch (err) {
+            console.error('Failed to cleanup expired refresh tokens:', err);
         }
-    } catch (err) {
-        console.error('Failed to cleanup expired refresh tokens:', err);
     }
+    await cleanupExpiredTokens();
+    setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 });
+
+// Graceful shutdown
+function shutdown(signal) {
+    console.log(`${signal} received — shutting down gracefully`);
+    io.close();
+    server.close(async () => {
+        await prisma.$disconnect();
+        process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export { app, server, io };

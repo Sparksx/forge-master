@@ -3,9 +3,16 @@ import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
 import {
-    isValidEquipment, isValidCombat, isValidForgeUpgrade,
-    isValidPlayer, isValidResearch, isValidForgeHighestLevel, isValidSkills,
-} from '../lib/game-validators.js';
+    isFiniteNumber,
+    isNonNegativeNumber,
+    isValidEquipment,
+    isValidCombat,
+    isValidForgeUpgrade,
+    isValidPlayer,
+    isValidResearch,
+    isValidForgeHighestLevel,
+    isValidSkills,
+} from '../lib/state-validation.js';
 
 const router = Router();
 
@@ -61,19 +68,19 @@ router.put('/state', requireAuth, async (req, res) => {
             data.equipment = equipment;
         }
         if (gold !== undefined) {
-            if (typeof gold !== 'number' || gold < 0) {
+            if (!isNonNegativeNumber(gold)) {
                 return res.status(400).json({ error: 'Gold must be a non-negative number' });
             }
             data.gold = Math.floor(gold);
         }
         if (diamonds !== undefined) {
-            if (typeof diamonds !== 'number' || diamonds < 0) {
+            if (!isNonNegativeNumber(diamonds)) {
                 return res.status(400).json({ error: 'Diamonds must be a non-negative number' });
             }
             data.diamonds = Math.floor(diamonds);
         }
         if (forgeLevel !== undefined) {
-            if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
+            if (!isFiniteNumber(forgeLevel) || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
                 return res.status(400).json({ error: 'Invalid forge level' });
             }
             data.forgeLevel = Math.floor(forgeLevel);
@@ -91,7 +98,7 @@ router.put('/state', requireAuth, async (req, res) => {
             data.combat = combat;
         }
         if (essence !== undefined) {
-            if (typeof essence !== 'number' || essence < 0) {
+            if (!isNonNegativeNumber(essence)) {
                 return res.status(400).json({ error: 'Essence must be a non-negative number' });
             }
             data.essence = Math.floor(essence);
