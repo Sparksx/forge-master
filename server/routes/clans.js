@@ -2,7 +2,12 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { gearPowerFromEquipment } from '../../shared/stats.js';
-import { clanLevelFromTreasury, clanPerks } from '../../shared/clan-config.js';
+import { clanLevelFromXp, clanPerks, clanLevelProgress } from '../../shared/clan-config.js';
+import { can, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
+import {
+    EXPEDITIONS, expeditionDef, expeditionOutcome,
+    MISSIONS, missionDef, MISSION_PROGRESS_MAX_PER_REPORT,
+} from '../../shared/clan-activities.js';
 
 const router = Router();
 
@@ -17,15 +22,16 @@ function memberPower(gameState) {
     return gearPowerFromEquipment(gameState.equipment);
 }
 
-/** Serialize a clan (with members) into the client shape. */
+/** Serialize a clan (with members) into the client shape. Level comes from XP. */
 function serializeClan(clan, { withMembers = false } = {}) {
-    const level = clanLevelFromTreasury(clan.treasury);
+    const level = clanLevelFromXp(clan.xp);
     const members = (clan.members || []).map((m) => ({
         userId: m.userId,
         username: m.user?.username || '???',
         avatar: m.user?.profilePicture || 'wizard',
         role: m.role,
         contributed: m.contributed,
+        xpContributed: m.xpContributed,
         power: memberPower(m.user?.gameState),
         rating: m.user?.pvpRating ?? 1000,
     }));
@@ -37,7 +43,9 @@ function serializeClan(clan, { withMembers = false } = {}) {
         emblem: clan.emblem,
         description: clan.description,
         treasury: clan.treasury,
+        xp: clan.xp,
         level,
+        xpProgress: clanLevelProgress(clan.xp),
         perks: clanPerks(level),
         ownerId: clan.ownerId,
         memberCount: clan._count?.members ?? members.length,
@@ -55,6 +63,19 @@ const MEMBER_INCLUDE = {
     },
 };
 
+const FULL_CLAN_INCLUDE = { ...MEMBER_INCLUDE, _count: { select: { members: true } } };
+
+/** Load the requesting user's membership (or null). */
+function getMembership(userId) {
+    return prisma.clanMember.findUnique({ where: { userId } });
+}
+
+/** Reload + serialize a clan for the response. */
+async function freshClan(id) {
+    const clan = await prisma.clan.findUnique({ where: { id }, include: FULL_CLAN_INCLUDE });
+    return clan ? serializeClan(clan, { withMembers: true }) : null;
+}
+
 function validClanFields({ name, tag, emblem, description }) {
     if (typeof name !== 'string' || name.trim().length < 3 || name.trim().length > 30) {
         return 'Clan name must be 3–30 characters';
@@ -71,7 +92,89 @@ function validClanFields({ name, tag, emblem, description }) {
     return null;
 }
 
-// GET /api/clans — top clans by treasury, optional ?q= search
+// ── Activity serialization ──────────────────────────────────────────────────
+function serializeExpedition(exp, now = Date.now()) {
+    const members = (exp.members || []).map((m) => ({
+        userId: m.userId, username: m.user?.username || '???', power: m.power,
+    }));
+    return {
+        id: exp.id,
+        defKey: exp.defKey,
+        name: expeditionDef(exp.defKey)?.name || exp.defKey,
+        difficulty: exp.difficulty,
+        slots: exp.slots,
+        filled: members.length,
+        members,
+        totalPower: members.reduce((s, m) => s + m.power, 0),
+        powerReq: exp.powerReq,
+        rewardXp: exp.rewardXp,
+        rewardGold: exp.rewardGold,
+        status: exp.status,
+        success: exp.success,
+        endsAt: exp.endsAt,
+        msLeft: Math.max(0, new Date(exp.endsAt).getTime() - now),
+    };
+}
+
+function serializeMission(m) {
+    const top = (m.contributions || [])
+        .slice()
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 3)
+        .map((c) => ({ userId: c.userId, username: c.user?.username || '???', amount: c.amount }));
+    const def = missionDef(m.defKey);
+    return {
+        id: m.id,
+        defKey: m.defKey,
+        name: def?.name || m.defKey,
+        desc: def?.desc || '',
+        type: m.type,
+        target: m.target,
+        progress: m.progress,
+        rewardXp: m.rewardXp,
+        status: m.status,
+        topContributors: top,
+    };
+}
+
+/** Resolve an expedition whose timer has elapsed: roll outcome, pay XP + gold. */
+async function resolveExpedition(expId) {
+    await prisma.$transaction(async (tx) => {
+        const exp = await tx.expedition.findUnique({ where: { id: expId }, include: { members: true } });
+        if (!exp || exp.status !== 'active') return;
+        const def = expeditionDef(exp.defKey);
+        const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
+        const filledSlots = exp.members.length;
+        const outcome = expeditionOutcome(def, { totalPower, filledSlots }, Math.random());
+        const xpGain = Math.round(exp.rewardXp * outcome.rewardMult);
+        const goldEach = Math.round(exp.rewardGold * outcome.rewardMult);
+
+        await tx.expedition.update({
+            where: { id: exp.id },
+            data: { status: 'resolved', success: outcome.success, resolvedAt: new Date() },
+        });
+        if (xpGain > 0) await tx.clan.update({ where: { id: exp.clanId }, data: { xp: { increment: xpGain } } });
+        const xpEach = filledSlots > 0 ? Math.round(xpGain / filledSlots) : 0;
+        for (const m of exp.members) {
+            if (goldEach > 0) await tx.gameState.updateMany({ where: { userId: m.userId }, data: { gold: { increment: goldEach } } });
+            if (xpEach > 0) await tx.clanMember.updateMany({ where: { userId: m.userId, clanId: exp.clanId }, data: { xpContributed: { increment: xpEach } } });
+        }
+    });
+}
+
+/** Complete a mission whose progress reached target: grant clan XP once. */
+async function completeMission(missionId) {
+    await prisma.$transaction(async (tx) => {
+        const m = await tx.mission.findUnique({ where: { id: missionId } });
+        if (!m || m.status !== 'active' || m.progress < m.target) return;
+        await tx.mission.update({ where: { id: m.id }, data: { status: 'completed' } });
+        await tx.clan.update({ where: { id: m.clanId }, data: { xp: { increment: m.rewardXp } } });
+    });
+}
+
+// ── Listing / detail ────────────────────────────────────────────────────────
+
+// GET /api/clans — top clans by XP, optional ?q= search
 router.get('/', requireAuth, async (req, res) => {
     try {
         const q = (req.query.q || '').toString().trim();
@@ -80,9 +183,9 @@ router.get('/', requireAuth, async (req, res) => {
             : {};
         const clans = await prisma.clan.findMany({
             where,
-            orderBy: { treasury: 'desc' },
+            orderBy: { xp: 'desc' },
             take: 25,
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
+            include: FULL_CLAN_INCLUDE,
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
@@ -94,16 +197,203 @@ router.get('/', requireAuth, async (req, res) => {
 // GET /api/clans/mine — the requesting user's clan (or null)
 router.get('/mine', requireAuth, async (req, res) => {
     try {
-        const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
+        const membership = await getMembership(req.user.userId);
         if (!membership) return res.json({ clan: null });
-        const clan = await prisma.clan.findUnique({
-            where: { id: membership.clanId },
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
-        });
+        const clan = await prisma.clan.findUnique({ where: { id: membership.clanId }, include: FULL_CLAN_INCLUDE });
         res.json({ clan: clan ? serializeClan(clan, { withMembers: true }) : null });
     } catch (err) {
         console.error('Get my clan error:', err);
         res.status(500).json({ error: 'Failed to load clan' });
+    }
+});
+
+// ── Expeditions ──────────────────────────────────────────────────────────────
+// (Declared before GET '/:id' so the literal paths aren't captured as an id.)
+
+// GET /api/clans/expeditions — my clan's expeditions + the catalog of launchables
+router.get('/expeditions', requireAuth, async (req, res) => {
+    try {
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+
+        // Lazily resolve any expedition whose timer has elapsed.
+        const due = await prisma.expedition.findMany({
+            where: { clanId: membership.clanId, status: 'active', endsAt: { lte: new Date() } },
+            select: { id: true },
+        });
+        for (const e of due) await resolveExpedition(e.id);
+
+        const list = await prisma.expedition.findMany({
+            where: { clanId: membership.clanId, OR: [{ status: 'active' }, { resolvedAt: { not: null } }] },
+            orderBy: { id: 'desc' },
+            take: 20,
+            include: { members: { include: { user: { select: { username: true } } } } },
+        });
+        res.json({
+            expeditions: list.map((e) => serializeExpedition(e)),
+            catalog: EXPEDITIONS,
+            myUserId: req.user.userId,
+            myRole: membership.role,
+        });
+    } catch (err) {
+        console.error('List expeditions error:', err);
+        res.status(500).json({ error: 'Failed to load expeditions' });
+    }
+});
+
+// POST /api/clans/expeditions { defKey } — launch (officer+); costs treasury gold
+router.post('/expeditions', requireAuth, async (req, res) => {
+    try {
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+        if (!can(membership.role, 'startActivity')) return res.status(403).json({ error: 'You lack permission to start expeditions' });
+
+        const def = expeditionDef((req.body?.defKey || '').toString());
+        if (!def) return res.status(400).json({ error: 'Unknown expedition' });
+
+        await prisma.$transaction(async (tx) => {
+            const clan = await tx.clan.findUnique({ where: { id: membership.clanId }, select: { treasury: true } });
+            if (!clan || clan.treasury < def.costGold) {
+                throw Object.assign(new Error(`Clan bank needs ${def.costGold} gold to launch this`), { status: 400 });
+            }
+            await tx.clan.update({ where: { id: membership.clanId }, data: { treasury: { decrement: def.costGold } } });
+            await tx.expedition.create({
+                data: {
+                    clanId: membership.clanId,
+                    defKey: def.key,
+                    difficulty: def.difficulty,
+                    slots: def.slots,
+                    rewardXp: def.rewardXp,
+                    rewardGold: def.rewardGold,
+                    powerReq: def.powerReq,
+                    endsAt: new Date(Date.now() + def.durationMs),
+                },
+            });
+        });
+        res.status(201).json(await freshClan(membership.clanId));
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        console.error('Start expedition error:', err);
+        res.status(500).json({ error: 'Failed to start expedition' });
+    }
+});
+
+// POST /api/clans/expeditions/:id/join — register into a free slot
+router.post('/expeditions/:id/join', requireAuth, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid expedition id' });
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+
+        await prisma.$transaction(async (tx) => {
+            const exp = await tx.expedition.findUnique({ where: { id }, include: { _count: { select: { members: true } } } });
+            if (!exp || exp.clanId !== membership.clanId) throw Object.assign(new Error('Expedition not found'), { status: 404 });
+            if (exp.status !== 'active' || new Date(exp.endsAt).getTime() <= Date.now()) throw Object.assign(new Error('This expedition is no longer recruiting'), { status: 409 });
+            if (exp._count.members >= exp.slots) throw Object.assign(new Error('All slots are taken'), { status: 409 });
+            const already = await tx.expeditionMember.findUnique({ where: { expeditionId_userId: { expeditionId: id, userId: req.user.userId } } });
+            if (already) throw Object.assign(new Error('You already joined this expedition'), { status: 409 });
+
+            const gs = await tx.gameState.findUnique({ where: { userId: req.user.userId }, select: { equipment: true } });
+            const power = gs ? gearPowerFromEquipment(gs.equipment) : 0;
+            await tx.expeditionMember.create({ data: { expeditionId: id, userId: req.user.userId, power } });
+        });
+        res.json({ ok: true });
+    } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ error: 'You already joined this expedition' });
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        console.error('Join expedition error:', err);
+        res.status(500).json({ error: 'Failed to join expedition' });
+    }
+});
+
+// ── Missions ─────────────────────────────────────────────────────────────────
+
+// GET /api/clans/missions — my clan's missions + the catalog
+router.get('/missions', requireAuth, async (req, res) => {
+    try {
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+
+        // Lazily complete any mission that already reached its target.
+        const reached = await prisma.mission.findMany({
+            where: { clanId: membership.clanId, status: 'active' },
+            select: { id: true, progress: true, target: true },
+        });
+        for (const m of reached) if (m.progress >= m.target) await completeMission(m.id);
+
+        const list = await prisma.mission.findMany({
+            where: { clanId: membership.clanId },
+            orderBy: { id: 'desc' },
+            take: 20,
+            include: { contributions: { include: { user: { select: { username: true } } } } },
+        });
+        res.json({
+            missions: list.map(serializeMission),
+            catalog: MISSIONS,
+            myRole: membership.role,
+        });
+    } catch (err) {
+        console.error('List missions error:', err);
+        res.status(500).json({ error: 'Failed to load missions' });
+    }
+});
+
+// POST /api/clans/missions { defKey } — start a mission (officer+)
+router.post('/missions', requireAuth, async (req, res) => {
+    try {
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+        if (!can(membership.role, 'startActivity')) return res.status(403).json({ error: 'You lack permission to start missions' });
+
+        const def = missionDef((req.body?.defKey || '').toString());
+        if (!def) return res.status(400).json({ error: 'Unknown mission' });
+
+        const existing = await prisma.mission.findFirst({ where: { clanId: membership.clanId, defKey: def.key, status: 'active' } });
+        if (existing) return res.status(409).json({ error: 'That mission is already active' });
+
+        await prisma.mission.create({
+            data: { clanId: membership.clanId, defKey: def.key, type: def.type, target: def.target, rewardXp: def.rewardXp },
+        });
+        res.status(201).json({ ok: true });
+    } catch (err) {
+        console.error('Start mission error:', err);
+        res.status(500).json({ error: 'Failed to start mission' });
+    }
+});
+
+// POST /api/clans/missions/progress { type, amount } — report play progress
+router.post('/missions/progress', requireAuth, async (req, res) => {
+    try {
+        const membership = await getMembership(req.user.userId);
+        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+
+        const type = (req.body?.type || '').toString();
+        let amount = Math.floor(Number(req.body?.amount));
+        if (!Number.isInteger(amount) || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+        amount = Math.min(amount, MISSION_PROGRESS_MAX_PER_REPORT); // clamp (basic anti-cheat)
+
+        const missions = await prisma.mission.findMany({ where: { clanId: membership.clanId, type, status: 'active' } });
+        const completed = [];
+        for (const m of missions) {
+            const remaining = Math.max(0, m.target - m.progress);
+            const applied = Math.min(amount, remaining);
+            if (applied <= 0) continue;
+            await prisma.$transaction([
+                prisma.mission.update({ where: { id: m.id }, data: { progress: { increment: applied } } }),
+                prisma.clanMember.update({ where: { userId: req.user.userId }, data: { xpContributed: { increment: applied } } }),
+                prisma.missionContribution.upsert({
+                    where: { missionId_userId: { missionId: m.id, userId: req.user.userId } },
+                    create: { missionId: m.id, userId: req.user.userId, amount: applied },
+                    update: { amount: { increment: applied } },
+                }),
+            ]);
+            if (m.progress + applied >= m.target) { await completeMission(m.id); completed.push(m.defKey); }
+        }
+        res.json({ ok: true, completed });
+    } catch (err) {
+        console.error('Mission progress error:', err);
+        res.status(500).json({ error: 'Failed to report progress' });
     }
 });
 
@@ -112,10 +402,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid clan id' });
-        const clan = await prisma.clan.findUnique({
-            where: { id },
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
-        });
+        const clan = await prisma.clan.findUnique({ where: { id }, include: FULL_CLAN_INCLUDE });
         if (!clan) return res.status(404).json({ error: 'Clan not found' });
         res.json(serializeClan(clan, { withMembers: true }));
     } catch (err) {
@@ -135,7 +422,7 @@ router.post('/', requireAuth, async (req, res) => {
     const description = (req.body.description || '').toString();
 
     try {
-        const existing = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
+        const existing = await getMembership(req.user.userId);
         if (existing) return res.status(409).json({ error: 'You are already in a clan' });
 
         const clan = await prisma.clan.create({
@@ -144,7 +431,7 @@ router.post('/', requireAuth, async (req, res) => {
                 ownerId: req.user.userId,
                 members: { create: { userId: req.user.userId, role: 'owner' } },
             },
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
+            include: FULL_CLAN_INCLUDE,
         });
         res.status(201).json(serializeClan(clan, { withMembers: true }));
     } catch (err) {
@@ -170,7 +457,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
             const clan = await tx.clan.findUnique({ where: { id }, include: { _count: { select: { members: true } } } });
             if (!clan) throw Object.assign(new Error('Clan not found'), { status: 404 });
 
-            const { maxMembers } = clanPerks(clanLevelFromTreasury(clan.treasury));
+            const { maxMembers } = clanPerks(clanLevelFromXp(clan.xp));
             if (clan._count.members >= maxMembers) {
                 throw Object.assign(new Error('This clan is full'), { status: 409 });
             }
@@ -178,11 +465,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
             await tx.clanMember.create({ data: { clanId: id, userId: req.user.userId, role: 'member' } });
         });
 
-        const full = await prisma.clan.findUnique({
-            where: { id },
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
-        });
-        res.json(serializeClan(full, { withMembers: true }));
+        res.json(await freshClan(id));
     } catch (err) {
         if (err.code === 'P2002') return res.status(409).json({ error: 'You are already in a clan' });
         if (err.status) return res.status(err.status).json({ error: err.message });
@@ -194,7 +477,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 // POST /api/clans/leave — leave the current clan (owner transfers or disbands)
 router.post('/leave', requireAuth, async (req, res) => {
     try {
-        const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
+        const membership = await getMembership(req.user.userId);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
         const clanId = membership.clanId;
@@ -223,14 +506,14 @@ router.post('/leave', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/clans/contribute — add gold to the clan treasury
+// POST /api/clans/contribute — add gold to the clan bank (treasury; non-power)
 router.post('/contribute', requireAuth, async (req, res) => {
     try {
         const amount = Math.floor(Number(req.body?.amount));
         if (!Number.isInteger(amount) || amount <= 0) {
             return res.status(400).json({ error: 'Amount must be a positive number' });
         }
-        const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
+        const membership = await getMembership(req.user.userId);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
         // Gold check + deduction inside one interactive transaction to prevent race conditions
@@ -245,15 +528,103 @@ router.post('/contribute', requireAuth, async (req, res) => {
             return gameState.gold - amount;
         });
 
-        const full = await prisma.clan.findUnique({
-            where: { id: membership.clanId },
-            include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
-        });
-        res.json({ ...serializeClan(full, { withMembers: true }), gold: remainingGold });
+        res.json({ ...(await freshClan(membership.clanId)), gold: remainingGold });
     } catch (err) {
         if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Contribute error:', err);
         res.status(500).json({ error: 'Failed to contribute' });
+    }
+});
+
+// ── Rank management ──────────────────────────────────────────────────────────
+
+/** Load the actor's membership and a target member in the same clan. */
+async function loadActorAndTarget(actorUserId, targetUserId) {
+    const actor = await prisma.clanMember.findUnique({ where: { userId: actorUserId } });
+    if (!actor) return { error: { status: 400, message: 'You are not in a clan' } };
+    const target = await prisma.clanMember.findUnique({ where: { userId: targetUserId } });
+    if (!target || target.clanId !== actor.clanId) return { error: { status: 404, message: 'Member not found in your clan' } };
+    if (target.userId === actor.userId) return { error: { status: 400, message: "You can't do that to yourself" } };
+    return { actor, target };
+}
+
+// POST /api/clans/members/:userId/promote
+router.post('/members/:userId/promote', requireAuth, async (req, res) => {
+    try {
+        const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
+        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
+        if (error) return res.status(error.status).json({ error: error.message });
+        if (!can(actor.role, 'promote', target.role)) return res.status(403).json({ error: 'You lack permission to promote this member' });
+
+        const newRole = nextRankUp(target.role);
+        if (!newRole) return res.status(400).json({ error: 'That member is already at the top assignable rank' });
+        // Never let a promotion reach or exceed the actor's own rank.
+        if (!can(actor.role, 'promote', newRole)) return res.status(403).json({ error: 'You can only promote below your own rank' });
+
+        await prisma.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
+        res.json(await freshClan(actor.clanId));
+    } catch (err) {
+        console.error('Promote error:', err);
+        res.status(500).json({ error: 'Failed to promote member' });
+    }
+});
+
+// POST /api/clans/members/:userId/demote
+router.post('/members/:userId/demote', requireAuth, async (req, res) => {
+    try {
+        const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
+        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
+        if (error) return res.status(error.status).json({ error: error.message });
+        if (!can(actor.role, 'demote', target.role)) return res.status(403).json({ error: 'You lack permission to demote this member' });
+
+        const newRole = nextRankDown(target.role);
+        if (!newRole) return res.status(400).json({ error: 'That member is already at the lowest rank' });
+
+        await prisma.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
+        res.json(await freshClan(actor.clanId));
+    } catch (err) {
+        console.error('Demote error:', err);
+        res.status(500).json({ error: 'Failed to demote member' });
+    }
+});
+
+// POST /api/clans/members/:userId/kick
+router.post('/members/:userId/kick', requireAuth, async (req, res) => {
+    try {
+        const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
+        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
+        if (error) return res.status(error.status).json({ error: error.message });
+        if (!can(actor.role, 'kick', target.role)) return res.status(403).json({ error: 'You lack permission to kick this member' });
+
+        await prisma.clanMember.delete({ where: { userId: targetUserId } });
+        res.json(await freshClan(actor.clanId));
+    } catch (err) {
+        console.error('Kick error:', err);
+        res.status(500).json({ error: 'Failed to kick member' });
+    }
+});
+
+// POST /api/clans/transfer { userId } — hand leadership to another member (owner only)
+router.post('/transfer', requireAuth, async (req, res) => {
+    try {
+        const targetUserId = Number(req.body?.userId);
+        if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
+        const { actor, error } = await loadActorAndTarget(req.user.userId, targetUserId);
+        if (error) return res.status(error.status).json({ error: error.message });
+        if (!can(actor.role, 'transfer')) return res.status(403).json({ error: 'Only the Leader can transfer leadership' });
+
+        await prisma.$transaction([
+            prisma.clan.update({ where: { id: actor.clanId }, data: { ownerId: targetUserId } }),
+            prisma.clanMember.update({ where: { userId: targetUserId }, data: { role: 'owner' } }),
+            prisma.clanMember.update({ where: { userId: actor.userId }, data: { role: 'coleader' } }),
+        ]);
+        res.json(await freshClan(actor.clanId));
+    } catch (err) {
+        console.error('Transfer error:', err);
+        res.status(500).json({ error: 'Failed to transfer leadership' });
     }
 });
 
