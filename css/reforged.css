@@ -109,12 +109,18 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
     background: rgba(14, 11, 26, .85); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
 }
-.hdr-avatar { font-size: 1.4rem; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-3); cursor: pointer; }
+.hdr-avatar { font-size: 1.4rem; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg-3); cursor: pointer; flex: none; }
+.hdr-hero { display: flex; align-items: center; gap: 9px; }
+.hdr-hero-info { display: flex; flex-direction: column; gap: 3px; cursor: pointer; min-width: 64px; }
+.hdr-hero-lvl { display: flex; align-items: baseline; gap: 4px; font-weight: 800; font-size: .9rem; line-height: 1; }
+.hdr-hero-lvl .muted { font-size: .68rem; font-weight: 700; }
+.hdr-hero-lvl-val { color: #a78bfa; }
+.hdr-xp-bar { height: 6px; width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.hdr-xp-fill { height: 100%; width: 0; background: linear-gradient(90deg, #a78bfa, var(--accent-2)); transition: width .35s ease; }
 .hdr-stats { margin-left: auto; display: flex; gap: 8px; }
 .hdr-pill { display: flex; align-items: center; gap: 6px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-weight: 700; font-size: .9rem; }
 .hdr-gold .hdr-gold-val { color: var(--gold); }
 .hdr-power .hdr-power-val { color: var(--accent-2); }
-.hdr-level .hdr-level-val { color: #a78bfa; }
 
 .screen-stage { flex: 1; overflow-y: auto; padding: 16px 14px 90px; }
 .screen { animation: fade .2s ease; }
@@ -153,13 +159,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 }
 .dungeon { position: relative; line-height: 0; }
 .dungeon-canvas { display: block; width: 100%; height: auto; touch-action: none; }
-
-/* Stage progress bar + rank chip */
-.stage-progress { display: flex; flex-direction: column; gap: 6px; }
-.stage-bar { height: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.stage-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), #fff0c0); transition: width .35s ease; }
-.stage-meta { display: flex; justify-content: space-between; font-size: .76rem; font-weight: 700; color: var(--muted); }
-.rank-chip { color: var(--accent-2); }
 
 /* Control buttons (auto-forge, etc.) */
 .ctrl-btn {
@@ -309,6 +308,8 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .odds-bar { min-width: 2px; }
 .maxed { text-align: center; color: var(--gold); font-weight: 700; padding: 10px; }
 .forge-xp { margin: 10px 0; }
+.forge-xp-home { margin: 8px 2px 0; }
+.forge-xp-home .forge-xp-label { text-align: center; }
 .forge-xp-bar { height: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .forge-xp-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .35s ease; }
 .forge-xp-label { margin-top: 4px; font-size: .72rem; }

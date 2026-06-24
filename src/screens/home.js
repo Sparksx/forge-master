@@ -1,7 +1,7 @@
 // Battle Home — the unified core screen. A persistent idle auto-battler sits on
 // top; your gear grid and the forge sit below it. This merges the old Forge and
 // Arena screens into one cohesive view, inspired by idle merge-RPG layouts:
-//   stage track → live battle → progress bar → controls → gear → forge.
+//   stage label → live battle → gear grid → forge controls + forge-XP bar.
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
 import { renderItemCard, renderDeltaBadge, powerDelta } from './item-view.js';
 import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp } from '../game/config.js';
@@ -67,6 +67,7 @@ export function refresh() {
     updateGearGrid();
     const chip = root.querySelector('.forge-level-chip');
     if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
+    syncForgeXp();
     // Don't disturb a fight in progress; just keep the idle preview fresh.
     if (!battleBusy) syncPreview();
 }
@@ -82,13 +83,6 @@ function buildBattle() {
             h('div', { className: 'stage-title', text: 'Hard 1-1' }),
         ),
         dungeonHost,
-        h('div', { className: 'stage-progress' },
-            h('div', { className: 'stage-bar' }, h('div', { className: 'stage-bar-fill' })),
-            h('div', { className: 'stage-meta' },
-                h('span', { className: 'stage-bar-label', text: 'Stage 1 / 10' }),
-                h('span', { className: 'rank-chip', text: 'Rank 1' }),
-            ),
-        ),
     );
 }
 
@@ -98,11 +92,7 @@ function matchupPayload() {
     const enemy = makeEnemy(rank);
     const player = getCombatStats();
 
-    const info = stageInfo(rank);
-    root.querySelector('.stage-title').textContent = info.label;
-    root.querySelector('.stage-bar-fill').style.width = `${Math.round(info.progress * 100)}%`;
-    root.querySelector('.stage-bar-label').textContent = `Stage ${info.sub} / 10`;
-    root.querySelector('.rank-chip').textContent = `Rank ${rank}`;
+    root.querySelector('.stage-title').textContent = stageInfo(rank).label;
 
     return {
         rank,
@@ -199,7 +189,29 @@ function buildForge() {
             h('button', { className: 'ctrl-btn auto-forge', onclick: toggleAutoForge },
                 h('span', { className: 'ctrl-icon', text: '♻️' }), h('span', { text: 'Auto' })),
         ),
+        buildForgeXp(),
     );
+}
+
+// Compact forge-XP bar shown under the forge buttons. Forging fills it to level
+// the forge for free; the full breakdown lives in the upgrade modal.
+function buildForgeXp() {
+    const wrap = h('div', { className: 'forge-xp forge-xp-home' });
+    syncForgeXp(wrap);
+    return wrap;
+}
+
+function syncForgeXp(wrap = root?.querySelector('.forge-xp-home')) {
+    if (!wrap) return;
+    const prog = getForgeLevelProgress();
+    clear(wrap);
+    if (prog.maxed) {
+        wrap.appendChild(h('div', { className: 'forge-xp-label muted', text: 'Forge at max level' }));
+        return;
+    }
+    wrap.appendChild(h('div', { className: 'forge-xp-bar' },
+        h('div', { className: 'forge-xp-fill', style: { width: `${Math.round(prog.pct * 100)}%` } })));
+    wrap.appendChild(h('div', { className: 'forge-xp-label muted', text: `Forge XP ${fmt(prog.xp)} / ${fmt(prog.need)}` }));
 }
 
 function doForge() {
