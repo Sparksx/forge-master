@@ -22,8 +22,10 @@ let dungeon = null;
 
 // Battle loop
 let battleBusy = false;
-let autoBattle = true; // idle-first: the hero walks to mobs and fights on its own
-let fast = false; // 2x playback speed
+// Combat is always automatic at normal speed — the hero walks to mobs and
+// fights on its own; neither auto nor speed is player-toggleable.
+const autoBattle = true;
+const fast = false;
 
 // Forge
 let forging = false;
@@ -102,10 +104,6 @@ function buildBattle() {
             ),
         ),
         h('div', { className: 'battle-controls' },
-            h('button', { className: 'ctrl-btn auto-battle on', onclick: toggleAutoBattle },
-                h('span', { className: 'ctrl-icon', text: '♾️' }), h('span', { text: 'Auto' })),
-            h('button', { className: 'ctrl-btn speed-btn', onclick: toggleSpeed },
-                h('span', { className: 'ctrl-icon', text: '⏩' }), h('span', { className: 'speed-label', text: '1x' })),
             h('button', { className: 'ctrl-btn boost-btn', onclick: activateBoost },
                 h('span', { className: 'ctrl-icon', text: '⚡' }), h('span', { className: 'boost-label', text: 'Boost x2' })),
         ),
@@ -197,21 +195,6 @@ function resolveFight(result) {
         setArenaRank(result.rank + 1);
     }
     gameEvents.emit(EVENTS.ARENA_RESULT, result);
-}
-
-function toggleAutoBattle() {
-    autoBattle = !autoBattle;
-    root.querySelector('.auto-battle').classList.toggle('on', autoBattle);
-    dungeon.setAuto(autoBattle);
-    if (autoBattle) toast('Auto-walk on — the hero seeks out mobs', 'info');
-    else toast('Manual — steer with the d-pad or WASD', 'info');
-}
-
-function toggleSpeed() {
-    fast = !fast;
-    root.querySelector('.speed-btn').classList.toggle('on', fast);
-    root.querySelector('.speed-label').textContent = fast ? '2x' : '1x';
-    dungeon.setFast(fast);
 }
 
 // ── Boost ───────────────────────────────────────────────────────────────────
