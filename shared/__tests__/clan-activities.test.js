@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    EXPEDITIONS, expeditionDef, expeditionOutcome,
+    EXPEDITIONS, expeditionDef, expeditionOutcome, maxActiveExpeditions,
     MISSIONS, missionDef, MISSION_TYPES, MISSION_PROGRESS_MAX_PER_REPORT,
 } from '../clan-activities.js';
 
@@ -12,15 +12,32 @@ describe('expedition templates', () => {
             expect(e.durationMs).toBeGreaterThan(0);
             expect(e.rewardXp).toBeGreaterThan(0);
             expect(e.powerReq).toBeGreaterThan(0);
-            expect(e.costGold).toBeGreaterThanOrEqual(0);
+            // Launching is free (no gold gate); access is gated by clan level instead.
+            expect(e.costGold).toBeUndefined();
+            expect(e.minClanLevel).toBeGreaterThanOrEqual(1);
             expect(keys.has(e.key)).toBe(false);
             keys.add(e.key);
+        }
+    });
+
+    it('unlock levels rise (or hold) with difficulty order', () => {
+        for (let i = 1; i < EXPEDITIONS.length; i++) {
+            expect(EXPEDITIONS[i].minClanLevel).toBeGreaterThanOrEqual(EXPEDITIONS[i - 1].minClanLevel);
         }
     });
 
     it('looks up by key', () => {
         expect(expeditionDef(EXPEDITIONS[0].key)).toBe(EXPEDITIONS[0]);
         expect(expeditionDef('nope')).toBe(null);
+    });
+});
+
+describe('maxActiveExpeditions', () => {
+    it('is always at least 1 and grows with clan level', () => {
+        expect(maxActiveExpeditions(1)).toBe(1);
+        expect(maxActiveExpeditions(0)).toBeGreaterThanOrEqual(1); // clamps low input
+        expect(maxActiveExpeditions(5)).toBeGreaterThan(maxActiveExpeditions(1));
+        expect(maxActiveExpeditions(30)).toBeGreaterThan(maxActiveExpeditions(10));
     });
 });
 

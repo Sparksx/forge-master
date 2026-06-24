@@ -12,6 +12,7 @@ import {
     promoteMember, demoteMember, kickMember, transferLeadership,
 } from '../game/clan.js';
 import { can, rankInfo, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
+import { maxActiveExpeditions } from '../../shared/clan-activities.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 let root = null;
@@ -141,9 +142,9 @@ function buildOverview(clan, myRole) {
         h('div', { className: 'clan-treasury' },
             h('div', { className: 'treasury-head' },
                 h('span', { text: `🏛️ Clan Bank: ${fmt(clan.treasury)} gold` }),
-                h('span', { className: 'muted', text: 'Funds expeditions' }),
+                h('span', { className: 'muted', text: 'Shared vault' }),
             ),
-            h('p', { className: 'muted small', text: 'The bank pays for launching expeditions. Clan level comes from XP earned on expeditions and missions — not from gold.' }),
+            h('p', { className: 'muted small', text: 'A shared clan vault saved for future perks. Expeditions are free to launch — clan level (from XP on expeditions and missions, never gold) unlocks tougher runs. The bank never buys clan power.' }),
             h('button', { className: 'btn btn-primary btn-block', text: 'Deposit Gold', onclick: showContribute }),
         ),
         h('button', { className: 'btn btn-danger btn-block', text: myRole === 'owner' ? 'Disband / Leave Clan' : 'Leave Clan', onclick: confirmLeave }),
@@ -257,20 +258,29 @@ async function doJoinExpedition(id) {
 
 function showStartExpedition(clan) {
     const catalog = expeditionsData?.catalog || [];
+    // Running expeditions only (expired-but-unresolved ones don't count toward the cap).
+    const running = (expeditionsData?.expeditions || []).filter((e) => e.status === 'active' && e.msLeft > 0).length;
+    const cap = maxActiveExpeditions(clan.level);
+    const atCap = running >= cap;
     const body = h('div', { className: 'start-activity' },
         h('h3', { text: '🗺️ Launch an Expedition' }),
-        h('p', { className: 'muted', text: `Clan bank: ${fmt(clan.treasury)} gold` }),
-        ...catalog.map((def) => h('button', {
-            className: 'btn btn-ghost btn-block activity-pick',
-            attrs: clan.treasury < def.costGold ? { disabled: 'true' } : {},
-            onclick: async () => {
-                try { await startExpedition(def.key); closeModal(); toast(`${def.name} launched!`, 'success'); await loadExpeditions(); }
-                catch (err) { toast(err.message || 'Failed', 'error'); }
+        h('p', { className: 'muted', text: `Free to launch · ${running}/${cap} running · harder runs unlock as the clan levels up` }),
+        ...catalog.map((def) => {
+            const locked = clan.level < def.minClanLevel;
+            const disabled = locked || atCap;
+            return h('button', {
+                className: 'btn btn-ghost btn-block activity-pick',
+                attrs: disabled ? { disabled: 'true' } : {},
+                onclick: async () => {
+                    try { await startExpedition(def.key); closeModal(); toast(`${def.name} launched!`, 'success'); await loadExpeditions(); }
+                    catch (err) { toast(err.message || 'Failed', 'error'); }
+                },
             },
-        },
-            h('div', { className: 'activity-pick-name', text: `${def.name} · ${def.difficulty}` }),
-            h('div', { className: 'muted small', text: `${def.slots} slots · ${fmtDuration(def.durationMs)} · cost ${fmt(def.costGold)}g · 🏆 ${fmt(def.rewardXp)} XP` }),
-        )),
+                h('div', { className: 'activity-pick-name', text: `${def.name} · ${def.difficulty}${locked ? ` · 🔒 Lv ${def.minClanLevel}` : ''}` }),
+                h('div', { className: 'muted small', text: `${def.slots} slots · ${fmtDuration(def.durationMs)} · 🏆 ${fmt(def.rewardXp)} XP, ${fmt(def.rewardGold)}g each` }),
+            );
+        }),
+        atCap ? h('p', { className: 'muted small', text: `Max ${cap} expedition${cap === 1 ? '' : 's'} running — level the clan to run more at once.` }) : null,
         h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
     );
     openModal(body);
@@ -437,7 +447,7 @@ function showContribute() {
     const quick = (amt) => h('button', { className: 'btn btn-ghost', text: fmt(amt), onclick: () => { input.value = String(Math.min(amt, getGold())); } });
     const body = h('div', { className: 'contribute' },
         h('h3', { text: '🏛️ Deposit Gold' }),
-        h('p', { className: 'muted', text: `You have ${fmt(getGold())} gold. The clan bank funds expeditions — it does not buy clan power.` }),
+        h('p', { className: 'muted', text: `You have ${fmt(getGold())} gold. The clan bank is a shared vault saved for future perks — it does not buy clan power.` }),
         h('div', { className: 'quick-amounts' }, quick(100), quick(1000), quick(10000), quick(getGold())),
         input,
         h('div', { className: 'confirm-actions' },

@@ -5,7 +5,7 @@ import { gearPowerFromEquipment } from '../../shared/stats.js';
 import { clanLevelFromXp, clanPerks, clanLevelProgress } from '../../shared/clan-config.js';
 import { can, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
 import {
-    EXPEDITIONS, expeditionDef, expeditionOutcome,
+    EXPEDITIONS, expeditionDef, expeditionOutcome, maxActiveExpeditions,
     MISSIONS, missionDef, MISSION_PROGRESS_MAX_PER_REPORT,
 } from '../../shared/clan-activities.js';
 
@@ -254,7 +254,9 @@ router.get('/expeditions', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/clans/expeditions { defKey } — launch (officer+); costs treasury gold
+// POST /api/clans/expeditions { defKey } — launch (officer+). Free to launch:
+// gated by clan level (harder runs unlock as the clan grows) and a cap on how
+// many can run at once — never by gold, to keep clans non-pay-to-win.
 router.post('/expeditions', requireAuth, async (req, res) => {
     try {
         const membership = await getMembership(req.user.userId);
@@ -265,11 +267,20 @@ router.post('/expeditions', requireAuth, async (req, res) => {
         if (!def) return res.status(400).json({ error: 'Unknown expedition' });
 
         await prisma.$transaction(async (tx) => {
-            const clan = await tx.clan.findUnique({ where: { id: membership.clanId }, select: { treasury: true } });
-            if (!clan || clan.treasury < def.costGold) {
-                throw Object.assign(new Error(`Clan bank needs ${def.costGold} gold to launch this`), { status: 400 });
+            const clan = await tx.clan.findUnique({ where: { id: membership.clanId }, select: { xp: true } });
+            if (!clan) throw Object.assign(new Error('Clan not found'), { status: 404 });
+            const level = clanLevelFromXp(clan.xp);
+            if (level < def.minClanLevel) {
+                throw Object.assign(new Error(`Reach clan level ${def.minClanLevel} to launch this expedition`), { status: 403 });
             }
-            await tx.clan.update({ where: { id: membership.clanId }, data: { treasury: { decrement: def.costGold } } });
+            // Only count runs still in progress; expired-but-unresolved ones don't block.
+            const activeCount = await tx.expedition.count({
+                where: { clanId: membership.clanId, status: 'active', endsAt: { gt: new Date() } },
+            });
+            const cap = maxActiveExpeditions(level);
+            if (activeCount >= cap) {
+                throw Object.assign(new Error(`Your clan can only run ${cap} expedition${cap === 1 ? '' : 's'} at once`), { status: 409 });
+            }
             await tx.expedition.create({
                 data: {
                     clanId: membership.clanId,

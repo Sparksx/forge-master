@@ -8,17 +8,29 @@ const HOUR = 3600 * 1000;
 // Each registered member contributes their gear power toward `powerReq`. A full
 // roster that meets the power requirement is a guaranteed success; a thinner or
 // weaker party still has a shot, with reward scaled to how well it did.
+//
+// Launching is FREE — no gold gate (that would be pay-to-win). Access is gated
+// instead by `minClanLevel` (harder runs unlock as the clan grows via cooperative
+// XP) and by a per-clan cap on concurrently active runs (see maxActiveExpeditions).
 export const EXPEDITIONS = [
-    { key: 'patrol', name: 'Border Patrol', difficulty: 'Easy', slots: 2, durationMs: 1 * HOUR, rewardXp: 400, rewardGold: 150, powerReq: 6000, costGold: 100 },
-    { key: 'ruins', name: 'Lost Ruins', difficulty: 'Normal', slots: 3, durationMs: 4 * HOUR, rewardXp: 1400, rewardGold: 500, powerReq: 24000, costGold: 300 },
-    { key: 'caverns', name: 'Frost Caverns', difficulty: 'Hard', slots: 4, durationMs: 6 * HOUR, rewardXp: 2800, rewardGold: 900, powerReq: 60000, costGold: 600 },
-    { key: 'lair', name: "Dragon's Lair", difficulty: 'Epic', slots: 5, durationMs: 8 * HOUR, rewardXp: 5000, rewardGold: 1600, powerReq: 140000, costGold: 1000 },
+    { key: 'patrol', name: 'Border Patrol', difficulty: 'Easy', slots: 2, durationMs: 1 * HOUR, rewardXp: 400, rewardGold: 150, powerReq: 6000, minClanLevel: 1 },
+    { key: 'ruins', name: 'Lost Ruins', difficulty: 'Normal', slots: 3, durationMs: 4 * HOUR, rewardXp: 1400, rewardGold: 500, powerReq: 24000, minClanLevel: 3 },
+    { key: 'caverns', name: 'Frost Caverns', difficulty: 'Hard', slots: 4, durationMs: 6 * HOUR, rewardXp: 2800, rewardGold: 900, powerReq: 60000, minClanLevel: 6 },
+    { key: 'lair', name: "Dragon's Lair", difficulty: 'Epic', slots: 5, durationMs: 8 * HOUR, rewardXp: 5000, rewardGold: 1600, powerReq: 140000, minClanLevel: 10 },
 ];
 
 const EXPEDITION_BY_KEY = Object.fromEntries(EXPEDITIONS.map((e) => [e.key, e]));
 
 export function expeditionDef(key) {
     return EXPEDITION_BY_KEY[key] || null;
+}
+
+/**
+ * How many expeditions a clan may have running at once. Grows with clan level so
+ * progression (cooperative XP, not gold) unlocks more parallel runs. Always ≥ 1.
+ */
+export function maxActiveExpeditions(clanLevel) {
+    return 1 + Math.floor(Math.max(1, clanLevel) / 5); // L1:1, L5:2, L10:3, … L30:7
 }
 
 /**

@@ -1,8 +1,8 @@
 // Clan progression — shared by client (perks/UI) and server (level computation).
 //
 // Clan LEVEL comes from clan XP only (earned by playing together via expeditions
-// and missions) — NOT from gold. The treasury is a non-power "clan bank" that funds
-// expedition launch costs, so accumulating gold can never buy clan power.
+// and missions) — NOT from gold. The treasury is a non-power "clan bank" kept dormant
+// for future perks; it funds nothing in the live loop, so gold can never buy clan power.
 
 // XP required to go FROM level n TO level n+1 grows linearly:
 //   step(n) = CLAN_XP_BASE * n

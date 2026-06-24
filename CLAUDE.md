@@ -56,7 +56,10 @@ gold-for-gear faucet or inflate the boss/forge gifts.
     an officer+ launches a timed run with limited **slots**; members register; when the
     **real-time timer** elapses it resolves lazily (success rolled from registered power
     via `expeditionOutcome`) and pays clan XP + per-member gold. **This is the one
-    sanctioned real-time-timer exception** (see the gotcha below).
+    sanctioned real-time-timer exception** (see the gotcha below). Launching is **free**
+    (no gold gate — that would be pay-to-win); access is gated by `minClanLevel` (harder
+    runs unlock as the clan levels) and `maxActiveExpeditions(level)` (cap on concurrent
+    runs, grows with clan level).
   - **Missions** (`Mission`/`MissionContribution`): clan goals tracked from real play
     (forge/defeat/boss/swap-set/arena). `src/game/clan-missions.js` batches progress to
     `POST /api/clans/missions/progress`; completing one grants clan XP.
@@ -64,8 +67,10 @@ gold-for-gear faucet or inflate the boss/forge gifts.
   member cap, **+forge speed %**, **best-of-N forge**, and **+player HP & damage %**
   (applied in PvE *and* server-side PvP). Ranks are a 4-tier ladder
   (`shared/clan-ranks.js`: Leader/Co-Leader/Officer/Member) with `can()`-gated
-  promote/demote/kick/transfer. The **treasury** survives only as a non-power "clan bank"
-  that funds expedition launch costs. Global leaderboard is by clan XP. Clan chat is deferred.
+  promote/demote/kick/transfer. The **treasury** survives as a non-power "clan bank" — a
+  shared gold vault kept dormant for **future** clan perks (e.g. cosmetics); it funds
+  nothing in the live loop and **never** buys clan power. Global leaderboard is by clan XP.
+  Clan chat is deferred.
 
 ## Repository map
 

@@ -37,8 +37,9 @@ stat math, database) and **rebuilds the game on top of it** around one tight loo
    tracked from real play). Level grants passive perks to *every* member: **+gold**,
    **+forge luck**, **+forge speed**, **best-of-N forge**, and **+HP & damage**. A 4-tier
    rank ladder (Leader/Co-Leader/Officer/Member) governs who can manage members and launch
-   activities. The gold **treasury** is now just a non-power "clan bank" that funds
-   expedition launches. Clans rank on a global leaderboard by clan XP.
+   activities. Expeditions are **free to launch** (gated by clan level + a concurrent-run
+   cap, never gold). The gold **treasury** is a non-power "clan bank" kept dormant for
+   future perks. Clans rank on a global leaderboard by clan XP.
 
 ## One currency
 
