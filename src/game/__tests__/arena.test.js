@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeEnemy, makeEncounter, simulateDuel, simulateBattle, computeHit, encounterReward } from '../arena.js';
-import { arenaEnemyPower, arenaReward, rankKind, MAX_GROUP, BASE_ATTACK_PERIOD } from '../config.js';
+import { arenaEnemyPower, arenaReward, rankKind, MAX_GROUP, BASE_ATTACK_PERIOD, seededRng } from '../config.js';
 
 describe('arena scaling', () => {
     it('enemy power increases with rank', () => {
@@ -120,6 +120,17 @@ describe('real-time combat helpers', () => {
         expect(crit).toBe(false);
         expect(dmg).toBeGreaterThanOrEqual(90);
         expect(dmg).toBeLessThanOrEqual(110);
+    });
+
+    it('computeHit is deterministic when driven by a seeded RNG (replayable)', () => {
+        const att = { damage: 100, critChance: 40, critMultiplier: 75 };
+        const runA = Array.from({ length: 20 }, (() => { const r = seededRng(123); return () => computeHit(att, r); })());
+        const runB = Array.from({ length: 20 }, (() => { const r = seededRng(123); return () => computeHit(att, r); })());
+        expect(runA).toEqual(runB);
+        // A different seed diverges (otherwise it isn't really seeded).
+        const r = seededRng(456);
+        const runC = Array.from({ length: 20 }, () => computeHit(att, r));
+        expect(runC).not.toEqual(runA);
     });
 
     it('encounterReward pays more for a win and scales with boss kind', () => {

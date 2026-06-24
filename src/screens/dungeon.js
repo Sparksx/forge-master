@@ -11,7 +11,12 @@
 // and rendering. It reports the outcome back to the owning screen via
 // onResolve({ win }) once a fight ends.
 import { computeHit } from '../game/arena.js';
-import { BASE_ATTACK_PERIOD, RANGED_OPENING_FRACTION } from '../game/config.js';
+import { BASE_ATTACK_PERIOD, RANGED_OPENING_FRACTION, seededRng } from '../game/config.js';
+
+// Fixed simulation step (seconds). The fight is stepped in fixed increments,
+// decoupled from the render framerate, so a given (input, seed) always yields
+// the exact same sequence of moves — the basis for deterministic replay (PvP).
+const SIM_DT = 1 / 60;
 
 // Logical room grid (tiles). The canvas scales to fit; tile size is derived.
 const COLS = 15;
@@ -56,6 +61,11 @@ export function createDungeon({ onResolve } = {}) {
     let started = false;
     let active = false;     // a fight is in progress (entities act)
     let resolved = false;   // outcome already reported for the current fight
+    let outcome = null;     // 'win' | 'lose' once the fight ends (drives the banner)
+    let outcomeAt = 0;      // wall-clock time the outcome was decided
+    let simClock = 0;       // deterministic seconds elapsed in the current fight
+    let rng = Math.random;  // seeded per-fight so combat is replayable
+    let accumulator = 0;    // leftover real time waiting to be stepped
 
     function newEntity(over = {}) {
         return {
@@ -65,7 +75,7 @@ export function createDungeon({ onResolve } = {}) {
             lifeSteal: 0, healthRegen: 0, ranged: false, role: 'normal',
             cooldown: 0,            // seconds until this fighter can attack again
             // animation / ai
-            lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1,
+            lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, cheerAt: 0,
             alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 }, aggro: false,
             ...over,
         };
@@ -110,18 +120,29 @@ export function createDungeon({ onResolve } = {}) {
     /**
      * Begin a fresh fight. The hero spawns on the LEFT side of the room and the
      * whole enemy pack spawns down the RIGHT side — a clean every-fight reset.
-     * payload = { player: {emoji,label,maxHP,...stats}, enemies: [{id,emoji,label,maxHP,...stats,role}] }.
+     * payload = { seed?, player: {emoji,label,maxHP,...stats}, enemies: [{id,emoji,label,maxHP,...stats,role}] }.
+     *
+     * The fight is fully deterministic in (input, seed): pass an explicit
+     * `payload.seed` to replay an exact animation (e.g. a PvP match both clients
+     * must see identically); omit it and a seed is derived from the line-up, so
+     * the same matchup always plays out the same way.
      */
     function setMatchup(payload) {
         resize();
         resolved = false;
         active = true;
+        outcome = null;
+        simClock = 0;
+        accumulator = 0;
+        rng = seededRng(payload.seed != null ? payload.seed : seedFromPayload(payload));
         floaters.length = 0; slashes.length = 0; shots.length = 0;
 
         // Hero on the left, full HP, ready to act after one opening beat.
         applyStats(player, payload.player);
         player.alive = true;
         player.deathAt = 0;
+        player.cheerAt = 0;
+        player.lungeAt = 0;
         player.hp = player.maxHP;
         player.facing = 1;
         player.cooldown = player.ranged ? attackPeriod(player) * RANGED_OPENING_FRACTION : attackPeriod(player);
@@ -159,6 +180,21 @@ export function createDungeon({ onResolve } = {}) {
         e.role = spec.role || 'normal';
     }
 
+    // Derive a stable integer seed from the matchup so the same line-up always
+    // plays out identically when no explicit seed is supplied.
+    function seedFromPayload(payload) {
+        const parts = [payload.player, ...payload.enemies].map((c) =>
+            [c.id, c.maxHP, c.damage, c.critChance, c.critMultiplier, c.attackSpeed,
+                c.lifeSteal, c.healthRegen, c.ranged ? 1 : 0].join(','));
+        const str = parts.join('|');
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+    }
+
     /** Spawn floating text over an entity (used by the screen for reward popups). */
     function floater(id, text, cls = '') {
         const target = id === 'player' ? player : enemies.find((e) => e.id === id);
@@ -188,25 +224,33 @@ export function createDungeon({ onResolve } = {}) {
 
     function loop() {
         const t = now();
-        const dt = Math.min(0.05, (t - last) / 1000);
+        const frame = Math.min(0.1, (t - last) / 1000);
         last = t;
-        update(dt);
+        // Step the sim in FIXED increments so the outcome/animation is identical
+        // regardless of display framerate (deterministic replay).
+        accumulator += frame * (fast ? 1.7 : 1);
+        let steps = 0;
+        while (accumulator >= SIM_DT && steps < 8) {
+            update(SIM_DT);
+            accumulator -= SIM_DT;
+            steps++;
+        }
         draw();
         if (started) raf = requestAnimationFrame(loop);
     }
 
     function update(dt) {
         const t = now();
-        const speedScale = fast ? 1.7 : 1;
 
         if (active) {
+            simClock += dt;
             // Hero acts independently: walk to the nearest living enemy and, once
             // in reach, strike IT (never a far-off mob).
             const target = nearestEnemy();
             if (player.alive && target) {
                 const reach = reachOf(player, target);
                 if (dist(player, target) > reach) {
-                    seek(player, target, 3.4 * speedScale * tile, dt, reach);
+                    seek(player, target, 3.4 * tile, dt, reach);
                 } else {
                     player.facing = (target.x - player.x) < 0 ? -1 : 1;
                     player.cooldown -= dt;
@@ -218,7 +262,7 @@ export function createDungeon({ onResolve } = {}) {
             }
 
             // Each enemy acts on its own — independent aggro, movement, cadence.
-            for (const e of aliveEnemies()) updateEnemy(e, dt, speedScale);
+            for (const e of aliveEnemies()) updateEnemy(e, dt);
 
             // Health regen ticks for everyone still standing.
             applyRegen(player, dt);
@@ -247,7 +291,7 @@ export function createDungeon({ onResolve } = {}) {
 
     // Enemy AI: passive patrol until the hero enters its aggro area, then close
     // to attack reach (melee) / standoff (ranged) and fire on its own cadence.
-    function updateEnemy(e, dt, speedScale) {
+    function updateEnemy(e, dt) {
         if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
             e.aggro = true;
             spawnFloater(e, '!', 'alert', false);
@@ -255,7 +299,7 @@ export function createDungeon({ onResolve } = {}) {
         if (e.aggro && player.alive) {
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) {
-                seek(e, player, 2.3 * speedScale * tile, dt, reach);
+                seek(e, player, 2.3 * tile, dt, reach);
             } else {
                 e.facing = (player.x - e.x) < 0 ? -1 : 1;
                 e.cooldown -= dt;
@@ -265,14 +309,14 @@ export function createDungeon({ onResolve } = {}) {
                 }
             }
         } else if (!e.aggro) {
-            idleEnemy(e, dt, speedScale);
+            idleEnemy(e, dt);
         }
     }
 
     // Resolve one attack: roll damage, apply it, animate, handle lifesteal/death.
     function doAttack(attacker, target) {
         if (!target.alive) return;
-        const { dmg, crit } = computeHit(attacker);
+        const { dmg, crit } = computeHit(attacker, rng);
         target.hp = Math.max(0, target.hp - dmg);
 
         const dx = target.x - attacker.x, dy = target.y - attacker.y;
@@ -312,25 +356,28 @@ export function createDungeon({ onResolve } = {}) {
         if (pct > 0 && e.hp > 0) e.hp = Math.min(e.maxHP, e.hp + e.maxHP * pct * dt * 0.1);
     }
 
-    // End the fight: stop acting and report the outcome after a short beat so the
-    // final death animation reads.
+    // End the fight: raise the win/lose banner, stop acting, and report the
+    // outcome after a beat so the banner + final death animation read.
     function finish(win) {
         resolved = true;
+        outcome = win ? 'win' : 'lose';
+        outcomeAt = now();
+        if (win) player.cheerAt = now();
         setTimeout(() => {
             active = false;
             onResolve?.({ win });
-        }, fast ? 360 : 560);
+        }, fast ? 700 : 1050);
     }
 
     // Passive wandering — small, aimless drift in place; never seeks the hero.
-    function idleEnemy(e, dt, speedScale) {
-        const t = now();
-        if (t > e.wanderAt) {
-            e.wanderAt = t + 900 + Math.random() * 1200;
-            const ang = Math.random() * Math.PI * 2;
+    // Driven by the seeded RNG + sim clock so patrols replay identically.
+    function idleEnemy(e, dt) {
+        if (simClock >= e.wanderAt) {
+            e.wanderAt = simClock + 0.9 + rng() * 1.2;
+            const ang = rng() * Math.PI * 2;
             e.wander = { x: Math.cos(ang), y: Math.sin(ang) };
         }
-        stepEntity(e, e.wander.x, e.wander.y, 1.1 * speedScale * tile, dt);
+        stepEntity(e, e.wander.x, e.wander.y, 1.1 * tile, dt);
         if (e.wander.x) e.facing = e.wander.x < 0 ? -1 : 1;
     }
 
@@ -474,6 +521,32 @@ export function createDungeon({ onResolve } = {}) {
         for (const s of shots) drawShot(s);
         for (const s of slashes) drawSlash(s);
         for (const f of floaters) drawFloater(f);
+        if (outcome) drawOutcomeBanner();
+    }
+
+    // Big "VICTORY" / "DEFEAT" flourish once a fight is decided.
+    function drawOutcomeBanner() {
+        const k = clamp((now() - outcomeAt) / 280, 0, 1);    // pop-in
+        const win = outcome === 'win';
+        const cx = COLS * tile / 2, cy = ROWS * tile / 2;
+        const text = win ? 'VICTORY' : 'DEFEAT';
+        ctx.save();
+        // Dim the room a touch so the banner stands out.
+        ctx.globalAlpha = 0.32 * k;
+        ctx.fillStyle = win ? '#0b3b1f' : '#3a0d14';
+        ctx.fillRect(0, 0, COLS * tile, ROWS * tile);
+        ctx.globalAlpha = 1;
+        ctx.translate(cx, cy);
+        ctx.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `900 ${Math.round(tile * 1.6)}px system-ui, sans-serif`;
+        ctx.lineWidth = Math.max(3, tile * 0.12);
+        ctx.strokeStyle = 'rgba(0,0,0,.75)';
+        ctx.strokeText(text, 0, 0);
+        ctx.fillStyle = win ? '#4ade80' : '#ff5468';
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
     }
 
     function drawAggroArea(e) {
@@ -516,9 +589,12 @@ export function createDungeon({ onResolve } = {}) {
         let drawX = e.x, drawY = e.y, alpha = 1, scale = 1;
         const roleScale = e.role === 'bigboss' ? 1.45 : e.role === 'boss' ? 1.22 : 1;
 
-        if (isEnemy && !e.alive) {
+        if (!e.alive && e.deathAt) {
+            // Death: enemies puff up & fade out; the hero crumples & sinks.
             const k = clamp((t - e.deathAt) / 500, 0, 1);
-            alpha = 1 - k; scale = roleScale * (1 + k * 0.6);
+            alpha = 1 - k;
+            scale = isEnemy ? roleScale * (1 + k * 0.6) : roleScale * (1 - k * 0.4);
+            if (!isEnemy) drawY += k * e.r * 0.5;
         } else {
             scale = roleScale;
         }
@@ -528,6 +604,9 @@ export function createDungeon({ onResolve } = {}) {
             drawX += e.lungeDir.x * push;
             drawY += e.lungeDir.y * push;
         }
+        // Victory cheer: the hero hops a few times.
+        const ck = clamp((t - (e.cheerAt || 0)) / 900, 0, 1);
+        if (e.cheerAt && ck < 1) drawY -= Math.abs(Math.sin(ck * Math.PI * 3)) * tile * 0.35;
 
         ctx.globalAlpha = alpha * 0.35;
         ctx.fillStyle = '#000';
@@ -557,15 +636,32 @@ export function createDungeon({ onResolve } = {}) {
     }
 
     function drawHpBar(cx, cy, e, isEnemy) {
-        const w = Math.max(tile * 1.1, e.r * 2.4), hgt = 5;
+        // The hero's bar is taller and outlined so the player's life is easy to
+        // read; the depleted track is near-black for strong contrast against the
+        // bright fill (so remaining HP is unmistakable on the dark floor).
+        const hgt = isEnemy ? 4 : 7;
+        const w = Math.max(tile * (isEnemy ? 1.1 : 1.35), e.r * 2.4);
         const x = cx - w / 2;
         const pct = clamp(e.hp / e.maxHP, 0, 1);
-        ctx.fillStyle = 'rgba(0,0,0,.6)';
-        ctx.fillRect(x - 1, cy - 1, w + 2, hgt + 2);
-        ctx.fillStyle = isEnemy ? '#b91c3c' : '#22c55e';
+
+        // Outer frame.
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x - 1.5, cy - 1.5, w + 3, hgt + 3);
+        // Empty track (dark, tinted by team).
+        ctx.fillStyle = isEnemy ? '#2a0a10' : '#0c2a18';
         ctx.fillRect(x, cy, w, hgt);
-        ctx.fillStyle = isEnemy ? '#ef5466' : '#4ade80';
+        // Filled portion (bright, high-saturation).
+        ctx.fillStyle = isEnemy ? '#ff4d63' : '#37e57e';
         ctx.fillRect(x, cy, w * pct, hgt);
+        // Gloss highlight along the top of the filled portion.
+        ctx.fillStyle = isEnemy ? 'rgba(255,180,190,.55)' : 'rgba(190,255,215,.6)';
+        ctx.fillRect(x, cy, w * pct, Math.max(1, hgt * 0.34));
+        // Crisp outline so the hero's bar pops against any tile.
+        if (!isEnemy) {
+            ctx.strokeStyle = 'rgba(255,255,255,.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - 0.5, cy - 0.5, w + 1, hgt + 1);
+        }
     }
 
     function drawShot(s) {
