@@ -1,88 +1,20 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL, BONUS_STAT_KEYS, BONUS_STATS, ATTACK_STYLES } from '../../shared/stats.js';
+import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
+import {
+    isFiniteNumber,
+    isNonNegativeNumber,
+    isValidEquipment,
+    isValidCombat,
+    isValidForgeUpgrade,
+    isValidPlayer,
+    isValidResearch,
+    isValidForgeHighestLevel,
+    isValidSkills,
+} from '../lib/state-validation.js';
 
 const router = Router();
-
-function isValidItem(item) {
-    if (item === null) return true;
-    if (typeof item !== 'object' || Array.isArray(item)) return false;
-    if (typeof item.level !== 'number' || item.level < 1) return false;
-    if (typeof item.tier !== 'number' || item.tier < 1 || item.tier > MAX_TIER) return false;
-    if (typeof item.type !== 'string' || !EQUIPMENT_TYPES.includes(item.type)) return false;
-    if (item.bonuses !== undefined) {
-        if (!Array.isArray(item.bonuses)) return false;
-        for (const b of item.bonuses) {
-            if (typeof b !== 'object' || !b.type || typeof b.value !== 'number') return false;
-            if (!BONUS_STAT_KEYS.includes(b.type)) return false;
-            const maxVal = BONUS_STATS[b.type].max * MAX_TIER;
-            if (b.value < 0 || b.value > maxVal) return false;
-        }
-    }
-    if (item.type === 'weapon' && item.attackStyle !== undefined) {
-        if (!ATTACK_STYLES.includes(item.attackStyle)) return false;
-    }
-    return true;
-}
-
-function isValidEquipment(equipment) {
-    if (typeof equipment !== 'object' || Array.isArray(equipment) || equipment === null) return false;
-    for (const [slot, item] of Object.entries(equipment)) {
-        if (!EQUIPMENT_TYPES.includes(slot)) return false;
-        if (!isValidItem(item)) return false;
-    }
-    return true;
-}
-
-function isValidCombat(combat) {
-    if (typeof combat !== 'object' || Array.isArray(combat) || combat === null) return false;
-    const { currentWave, currentSubWave, highestWave, highestSubWave } = combat;
-    if (typeof currentWave !== 'number' || currentWave < 1) return false;
-    if (typeof currentSubWave !== 'number' || currentSubWave < 1) return false;
-    if (typeof highestWave !== 'number' || highestWave < 1) return false;
-    if (typeof highestSubWave !== 'number' || highestSubWave < 1) return false;
-    return true;
-}
-
-function isValidForgeUpgrade(forgeUpgrade) {
-    if (forgeUpgrade === null) return true;
-    if (typeof forgeUpgrade !== 'object' || Array.isArray(forgeUpgrade)) return false;
-    if (typeof forgeUpgrade.targetLevel !== 'number' || forgeUpgrade.targetLevel < 2) return false;
-    if (typeof forgeUpgrade.startedAt !== 'number' && typeof forgeUpgrade.startedAt !== 'string') return false;
-    return true;
-}
-
-function isValidPlayer(player) {
-    if (typeof player !== 'object' || Array.isArray(player) || player === null) return false;
-    if (typeof player.level !== 'number' || player.level < 1 || player.level > MAX_PLAYER_LEVEL) return false;
-    if (typeof player.xp !== 'number' || player.xp < 0) return false;
-    if (player.forgeXp !== undefined && (typeof player.forgeXp !== 'number' || player.forgeXp < 0)) return false;
-    return true;
-}
-
-function isValidResearch(research) {
-    if (typeof research !== 'object' || Array.isArray(research) || research === null) return false;
-    if (research.completed && typeof research.completed !== 'object') return false;
-    if (research.active !== null && research.active !== undefined) {
-        if (typeof research.active !== 'object') return false;
-    }
-    if (research.queue !== undefined && !Array.isArray(research.queue)) return false;
-    return true;
-}
-
-function isValidForgeHighestLevel(forgeHighestLevel) {
-    if (typeof forgeHighestLevel !== 'object' || Array.isArray(forgeHighestLevel) || forgeHighestLevel === null) return false;
-    return true;
-}
-
-function isValidSkills(skills) {
-    if (typeof skills !== 'object' || Array.isArray(skills) || skills === null) return false;
-    if (skills.unlocked !== undefined && (typeof skills.unlocked !== 'object' || Array.isArray(skills.unlocked))) return false;
-    if (skills.equipped !== undefined && !Array.isArray(skills.equipped)) return false;
-    if (skills.equipped && skills.equipped.length > 3) return false;
-    return true;
-}
 
 // GET /api/game/state — load player's game state
 router.get('/state', requireAuth, async (req, res) => {
@@ -136,19 +68,19 @@ router.put('/state', requireAuth, async (req, res) => {
             data.equipment = equipment;
         }
         if (gold !== undefined) {
-            if (typeof gold !== 'number' || gold < 0) {
+            if (!isNonNegativeNumber(gold)) {
                 return res.status(400).json({ error: 'Gold must be a non-negative number' });
             }
             data.gold = Math.floor(gold);
         }
         if (diamonds !== undefined) {
-            if (typeof diamonds !== 'number' || diamonds < 0) {
+            if (!isNonNegativeNumber(diamonds)) {
                 return res.status(400).json({ error: 'Diamonds must be a non-negative number' });
             }
             data.diamonds = Math.floor(diamonds);
         }
         if (forgeLevel !== undefined) {
-            if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
+            if (!isFiniteNumber(forgeLevel) || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
                 return res.status(400).json({ error: 'Invalid forge level' });
             }
             data.forgeLevel = Math.floor(forgeLevel);
@@ -166,7 +98,7 @@ router.put('/state', requireAuth, async (req, res) => {
             data.combat = combat;
         }
         if (essence !== undefined) {
-            if (typeof essence !== 'number' || essence < 0) {
+            if (!isNonNegativeNumber(essence)) {
                 return res.status(400).json({ error: 'Essence must be a non-negative number' });
             }
             data.essence = Math.floor(essence);

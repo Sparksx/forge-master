@@ -4,9 +4,9 @@
 
 // MAX_FORGE_LEVEL is imported (not derived) so the client and the server's save
 // validator share one source of truth; FORGE_LEVELS must match it (asserted in tests).
-import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
+import { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL } from '../../shared/stats.js';
 
-export { MAX_FORGE_LEVEL };
+export { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL };
 export {
     EQUIPMENT_TYPES, HEALTH_ITEMS, DAMAGE_ITEMS,
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
@@ -17,7 +17,6 @@ export {
 } from '../../shared/stats.js';
 
 export const SAVE_KEY = 'fm_reforged_save';
-export const MAX_ITEM_LEVEL = 100;
 
 // Emoji per slot (visual fallback; sprite art can override later).
 export const SLOT_ICONS = {
