@@ -403,6 +403,34 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .emblem-opt.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .quick-amounts .btn { flex: 1; }
 
+/* ── Clan: XP, tabs, activities ──────────────────────────── */
+.clan-xp { margin: 14px 0 6px; }
+.clan-xp-head { display: flex; justify-content: space-between; font-weight: 700; font-size: .85rem; margin-bottom: 8px; }
+.clan-tabs { display: flex; gap: 4px; margin: 12px 0 14px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; overflow-x: auto; }
+.clan-tab { flex: 1; white-space: nowrap; background: transparent; border: none; color: var(--muted); font-weight: 700; font-size: .82rem; padding: 9px 8px; border-radius: 9px; cursor: pointer; }
+.clan-tab.active { background: var(--bg-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.clan-tab-panel { min-height: 120px; }
+.muted.small, .small { font-size: .76rem; }
+
+.clan-activities { display: flex; flex-direction: column; gap: 10px; }
+.activity-list { display: flex; flex-direction: column; gap: 10px; }
+.activity-subhead { margin: 8px 0 2px; font-size: .8rem; color: var(--muted); }
+.activity-card { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.activity-card.resolved.win { border-color: rgba(46, 204, 64, .5); }
+.activity-card.resolved.loss { border-color: rgba(255, 45, 104, .5); }
+.activity-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: .9rem; }
+.activity-name { font-weight: 800; }
+.activity-timer { font-variant-numeric: tabular-nums; color: var(--accent-2); font-weight: 800; font-size: .82rem; }
+.activity-sub { font-size: .74rem; }
+.activity-bar { height: 10px; background: var(--bg); border-radius: 8px; overflow: hidden; }
+.activity-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .3s; }
+.activity-pick { text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; height: auto; padding: 10px 12px; }
+.activity-pick-name { font-weight: 800; }
+
+.member-actions { display: flex; gap: 4px; align-items: center; }
+.icon-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line); cursor: pointer; font-size: .9rem; }
+.icon-btn.danger { color: var(--accent-2); }
+
 /* ── Profile ─────────────────────────────────────────────── */
 .profile-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 .profile-avatar-big { font-size: 3.4rem; width: 76px; height: 76px; display: grid; place-items: center; background: var(--bg-3); border: 1px solid var(--line); border-radius: 50%; }

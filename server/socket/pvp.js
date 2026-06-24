@@ -1,7 +1,18 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
+import { clanPerks, clanLevelFromXp } from '../../shared/clan-config.js';
 import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_RANGE_INTERVAL, PVP_TURN_TIMEOUT } from '../../shared/pvp-config.js';
 import { storeCombatLog } from './chat.js';
+
+// Clan stat perk (HP/damage %) for a clanMembership include of shape
+// { clan: { xp } } — applies in PvP so clan bonuses count the same as in PvE.
+function clanStatBonusPct(membership) {
+    const xp = membership?.clan?.xp;
+    if (typeof xp !== 'number') return 0;
+    return clanPerks(clanLevelFromXp(xp)).statBonusPct || 0;
+}
+
+const CLAN_PERK_SELECT = { clanMembership: { select: { clan: { select: { xp: true } } } } };
 
 // Matchmaking queue: Map<socketId, { socket, userId, username, stats }>
 const queue = new Map();
@@ -476,14 +487,15 @@ async function getPlayerStats(userId) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true }
+            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true, ...CLAN_PERK_SELECT }
         });
         if (!user || !user.gameState) return null;
 
         const equipment = user.gameState.equipment || {};
         const level = user.gameState.player?.level || 1;
-        const { maxHP, damage, critChance, critMultiplier } = computeStatsFromEquipment(equipment, level);
-        const power = playerPowerScore(equipment, level);
+        const statBonusPct = clanStatBonusPct(user.clanMembership);
+        const { maxHP, damage, critChance, critMultiplier } = computeStatsFromEquipment(equipment, level, statBonusPct);
+        const power = playerPowerScore(equipment, level, statBonusPct);
 
         return {
             maxHP: Math.max(100, maxHP),
@@ -519,6 +531,7 @@ async function getLeaderboard() {
                 pvpWins: true,
                 pvpLosses: true,
                 gameState: { select: { equipment: true, player: true } },
+                ...CLAN_PERK_SELECT,
             },
         });
 
@@ -526,7 +539,7 @@ async function getLeaderboard() {
             let power = 0;
             if (p.gameState) {
                 const level = p.gameState.player?.level || 1;
-                power = playerPowerScore(p.gameState.equipment || {}, level);
+                power = playerPowerScore(p.gameState.equipment || {}, level, clanStatBonusPct(p.clanMembership));
             }
             return {
                 id: p.id,

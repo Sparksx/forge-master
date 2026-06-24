@@ -80,20 +80,41 @@ export function rollLevel(best) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/** Sum of an item's bonus values — a tie-breaker when ranking forge candidates. */
+function bonusSum(item) {
+    return (item.bonuses || []).reduce((s, b) => s + (b.value || 0), 0);
+}
+
+/** True if candidate `a` is a better forge result than `b` (rarity → level → bonuses). */
+function isBetterForge(a, b) {
+    if (a.tier !== b.tier) return a.tier > b.tier;
+    if (a.level !== b.level) return a.level > b.level;
+    return bonusSum(a) > bonusSum(b);
+}
+
 /**
- * Forge one item using current game state (forge level, clan luck, best-level
- * memory). Returns `{ item, gold }`: the gear that was forged plus a gold nugget
- * amount (0 most of the time — the forge only occasionally yields gold, since
- * gold is otherwise scarce).
+ * Forge using current game state (forge level, clan luck, best-level memory).
+ *
+ * `count` is the clan "best-of-N" perk: roll N candidates and keep the single best
+ * (by rarity, then level, then bonuses). Returns `{ item, gold, rolls }`: the kept
+ * gear, the summed gold nuggets across all rolls (0 most of the time — gold is
+ * scarce), and how many candidates were rolled. Forge XP is granted once for the
+ * kept item so best-of-N stays a "pick the best" perk, not an XP multiplier.
  */
-export function forge() {
+export function forge(count = 1) {
+    const rolls = Math.max(1, Math.floor(count));
     const forgeLevel = getForgeLevel();
-    const type = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
-    const tier = rollTier(forgeLevel, getForgeLuckPct());
-    const level = rollLevel(getBestLevelForSlot(type, tier));
-    const item = createItem(type, level, tier);
-    recordForgedLevel(type, tier, level);
-    grantForgeXp(forgeXpForRarity(tier)); // rarer rolls advance the forge faster
-    const gold = Math.random() < FORGE_GOLD_CHANCE ? forgeGoldDrop(forgeLevel, tier) : 0;
-    return { item, gold };
+    let best = null;
+    let gold = 0;
+    for (let i = 0; i < rolls; i++) {
+        const type = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
+        const tier = rollTier(forgeLevel, getForgeLuckPct());
+        const level = rollLevel(getBestLevelForSlot(type, tier));
+        const item = createItem(type, level, tier);
+        if (Math.random() < FORGE_GOLD_CHANCE) gold += forgeGoldDrop(forgeLevel, tier);
+        if (!best || isBetterForge(item, best)) best = item;
+    }
+    recordForgedLevel(best.type, best.tier, best.level);
+    grantForgeXp(forgeXpForRarity(best.tier)); // rarer rolls advance the forge faster
+    return { item: best, gold, rolls };
 }

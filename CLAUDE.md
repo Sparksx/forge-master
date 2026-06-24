@@ -49,8 +49,23 @@ gold-for-gear faucet or inflate the boss/forge gifts.
   stats are unaffected. Player level feeds combat stats and PvP power everywhere.
 - **PvP:** real-time turn-based over Socket.io, power→Elo matchmaking, actions
   attack/defend/special. Stats computed **server-side** (anti-cheat).
-- **Clans:** create/join, shared treasury, levels 1–30, perks (+gold, +forge luck, more
-  members), global leaderboard by total power. Clan chat is deferred.
+- **Clans:** create/join, **levels 1–30 driven by clan XP** (`shared/clan-config.js`),
+  earned by playing together — **not by spending gold** (deliberately non-pay-to-win).
+  XP comes from two cooperative activities:
+  - **Expeditions** (`shared/clan-activities.js`, `Expedition`/`ExpeditionMember`):
+    an officer+ launches a timed run with limited **slots**; members register; when the
+    **real-time timer** elapses it resolves lazily (success rolled from registered power
+    via `expeditionOutcome`) and pays clan XP + per-member gold. **This is the one
+    sanctioned real-time-timer exception** (see the gotcha below).
+  - **Missions** (`Mission`/`MissionContribution`): clan goals tracked from real play
+    (forge/defeat/boss/swap-set/arena). `src/game/clan-missions.js` batches progress to
+    `POST /api/clans/missions/progress`; completing one grants clan XP.
+  Level grants passive **perks** to every member (`clanPerks`): +gold %, +forge luck %,
+  member cap, **+forge speed %**, **best-of-N forge**, and **+player HP & damage %**
+  (applied in PvE *and* server-side PvP). Ranks are a 4-tier ladder
+  (`shared/clan-ranks.js`: Leader/Co-Leader/Officer/Member) with `can()`-gated
+  promote/demote/kick/transfer. The **treasury** survives only as a non-power "clan bank"
+  that funds expedition launch costs. Global leaderboard is by clan XP. Clan chat is deferred.
 
 ## Repository map
 
@@ -81,7 +96,8 @@ server/                  Express + Prisma + Socket.io
                          payment, admin
   socket/                index (connection), pvp (live duels), chat
   middleware/auth.js     JWT guard          lib/   prisma client + seed data
-prisma/schema.prisma     User, GameState, Clan/ClanMember, ChatMessage, RefreshToken,
+prisma/schema.prisma     User, GameState, Clan/ClanMember, Expedition/ExpeditionMember,
+                         Mission/MissionContribution, ChatMessage, RefreshToken,
                          Ban/Mute/Warning/AuditLog, Purchase, *Template, Sprite(Sheet)
 public/                  manifest.json, sw.js (PWA), assets/ (sprite sheets)
 admin.html index.html    admin page + game shell entry points
@@ -116,7 +132,9 @@ Always run `npm test`, `npm run lint`, and `npm run build` before committing —
 - **One currency in the live game: Gold.** Don't reintroduce diamonds/essence/IAP into the
   loop — they're intentionally dormant (see `REDESIGN.md`).
 - **No real-time timers** in the forge — levels come from forge XP (earned by forging) or
-  an instant optional gold upgrade; there are no real-time cooldowns by design.
+  an instant optional gold upgrade; there are no real-time cooldowns by design. The **one
+  sanctioned exception** is **clan expeditions**, which intentionally run on a wall-clock
+  timer and resolve lazily on read (no cron) — keep timers out of everything else.
 - **Auth:** guest / Discord / Google / username+password, JWT access + rotating refresh.
   Guests fall back to a localStorage save when the backend is unreachable.
 - **i18n** is wired through the auth screen; game-screen strings are English-first and

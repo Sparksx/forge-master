@@ -36,6 +36,8 @@ model User {
   auditLogs      AuditLog[]     @relation("auditActor")
   purchases      Purchase[]
   clanMembership ClanMember?
+  expeditionEntries    ExpeditionMember[]
+  missionContributions MissionContribution[]
 }
 
 model Clan {
@@ -44,27 +46,103 @@ model Clan {
   tag         String   @unique @db.VarChar(5)
   emblem      String   @default("⚔️") @db.VarChar(10)
   description String   @default("") @db.VarChar(200)
-  treasury    Int      @default(0) // total gold contributed by members
+  treasury    Int      @default(0) // gold "clan bank" — funds expeditions, NOT level (non-power)
+  xp          Int      @default(0) // clan experience — drives clan level (earned by playing together)
   ownerId     Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members ClanMember[]
+  members     ClanMember[]
+  expeditions Expedition[]
+  missions    Mission[]
 
   @@index([treasury])
+  @@index([xp])
 }
 
 model ClanMember {
-  id          Int      @id @default(autoincrement())
-  clanId      Int
-  clan        Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  userId      Int      @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        String   @default("member") @db.VarChar(20) // owner | officer | member
-  contributed Int      @default(0)
-  joinedAt    DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  clanId        Int
+  clan          Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  userId        Int      @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role          String   @default("member") @db.VarChar(20) // rank key: owner | coleader | officer | member
+  contributed   Int      @default(0) // gold donated to the treasury
+  xpContributed Int      @default(0) // clan XP this member generated (expeditions + missions)
+  joinedAt      DateTime @default(now())
 
   @@index([clanId])
+}
+
+// A timed cooperative activity. A privileged member launches it; members register
+// into a limited number of slots; when the timer ends it resolves (success rolled
+// from registered members' combined power) and pays clan XP + per-member gold.
+// NOTE: expeditions are the one sanctioned real-time-timer exception in the game.
+model Expedition {
+  id         Int      @id @default(autoincrement())
+  clanId     Int
+  clan       Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  defKey     String   @db.VarChar(40) // template id in shared/clan-activities.js
+  difficulty String   @db.VarChar(20)
+  slots      Int
+  rewardXp   Int
+  rewardGold Int
+  powerReq   Int
+  status     String   @default("active") @db.VarChar(20) // active | resolved
+  success    Boolean?
+  startedAt  DateTime @default(now())
+  endsAt     DateTime
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  members ExpeditionMember[]
+
+  @@index([clanId, status])
+}
+
+model ExpeditionMember {
+  id           Int        @id @default(autoincrement())
+  expeditionId Int
+  expedition   Expedition @relation(fields: [expeditionId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  power        Int        @default(0) // gear power snapshot at registration (anti-cheat)
+  joinedAt     DateTime   @default(now())
+
+  @@unique([expeditionId, userId])
+  @@index([expeditionId])
+}
+
+// A clan goal tracked from real play (forge N, defeat N, win N bosses, ...). Progress
+// is contributed by every member's play; completion grants clan XP once.
+model Mission {
+  id        Int      @id @default(autoincrement())
+  clanId    Int
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  defKey    String   @db.VarChar(40)
+  type      String   @db.VarChar(30) // forge_count | defeat_enemies | win_bosses | swap_all_gear | reach_arena
+  target    Int
+  progress  Int      @default(0)
+  rewardXp  Int
+  status    String   @default("active") @db.VarChar(20) // active | completed
+  startedAt DateTime @default(now())
+  expiresAt DateTime?
+
+  contributions MissionContribution[]
+
+  @@index([clanId, status])
+}
+
+model MissionContribution {
+  id        Int     @id @default(autoincrement())
+  missionId Int
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int     @default(0)
+
+  @@unique([missionId, userId])
+  @@index([missionId])
 }
 
 model GameState {
