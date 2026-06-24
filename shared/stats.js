@@ -26,13 +26,13 @@ export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
 // --- Tier system ---
 
 export const TIERS = [
-    { id: 1, name: 'Common',    color: '#9d9d9d', bonusCount: 0 },
-    { id: 2, name: 'Uncommon',  color: '#4F772D', bonusCount: 1 },
-    { id: 3, name: 'Rare',      color: '#4A7FB5', bonusCount: 1 },
-    { id: 4, name: 'Epic',      color: '#7B5EA7', bonusCount: 1 },
-    { id: 5, name: 'Legendary', color: '#C4822B', bonusCount: 2 },
-    { id: 6, name: 'Mythic',    color: '#A63D3D', bonusCount: 2 },
-    { id: 7, name: 'Divine',    color: '#C9A84C', bonusCount: 3 },
+    { id: 1, name: 'Common',    color: '#b9c2d0', bonusCount: 0 },
+    { id: 2, name: 'Uncommon',  color: '#3ddc84', bonusCount: 1 },
+    { id: 3, name: 'Rare',      color: '#2e9bff', bonusCount: 1 },
+    { id: 4, name: 'Epic',      color: '#b15cff', bonusCount: 1 },
+    { id: 5, name: 'Legendary', color: '#ff9d2e', bonusCount: 2 },
+    { id: 6, name: 'Mythic',    color: '#ff4d6d', bonusCount: 2 },
+    { id: 7, name: 'Divine',    color: '#ffd64a', bonusCount: 3 },
 ];
 
 export const MAX_TIER = TIERS.length;
