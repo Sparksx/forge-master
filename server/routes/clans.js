@@ -1,10 +1,19 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { calculateStats, calculatePowerScore } from '../../shared/stats.js';
 import { clanLevelFromTreasury, clanPerks } from '../../shared/clan-config.js';
 
 const router = Router();
+
+const clanLimiter = rateLimit({
+    windowMs: 10_000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, slow down' },
+});
 
 /** Power score for a single member from their saved equipment. */
 function memberPower(gameState) {
@@ -68,9 +77,9 @@ function validClanFields({ name, tag, emblem, description }) {
 }
 
 // GET /api/clans — top clans by treasury, optional ?q= search
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', clanLimiter, requireAuth, async (req, res) => {
     try {
-        const q = (req.query.q || '').toString().trim();
+        const q = (req.query.q || '').toString().trim().slice(0, 50);
         const where = q
             ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { tag: { contains: q, mode: 'insensitive' } }] }
             : {};
@@ -121,7 +130,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans — create a clan (creator becomes owner)
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', clanLimiter, requireAuth, async (req, res) => {
     const fieldError = validClanFields(req.body || {});
     if (fieldError) return res.status(400).json({ error: fieldError });
 
@@ -153,7 +162,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/:id/join
-router.post('/:id/join', requireAuth, async (req, res) => {
+router.post('/:id/join', clanLimiter, requireAuth, async (req, res) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid clan id' });
@@ -184,7 +193,7 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/leave — leave the current clan (owner transfers or disbands)
-router.post('/leave', requireAuth, async (req, res) => {
+router.post('/leave', clanLimiter, requireAuth, async (req, res) => {
     try {
         const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
@@ -216,17 +225,24 @@ router.post('/leave', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/contribute — add gold to the clan treasury
-// Gold is deducted on the client (the game economy is client-authoritative, as elsewhere).
-router.post('/contribute', requireAuth, async (req, res) => {
+// Gold is verified and deducted server-side to prevent abuse.
+router.post('/contribute', clanLimiter, requireAuth, async (req, res) => {
     try {
         const amount = Math.floor(Number(req.body?.amount));
         if (!Number.isInteger(amount) || amount <= 0) {
             return res.status(400).json({ error: 'Amount must be a positive number' });
         }
-        const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
+        const [membership, gameState] = await Promise.all([
+            prisma.clanMember.findUnique({ where: { userId: req.user.userId } }),
+            prisma.gameState.findUnique({ where: { userId: req.user.userId }, select: { gold: true } }),
+        ]);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+        if (!gameState || gameState.gold < amount) {
+            return res.status(400).json({ error: 'Not enough gold' });
+        }
 
         await prisma.$transaction([
+            prisma.gameState.update({ where: { userId: req.user.userId }, data: { gold: { decrement: amount } } }),
             prisma.clanMember.update({ where: { userId: req.user.userId }, data: { contributed: { increment: amount } } }),
             prisma.clan.update({ where: { id: membership.clanId }, data: { treasury: { increment: amount } } }),
         ]);

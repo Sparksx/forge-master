@@ -1,9 +1,18 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { EQUIPMENT_TYPES, MAX_TIER } from '../../shared/stats.js';
 
 const router = Router();
+
+const gameLimiter = rateLimit({
+    windowMs: 10_000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, slow down' },
+});
 
 function isValidItem(item) {
     if (item === null) return true;
@@ -78,7 +87,7 @@ function isValidSkills(skills) {
 }
 
 // GET /api/game/state — load player's game state
-router.get('/state', requireAuth, async (req, res) => {
+router.get('/state', gameLimiter, requireAuth, async (req, res) => {
     try {
         let state = await prisma.gameState.findUnique({
             where: { userId: req.user.userId }
@@ -117,7 +126,7 @@ router.get('/state', requireAuth, async (req, res) => {
 });
 
 // PUT /api/game/state — save player's game state
-router.put('/state', requireAuth, async (req, res) => {
+router.put('/state', gameLimiter, requireAuth, async (req, res) => {
     const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
 
     try {

@@ -30,13 +30,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = createServer(app);
 
+// Security headers (manual — no helmet dependency needed)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '0');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains');
+    }
+    next();
+});
+
 // Middleware
 app.use(cors(CORS_ORIGIN === '*' ? {} : { origin: CORS_ORIGIN }));
 
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -59,7 +72,10 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use(express.static(distPath, {
+    maxAge: NODE_ENV === 'production' ? '1d' : 0,
+    etag: true,
+}));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
@@ -93,6 +109,21 @@ server.listen(PORT, async () => {
     } catch (err) {
         console.error('Failed to cleanup expired refresh tokens:', err);
     }
+});
+
+// Graceful shutdown
+function gracefulShutdown(signal) {
+    console.log(`${signal} received — shutting down gracefully…`);
+    server.close(async () => {
+        try { await prisma.$disconnect(); } catch { /* ignore */ }
+        process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000);
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled rejection:', reason);
 });
 
 export { app, server, io };

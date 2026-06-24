@@ -269,9 +269,10 @@ export function registerChatHandlers(io, socket) {
     });
 
     // Join a specific channel
+    const ALLOWED_CHANNELS = ['general', 'pvp', 'clan', 'trade'];
     socket.on('chat:join', (data) => {
         const { channel } = data || {};
-        if (channel && typeof channel === 'string') {
+        if (channel && typeof channel === 'string' && ALLOWED_CHANNELS.includes(channel)) {
             socket.join(`chat:${channel}`);
             sendHistory(socket, channel);
         }
@@ -302,7 +303,7 @@ async function sendHistory(socket, channel) {
             }
         });
 
-        socket.emit('chat:history', messages.reverse().map(m => ({
+        socket.emit('chat:history', messages.reverse().filter(m => m.sender).map(m => ({
             id: m.id,
             sender: m.sender.username,
             senderId: m.sender.id,

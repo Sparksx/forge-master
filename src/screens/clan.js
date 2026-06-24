@@ -110,8 +110,7 @@ function showContribute() {
                 const amount = Math.floor(Number(input.value));
                 if (!amount || amount <= 0) { toast('Enter an amount', 'error'); return; }
                 if (getGold() < amount) { toast('Not enough gold', 'error'); return; }
-                spendGold(amount);
-                try { await contribute(amount); closeModal(); toast(`Contributed ${fmt(amount)} gold!`, 'success'); }
+                try { await contribute(amount); spendGold(amount); closeModal(); toast(`Contributed ${fmt(amount)} gold!`, 'success'); }
                 catch (err) { toast(err.message || 'Failed', 'error'); }
             } }),
         ),

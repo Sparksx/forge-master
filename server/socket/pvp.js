@@ -364,6 +364,8 @@ function computeEloChanges(winnerRating, loserRating, winnerPower, loserPower) {
 }
 
 async function endMatch(io, match, winnerId, reason) {
+    if (match.finished) return;
+    match.finished = true;
     if (match.turnTimer) clearTimeout(match.turnTimer);
 
     const p1 = match.player1;
