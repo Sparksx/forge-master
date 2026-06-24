@@ -15,17 +15,24 @@
    grants **forge XP** (rarity-weighted — rarer rolls give more) that levels the forge up
    for better odds — or pay gold to upgrade instantly (**no timers**). Auto-forge can keep
    tapping for you.
-2. **Equip** — Every drop shows a side-by-side **Power** delta. Equip it or sell it.
+2. **Equip** — Every drop shows a side-by-side **Power** delta. Equip it or trash it
+   (gear can't be sold for gold). The forge itself has a small chance to drop a gold
+   nugget alongside the gear.
 3. **Battle (Arena)** — Your hero auto-fights an endless PvE ladder right on the home
-   screen. Win for gold and **player XP**; levelling up raises your base HP and base
-   attack, and only better gear gets you deeper.
+   screen. Wins grant **player XP** and climb a rank, but **only bosses drop gold** —
+   normal packs pay nothing. Levelling up raises your base HP and base attack, and only
+   better gear gets you deeper.
 4. **PvP** — Live, turn-based duels against real players over Socket.io. Power/Elo
    matchmaking + leaderboard.
 5. **Clan** — Create or join a clan, pool gold into a shared treasury to level it up,
    and grant passive perks (**+gold**, **+forge luck**) to every member.
 
-**One currency — Gold** — powers everything: forge upgrades, clan contributions, and
-it's what you earn from arena wins and selling gear.
+**One currency — Gold**, and it's deliberately **scarce**. You start with a small purse
+(100) and every in-game payout is a *tiny gift*: a few coins from **boss kills** and the
+occasional lucky **forge** nugget — normal mobs pay nothing and gear can't be sold back for
+gold. Costs are small to match (forge upgrades start at 10 gold, a clan costs 500).
+Stockpiling gold in real quantity is meant to come from the gold shop (coming later), not
+from grinding.
 
 ## Features
 

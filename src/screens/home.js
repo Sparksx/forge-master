@@ -8,7 +8,7 @@ import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaX
 import { slotIcon, itemIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
     getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
-    upgradeForge, equipItem, sellItem, getSellValue, getGold,
+    upgradeForge, equipItem, trashItem, getGold,
     getArenaRank, setArenaRank, getPowerScore, getAvatar, getCombatStats, grantGold,
     grantPlayerXp, getForgeLevelProgress,
 } from '../game/state.js';
@@ -130,8 +130,12 @@ function onFightResolved({ win }) {
     const enc = currentEncounter;
     if (!enc) return;
 
-    const granted = grantGold(encounterReward(enc.rank, enc.kind, win));
-    dungeon.floater('player', `+${fmt(granted)}💰`, 'gold');
+    // Gold is scarce — only bosses pay out, so most fights grant nothing here.
+    const reward = encounterReward(enc.rank, enc.kind, win);
+    if (reward > 0) {
+        const granted = grantGold(reward);
+        dungeon.floater('player', `+${fmt(granted)}💰`, 'gold');
+    }
 
     if (win) {
         setArenaRank(enc.rank + 1);
@@ -202,8 +206,12 @@ function doForge() {
     setTimeout(() => {
         btn.classList.remove('forging');
         forging = false;
-        const item = forge();
+        const { item, gold } = forge();
         gameEvents.emit(EVENTS.ITEM_FORGED, item);
+        if (gold > 0) {
+            const granted = grantGold(gold);
+            forgeFloater(`+${fmt(granted)}💰`, '#ffcf4d');
+        }
         showReveal(item);
     }, 700);
 }
@@ -211,7 +219,7 @@ function doForge() {
 function toggleAutoForge() {
     autoForge = !autoForge;
     root.querySelector('.auto-forge').classList.toggle('on', autoForge);
-    if (autoForge) { toast('Auto-forge on — keeps upgrades, sells the rest', 'info'); scheduleAutoForge(); }
+    if (autoForge) { toast('Auto-forge on — keeps upgrades, trashes the rest', 'info'); scheduleAutoForge(); }
     else clearTimeout(autoForgeTimer);
 }
 
@@ -219,15 +227,19 @@ function scheduleAutoForge() {
     clearTimeout(autoForgeTimer);
     autoForgeTimer = setTimeout(() => {
         if (!visible || !autoForge) return;
-        const item = forge();
+        const { item, gold } = forge();
         gameEvents.emit(EVENTS.ITEM_FORGED, item);
+        if (gold > 0) {
+            const granted = grantGold(gold);
+            forgeFloater(`+${fmt(granted)}💰`, '#ffcf4d');
+        }
         const { delta } = powerDelta(item);
         if (delta > 0) {
             equipItem(item);
             forgeFloater(`▲ ${rarityName(item.tier)}`, rarityColor(item.tier));
         } else {
-            const v = sellItem(item);
-            forgeFloater(`+${fmt(v)}💰`, '');
+            trashItem(item);
+            forgeFloater('🗑️', '');
         }
         scheduleAutoForge();
     }, fast ? 900 : 1600);
@@ -248,20 +260,20 @@ function showReveal(item) {
     const { delta } = powerDelta(item);
     const equipped = getEquippedItem(item.type);
 
-    const sell = () => { decided = true; const v = sellItem(item); closeModal(); toast(`Sold for ${fmt(v)} gold`, 'gold'); };
+    const trash = () => { decided = true; trashItem(item); closeModal(); toast(`Trashed ${itemName(item)}`, 'info'); };
     const equip = () => { decided = true; equipItem(item); closeModal(); toast(`Equipped ${itemName(item)}`, 'success'); };
 
     const body = h('div', { className: 'reveal', style: { '--rarity': rarityColor(item.tier) } },
         h('div', { className: 'reveal-flash', text: rarityName(item.tier) }),
         renderItemCard(item),
         h('div', { className: 'reveal-delta' }, renderDeltaBadge(delta)),
-        equipped ? h('p', { className: 'reveal-replaces', text: `Replaces ${itemName(equipped)} (Lv ${equipped.level}) · auto-sells for ${fmt(getSellValue(equipped))}g` }) : null,
+        equipped ? h('p', { className: 'reveal-replaces', text: `Replaces ${itemName(equipped)} (Lv ${equipped.level})` }) : null,
         h('div', { className: 'reveal-actions' },
-            h('button', { className: 'btn btn-ghost', text: `Sell · ${fmt(getSellValue(item))}g`, onclick: sell }),
+            h('button', { className: 'btn btn-ghost', text: '🗑️ Trash', onclick: trash }),
             h('button', { className: 'btn btn-primary', text: delta >= 0 ? 'Equip ✓' : 'Equip anyway', onclick: equip }),
         ),
     );
-    openModal(body, { onClose: () => { if (!decided) sell(); } });
+    openModal(body, { onClose: () => { if (!decided) trash(); } });
 }
 
 function updateGearGrid() {
@@ -301,14 +313,14 @@ function showSlotDetail(type) {
         renderItemCard(item),
         h('div', { className: 'slot-detail-actions' },
             h('button', {
-                className: 'btn btn-danger', text: `Sell · ${fmt(getSellValue(item))}g`,
+                className: 'btn btn-danger', text: '🗑️ Trash',
                 onclick: async () => {
-                    const ok = await confirmDialog({ title: 'Sell equipped item?', message: `${itemName(item)} will be removed and sold.`, confirmText: 'Sell' });
+                    const ok = await confirmDialog({ title: 'Trash equipped item?', message: `${itemName(item)} will be removed for good — gear can't be sold for gold.`, confirmText: 'Trash' });
                     if (ok) {
                         getEquipment()[type] = null;
-                        const v = sellItem(item);
+                        trashItem(item);
                         closeModal();
-                        toast(`Sold for ${fmt(v)} gold`, 'gold');
+                        toast(`Trashed ${itemName(item)}`, 'info');
                     }
                 },
             }),

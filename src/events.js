@@ -34,7 +34,7 @@ export const EVENTS = {
     STATE_CHANGED: 'state:changed',
     ITEM_FORGED: 'item:forged',
     ITEM_EQUIPPED: 'item:equipped',
-    ITEM_SOLD: 'item:sold',
+    ITEM_TRASHED: 'item:trashed',
     GOLD_PURCHASED: 'gold:purchased',
     GAME_LOADED: 'game:loaded',
     FORGE_UPGRADED: 'forge:upgraded',

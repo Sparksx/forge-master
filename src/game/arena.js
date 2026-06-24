@@ -3,7 +3,7 @@
 // time line — every fighter lands ~0.5 hits/sec at base — and ranged fighters
 // (bows, casters, distance mobs) open the fight sooner than melee.
 import {
-    arenaEnemyPower, arenaReward, rankKind, seededRng,
+    arenaEnemyPower, rankKind, seededRng, BOSS_INTERVAL,
     BOSS_LEAD_SHARE, BIG_BOSS_LEAD_SHARE, ESCORT_SHARE, MAX_GROUP,
     BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION,
 } from './config.js';
@@ -131,11 +131,15 @@ export function computeHit(att, rnd = Math.random) {
     return { dmg, crit };
 }
 
-/** Gold reward for clearing (or losing) an encounter of the given kind/rank. */
+/**
+ * Gold reward for an encounter — a tiny "gift", never a faucet. Only bosses pay
+ * out, only on a win, and only a handful of gold that grows very slowly with
+ * depth. Normal packs — and any loss — drop nothing.
+ */
 export function encounterReward(rank, kind, win) {
-    const base = arenaReward(rank);
-    const mult = kind === 'bigboss' ? 3 : kind === 'boss' ? 1.8 : 1;
-    return win ? Math.round(base * mult) : Math.floor(base * 0.25);
+    if (!win || kind === 'normal') return 0;
+    const steps = Math.floor(rank / BOSS_INTERVAL); // 1 at the first boss, +1 per boss rank
+    return kind === 'bigboss' ? 25 + steps * 5 : 8 + steps * 2;
 }
 
 const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0) / 100);

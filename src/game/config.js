@@ -27,19 +27,23 @@ export const SLOT_LABELS = {
 
 // Forge: instant gold upgrades that improve rarity odds. NO real-time timers.
 // chances = [Common, Uncommon, Rare, Epic, Legendary, Mythic, Divine] (sum 100).
+// Costs are deliberately small — gold is scarce, so a few cheap early levels are
+// affordable from the starting purse, then the curve roughly doubles. Levels are
+// also earned for free via forge XP, so these gold costs are only an optional
+// instant shortcut (most realistically paid for with shop gold late on).
 export const FORGE_LEVELS = [
-    { cost: 0,        chances: [100,  0,    0,    0,    0,    0,   0] },
-    { cost: 300,      chances: [90,   10,   0,    0,    0,    0,   0] },
-    { cost: 1200,     chances: [78,   18,   4,    0,    0,    0,   0] },
-    { cost: 4000,     chances: [66,   22,   10,   2,    0,    0,   0] },
-    { cost: 12000,    chances: [54,   24,   15,   6,    1,    0,   0] },
-    { cost: 32000,    chances: [42,   24,   19,   11,   4,    0,   0] },
-    { cost: 80000,    chances: [32,   22,   21,   16,   8,    1,   0] },
-    { cost: 200000,   chances: [22,   19,   22,   20,   14,   3,   0] },
-    { cost: 480000,   chances: [14,   15,   21,   23,   20,   6,   1] },
-    { cost: 1100000,  chances: [8,    11,   18,   24,   25,   12,  2] },
-    { cost: 2600000,  chances: [3,    7,    14,   23,   30,   18,  5] },
-    { cost: 6000000,  chances: [0,    3,    10,   20,   33,   24,  10] },
+    { cost: 0,      chances: [100,  0,    0,    0,    0,    0,   0] },
+    { cost: 10,     chances: [90,   10,   0,    0,    0,    0,   0] },
+    { cost: 50,     chances: [78,   18,   4,    0,    0,    0,   0] },
+    { cost: 120,    chances: [66,   22,   10,   2,    0,    0,   0] },
+    { cost: 250,    chances: [54,   24,   15,   6,    1,    0,   0] },
+    { cost: 500,    chances: [42,   24,   19,   11,   4,    0,   0] },
+    { cost: 1000,   chances: [32,   22,   21,   16,   8,    1,   0] },
+    { cost: 2000,   chances: [22,   19,   22,   20,   14,   3,   0] },
+    { cost: 4000,   chances: [14,   15,   21,   23,   20,   6,   1] },
+    { cost: 8000,   chances: [8,    11,   18,   24,   25,   12,  2] },
+    { cost: 16000,  chances: [3,    7,    14,   23,   30,   18,  5] },
+    { cost: 32000,  chances: [0,    3,    10,   20,   33,   24,  10] },
 ];
 export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
 
@@ -82,6 +86,24 @@ export function playerXpForLevel(level) {
 /** XP awarded for defeating an arena enemy at the given rank. */
 export function arenaXp(rank) {
     return Math.round(8 * Math.pow(rank, 0.85)) + 6;
+}
+
+// ── Gold economy: gold is deliberately scarce ────────────────────────────────
+// Gold is a trickle, not a faucet. Every in-game payout is a *tiny* gift: in the
+// arena only bosses pay out (a handful of gold — see `encounterReward` in
+// arena.js), normal packs drop nothing, and gear can't be sold back for gold
+// (forged items are equipped or trashed). The forge has a small chance to spit
+// out a small gold nugget alongside the gear. Accumulating gold in any real
+// quantity is meant to happen through the (future) gold shop, not by grinding.
+export const STARTING_GOLD = 100;      // fresh players begin with a small purse
+export const FORGE_GOLD_CHANCE = 0.08; // chance a single forge also drops gold
+
+/**
+ * Gold yielded by a lucky forge — a tiny gift that scales gently with forge
+ * progress and the rarity rolled, but never more than a few coins.
+ */
+export function forgeGoldDrop(forgeLevel, tier) {
+    return 1 + Math.floor(forgeLevel / 2) + Math.max(0, tier - 4);
 }
 
 // Forge a fresh item near this level band until the player has gear to scale from.
@@ -161,8 +183,10 @@ export function arenaFallbackRank(rank) {
     return Math.max(1, chapterFloor, rank - 1);
 }
 
-// Cost to found a clan (deducted from gold, client-side).
-export const CLAN_CREATE_COST = 5000;
+// Cost to found a clan (deducted from gold, client-side). A genuine long-haul
+// goal given how slowly gold trickles in — reachable by dedicated players over
+// time, or sooner by buying gold in the shop.
+export const CLAN_CREATE_COST = 500;
 
 // Avatar choices (emoji).
 export const AVATARS = [

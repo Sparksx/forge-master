@@ -24,9 +24,11 @@ stat math, database) and **rebuilds the game on top of it** around one tight loo
 1. **Forge** — Tap the anvil for a random item with a punchy rarity reveal.
    Upgrade the forge with gold (instant — **no timers**) to improve rarity odds.
 2. **Equip** — Every drop shows a side-by-side comparison with a single, honest
-   **Power** delta. Equip it or sell it for gold.
+   **Power** delta. Equip it or trash it (gear can't be sold for gold). A forge
+   occasionally drops a gold nugget alongside the gear.
 3. **Arena** — A PvE ladder. Auto-resolved duels against scaling opponents.
-   Win → gold + climb a rank. Your gear is the only thing that gets you deeper.
+   Win → climb a rank, but **only bosses drop gold**. Your gear is the only thing that
+   gets you deeper.
 4. **PvP** — Live duels against real players over the existing Socket.io engine.
    Elo ladder + leaderboard.
 5. **Clan** — Create or join a clan. Contribute gold to the clan treasury to raise
@@ -35,8 +37,12 @@ stat math, database) and **rebuilds the game on top of it** around one tight loo
 
 ## One currency
 
-**Gold** does everything: forge upgrades, clan contributions, and it's what you earn
-from arena wins and selling gear. Diamonds, essence, shards, and the IAP shop are gone.
+**Gold** does everything: forge upgrades and clan contributions. It's deliberately
+**scarce** — you start with a small purse (100) and every in-game payout is a *tiny gift*:
+a few coins from **boss kills** and the occasional lucky **forge** nugget. Normal mobs pay
+nothing and gear can't be sold back for gold. Costs are kept small to match, and real gold
+quantity is meant to come from the gold shop (later), not grinding. Diamonds, essence,
+shards, and the IAP shop are gone.
 
 ## What was kept (infra)
 

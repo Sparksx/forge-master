@@ -91,7 +91,7 @@ router.get('/state', requireAuth, async (req, res) => {
                 data: {
                     userId: req.user.userId,
                     equipment: {},
-                    gold: 0,
+                    gold: 100, // fresh players start with a small purse (STARTING_GOLD)
                     forgeLevel: 1,
                     combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
                 }
@@ -196,7 +196,7 @@ router.put('/state', requireAuth, async (req, res) => {
             create: {
                 userId: req.user.userId,
                 equipment: equipment || {},
-                gold: gold || 0,
+                gold: typeof gold === 'number' ? Math.floor(gold) : 100, // STARTING_GOLD
                 diamonds: typeof diamonds === 'number' ? Math.floor(diamonds) : 100,
                 forgeLevel: forgeLevel || 1,
                 forgeUpgrade: forgeUpgrade || null,
