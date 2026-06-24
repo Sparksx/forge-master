@@ -7,7 +7,7 @@ export default {
         shop: 'Shop',
     },
     auth: {
-        title: 'Anvil Legends',
+        title: 'Gear Master',
         subtitle: 'Jump in and start forging!',
         playNow: 'Play Now',
         orConnectWith: 'or connect with',

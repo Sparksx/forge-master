@@ -2,7 +2,7 @@
 
 ## Context
 
-Forge Master is a vanilla JS game (no framework) with a custom EventEmitter-based state system, Vite build, and settings already persisted via `User.settings` (JSON in DB) + localStorage. Text is currently hardcoded across ~15 JS files and `index.html`. Some French text is already mixed in with English.
+Gear Master is a vanilla JS game (no framework) with a custom EventEmitter-based state system, Vite build, and settings already persisted via `User.settings` (JSON in DB) + localStorage. Text is currently hardcoded across ~15 JS files and `index.html`. Some French text is already mixed in with English.
 
 ---
 
@@ -101,7 +101,7 @@ export default {
     shop: 'Shop',
   },
   auth: {
-    title: 'Anvil Legends',
+    title: 'Gear Master',
     subtitle: 'Jump in and start forging!',
     playNow: 'Play Now',
     login: 'Login',

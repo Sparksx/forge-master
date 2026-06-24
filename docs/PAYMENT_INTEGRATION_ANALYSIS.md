@@ -1,8 +1,8 @@
-# Analyse d'intégration de paiement — Forge Master
+# Analyse d'intégration de paiement — Gear Master
 
 ## Contexte du projet
 
-Forge Master est un RPG browser-based avec un système de monnaie virtuelle à trois niveaux :
+Gear Master est un RPG browser-based avec un système de monnaie virtuelle à trois niveaux :
 - **Gold** : monnaie in-game (obtenue en jouant)
 - **Essence** : monnaie de progression (arbre technologique)
 - **Diamonds** : monnaie premium (actuellement 100 offerts au départ, aucun moyen d'en acheter)
@@ -176,7 +176,7 @@ Le Diamond Shop existe déjà (`src/shop.js`) et permet de convertir des diamant
 
 ## 3. Recommandation : Stripe Checkout
 
-### Pourquoi Stripe est la meilleure option pour Forge Master
+### Pourquoi Stripe est la meilleure option pour Gear Master
 
 1. **Frais les plus bas** : à 2.9% + 0.30 $, Stripe offre le meilleur rapport sur toutes les tranches de prix. Sur des packs de 5-50 $, l'économie vs les concurrents est significative.
 
@@ -186,7 +186,7 @@ Le Diamond Shop existe déjà (`src/shop.js`) et permet de convertir des diamant
 
 4. **Webhooks fiables** : le pattern "créer une session → recevoir un webhook de confirmation → créditer les diamants" s'intègre naturellement dans l'architecture Express existante.
 
-5. **Scalable** : si Forge Master grandit, Stripe offre des remises volume (à partir de 100k$/mois) et des features avancées (Billing, Tax, Radar).
+5. **Scalable** : si Gear Master grandit, Stripe offre des remises volume (à partir de 100k$/mois) et des features avancées (Billing, Tax, Radar).
 
 6. **Pas de lock-in contractuel** : pas d'abonnement, pas de contrat. Adapté à un projet indie qui démarre sa monétisation.
 

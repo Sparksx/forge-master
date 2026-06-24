@@ -1,4 +1,4 @@
-// Game constants for Forge Master: Reforged.
+// Game constants for Gear Master: Reforged.
 // Item stat math + tiers live in shared/stats.js (single source of truth, shared
 // with the server). This file holds the client-side game-design knobs.
 

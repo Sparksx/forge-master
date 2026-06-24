@@ -1,4 +1,4 @@
-# Forge Master — Reforged 🔨
+# Gear Master — Reforged 🔨
 
 A ground-up gameplay & UI rebuild. The old project had a solid forge→equip→fight
 core buried under **five parallel progression systems** (forge levels, player XP,

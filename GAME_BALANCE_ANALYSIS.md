@@ -1,4 +1,4 @@
-# Analyse d'Equilibre - Forge Master
+# Analyse d'Equilibre - Gear Master
 
 > Rapport complet d'analyse des mecaniques de jeu, de la progression et de l'equilibre.
 
@@ -22,7 +22,7 @@
 
 ## 1. Resume executif
 
-**Forge Master** est un jeu idle/progression avec forge d'equipement, combat par vagues, arbre technologique et systeme de skills. L'analyse revele **plusieurs desequilibres significatifs** :
+**Gear Master** est un jeu idle/progression avec forge d'equipement, combat par vagues, arbre technologique et systeme de skills. L'analyse revele **plusieurs desequilibres significatifs** :
 
 - **La forge niveaux 20-30 est excessivement longue** : 121.7 jours de temps reel cumule sans speed-up
 - **Le systeme de skill shards est correctement scale pour les hauts tiers (T5-T6)** mais **les skills T1-T2 sont paradoxalement les plus longues a maxer**

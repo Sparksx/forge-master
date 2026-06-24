@@ -1,7 +1,7 @@
 // Service worker — network-first for the app shell (so a redeploy is picked up
 // immediately), cache-first for immutable hashed build assets. The cache name is
 // versioned so activating a new worker purges any older cache.
-const CACHE = 'forge-master-v2';
+const CACHE = 'gear-master-v1';
 const ASSET_RE = /\/assets\//;
 
 self.addEventListener('install', () => {

@@ -74,7 +74,7 @@ app.get('{*path}', (req, res, next) => {
 });
 
 server.listen(PORT, async () => {
-    console.log(`Anvil Legends server running on port ${PORT} (${NODE_ENV})`);
+    console.log(`Gear Master server running on port ${PORT} (${NODE_ENV})`);
 
     // Migrate existing sprites if upgrading from old schema
     await migrateSpritesIfNeeded();

@@ -1,4 +1,4 @@
-// Forge Master: Reforged — entry point.
+// Gear Master: Reforged — entry point.
 import '../css/reforged.css';
 import '../css/admin-panel.css';
 
