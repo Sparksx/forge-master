@@ -4,13 +4,12 @@ import { avatarEmoji } from '../game/config.js';
 import { getGold, getPowerScore, getAvatar } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
 
-import * as forge from './forge.js';
-import * as arena from './arena.js';
+import * as home from './home.js';
 import * as pvp from './pvp.js';
 import * as clan from './clan.js';
 import * as profile from './profile.js';
 
-const screens = [forge, arena, pvp, clan, profile];
+const screens = [home, pvp, clan, profile];
 // screen.id -> container element. Kept here rather than on the screen modules,
 // because `import * as` namespace objects are frozen and can't take properties.
 const containers = new Map();
@@ -45,13 +44,14 @@ export function initApp(mountEl) {
     });
     gameEvents.on(EVENTS.CLAN_CHANGED, updateHeader);
 
-    switchTab('forge');
+    switchTab('home');
     updateHeader();
 }
 
 export function switchTab(name) {
     const screen = screens.find((s) => s.id === name);
     if (!screen) return;
+    if (active && active !== screen) active.onHide?.();
     screens.forEach((s) => { containers.get(s.id).style.display = s.id === name ? 'block' : 'none'; });
     document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     active = screen;

@@ -57,6 +57,21 @@ export function arenaReward(rank) {
     return Math.round(ARENA_BASE_REWARD * Math.pow(rank, 1.25)) + 10;
 }
 
+// Stage display: group ranks into "chapters" of substages, so the ladder reads
+// like the inspiration games ("Hard 2-15"). Purely cosmetic over arenaRank.
+export const STAGES_PER_CHAPTER = 10;
+
+export function stageInfo(rank) {
+    const chapter = Math.floor((rank - 1) / STAGES_PER_CHAPTER) + 1;
+    const sub = ((rank - 1) % STAGES_PER_CHAPTER) + 1;
+    return {
+        chapter,
+        sub,
+        label: `Hard ${chapter}-${sub}`,
+        progress: sub / STAGES_PER_CHAPTER, // 0..1 within the current chapter
+    };
+}
+
 // Cost to found a clan (deducted from gold, client-side).
 export const CLAN_CREATE_COST = 5000;
 
