@@ -20,7 +20,12 @@ export const label = 'Clan';
 export function render(container) {
     root = container;
     rerender();
+    gameEvents.off(EVENTS.CLAN_CHANGED, rerender);
     gameEvents.on(EVENTS.CLAN_CHANGED, rerender);
+}
+
+export function onHide() {
+    gameEvents.off(EVENTS.CLAN_CHANGED, rerender);
 }
 
 export async function onShow() {

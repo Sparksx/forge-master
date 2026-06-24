@@ -398,18 +398,19 @@ async function endMatch(io, match, winnerId, reason) {
         p2Change = isP1Winner ? loserChange : winnerChange;
     }
 
-    // Update database
+    // Update database — use a transaction so both players' ratings are updated atomically
     try {
-        const updates = [];
         if (winnerId === p1.userId) {
-            updates.push(prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: { increment: p1Change }, pvpWins: { increment: 1 } } }));
-            updates.push(prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: { increment: p2Change }, pvpLosses: { increment: 1 } } }));
+            await prisma.$transaction([
+                prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpWins: { increment: 1 } } }),
+                prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpLosses: { increment: 1 } } }),
+            ]);
         } else if (winnerId === p2.userId) {
-            updates.push(prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: { increment: p1Change }, pvpLosses: { increment: 1 } } }));
-            updates.push(prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: { increment: p2Change }, pvpWins: { increment: 1 } } }));
+            await prisma.$transaction([
+                prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpLosses: { increment: 1 } } }),
+                prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpWins: { increment: 1 } } }),
+            ]);
         }
-        await Promise.all(updates);
-        // Invalidate leaderboard cache since ratings changed
         leaderboardCache = null;
     } catch (err) {
         console.error('PvP rating update error:', err);
