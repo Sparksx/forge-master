@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL } from '../../shared/stats.js';
+import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL, BONUS_STAT_KEYS, BONUS_STATS, ATTACK_STYLES } from '../../shared/stats.js';
 
 const router = Router();
 
@@ -15,7 +15,13 @@ function isValidItem(item) {
         if (!Array.isArray(item.bonuses)) return false;
         for (const b of item.bonuses) {
             if (typeof b !== 'object' || !b.type || typeof b.value !== 'number') return false;
+            if (!BONUS_STAT_KEYS.includes(b.type)) return false;
+            const maxVal = BONUS_STATS[b.type].max * MAX_TIER;
+            if (b.value < 0 || b.value > maxVal) return false;
         }
+    }
+    if (item.type === 'weapon' && item.attackStyle !== undefined) {
+        if (!ATTACK_STYLES.includes(item.attackStyle)) return false;
     }
     return true;
 }
