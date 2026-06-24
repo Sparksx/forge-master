@@ -42,12 +42,30 @@ describe('computeStatsFromEquipment with player level', () => {
     it('defaults to level 1 when no level is passed', () => {
         expect(computeStatsFromEquipment({}).maxHP).toBe(playerBaseHealth(1));
     });
+
+    it('applies the clan stat bonus to maxHP and damage', () => {
+        const base = computeStatsFromEquipment({}, 10);
+        const boosted = computeStatsFromEquipment({}, 10, 50); // +50%
+        expect(boosted.maxHP).toBe(Math.floor(base.maxHP * 1.5));
+        expect(boosted.damage).toBe(Math.floor(base.damage * 1.5));
+    });
+
+    it('ignores a negative clan stat bonus', () => {
+        const base = computeStatsFromEquipment({}, 10);
+        expect(computeStatsFromEquipment({}, 10, -50).maxHP).toBe(base.maxHP);
+    });
 });
 
 describe('playerPowerScore', () => {
     it('increases with player level even with the same gear', () => {
         const equipment = {};
         expect(playerPowerScore(equipment, 30)).toBeGreaterThan(playerPowerScore(equipment, 1));
+    });
+
+    it('applies the clan stat bonus to power', () => {
+        const equipment = {};
+        const base = playerPowerScore(equipment, 10);
+        expect(playerPowerScore(equipment, 10, 25)).toBe(Math.round(base * 1.25));
     });
 });
 

@@ -143,7 +143,7 @@ export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
     return Math.round(effectiveHealth + effectiveDamage);
 }
 
-export function computeStatsFromEquipment(equipment, playerLevel = 1) {
+export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusPct = 0) {
     let totalHealth = 0;
     let totalDamage = 0;
     const bonuses = {};
@@ -167,8 +167,10 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1) {
         }
     }
 
-    const maxHP = playerBaseHealth(playerLevel) + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100));
-    const damage = playerBaseDamage(playerLevel) + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100));
+    // Clan stat perk scales the final HP & damage (applies in PvE and PvP).
+    const clanMult = 1 + Math.max(0, statBonusPct) / 100;
+    const maxHP = Math.floor((playerBaseHealth(playerLevel) + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100))) * clanMult);
+    const damage = Math.floor((playerBaseDamage(playerLevel) + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100))) * clanMult);
 
     return {
         maxHP,
@@ -187,10 +189,11 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1) {
  * Total power score from gear + player level base stats. Used by the UI power
  * display and by server PvP matchmaking/ELO so player level counts everywhere.
  */
-export function playerPowerScore(equipment, playerLevel = 1) {
+export function playerPowerScore(equipment, playerLevel = 1, statBonusPct = 0) {
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
     const gearPower = calculatePowerScore(totalHealth, totalDamage, bonuses);
-    return gearPower + playerBaseHealth(playerLevel) + playerBaseDamage(playerLevel);
+    const base = gearPower + playerBaseHealth(playerLevel) + playerBaseDamage(playerLevel);
+    return Math.round(base * (1 + Math.max(0, statBonusPct) / 100));
 }
 
 /** Clamp a value to an integer within [min, max], treating junk as min. */
