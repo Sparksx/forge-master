@@ -1,14 +1,13 @@
 // Dungeon — a 2D top-down combat zone rendered on a canvas. The combat zone is
-// fully automatic: there is NO player control. The hero pathfinds around the
-// room's obstacles toward the closest enemy on its own, and contact starts a
-// fight. Enemies stay passive (idle patrol) until the hero steps inside their
-// aggressive area, at which point they wake up and close in.
+// fully automatic: there is NO player control. The lone hero pathfinds around
+// the room's obstacles toward the nearest enemy on its own, and contact starts
+// the fight. Home mode is 1 hero vs a *group* of enemies — melee mobs close in,
+// ranged mobs (bows/casters) hold a standoff distance and fire from afar.
 //
 // This is purely the *view*. The owning screen (home.js) keeps driving the
-// authoritative combat (fightArena) and pushes HP/damage into the dungeon via
-// setHp()/floater(); the dungeon turns those into melee lunges and floaters.
-// When the hero reaches the mob the dungeon fires onEngage() so the screen can
-// resolve a fight.
+// authoritative combat (fightArena) and pushes HP/damage in via setHp()/attack()
+// /floater(); the dungeon turns those into melee lunges, arrows, and floaters.
+// When the hero reaches the pack the dungeon fires onEngage().
 
 // Logical room grid (tiles). The canvas scales to fit; tile size is derived.
 const COLS = 15;
@@ -19,6 +18,8 @@ const PILLARS = [
 ];
 // How close (in tiles) the hero must get before a passive enemy aggros.
 const AGGRO_TILES = 3;
+// Ranged mobs hold roughly this distance instead of closing to melee.
+const RANGED_STANDOFF = 3.2;
 
 const now = () => Date.now();
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -26,7 +27,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 /**
  * @param {object} opts
- * @param {() => void} opts.onEngage  called once when the hero touches the mob.
+ * @param {() => void} opts.onEngage  called once when the hero reaches the pack.
  */
 export function createDungeon({ onEngage } = {}) {
     // ── DOM ──────────────────────────────────────────────────────────────────
@@ -41,17 +42,38 @@ export function createDungeon({ onEngage } = {}) {
     // ── World state ──────────────────────────────────────────────────────────
     let tile = 24;          // px per tile (recomputed on resize)
     const walls = buildWalls();
-    const player = { x: 0, y: 0, r: 10, emoji: '🧙', label: '', hp: 1, maxHP: 1, lungeAt: 0, lungeDir: { x: 1, y: 0 }, facing: 1 };
-    const enemy = { x: 0, y: 0, r: 10, emoji: '👹', label: '', hp: 1, maxHP: 1, lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 }, aggro: false };
+    const player = newEntity({ id: 'player', emoji: '🧙', facing: 1 });
+    let enemies = [];       // array of enemy entities
     const floaters = [];    // { x, y, vy, text, color, bornAt }
     const slashes = [];     // { x, y, bornAt, hostile }
+    const shots = [];       // ranged projectiles { x, y, tx, ty, bornAt, dur, hostile }
 
     let auto = true;        // combat zone is always automatic; no player control
     let fast = false;
-    let engaged = false;    // locked in melee (combat playing out)
+    let engaged = false;    // locked in combat (playback running)
     let awaitingEngage = true;
     let started = false;
-    let curRank = -1;       // which arena rank the mob represents
+    let curRank = -1;       // which arena rank the pack represents
+
+    function newEntity(over = {}) {
+        return {
+            id: '', x: 0, y: 0, r: 10, emoji: '👹', label: '', hp: 1, maxHP: 1,
+            lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, ranged: false,
+            alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 }, aggro: false,
+            ...over,
+        };
+    }
+
+    const entityById = (id) => (id === 'player' ? player : enemies.find((e) => e.id === id));
+    const aliveEnemies = () => enemies.filter((e) => e.alive);
+    const nearestEnemy = () => {
+        let best = null, bestD = Infinity;
+        for (const e of aliveEnemies()) {
+            const d = dist(player, e);
+            if (d < bestD) { bestD = d; best = e; }
+        }
+        return best;
+    };
 
     // ── Sizing ───────────────────────────────────────────────────────────────
     function resize() {
@@ -64,7 +86,8 @@ export function createDungeon({ onEngage } = {}) {
         canvas.height = Math.round(cssH * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const r = tile * 0.34;
-        player.r = enemy.r = r;
+        player.r = r;
+        for (const e of enemies) e.r = r;
     }
 
     // ── Public API ───────────────────────────────────────────────────────────
@@ -81,76 +104,115 @@ export function createDungeon({ onEngage } = {}) {
         player.emoji = m.playerEmoji;
         player.label = m.playerLabel;
         player.maxHP = m.playerHP;
-        enemy.emoji = m.enemyEmoji;
-        enemy.label = m.enemyLabel;
-        enemy.maxHP = m.enemyHP;
+        player.ranged = !!m.playerRanged;
+        // Sync the enemy roster to the matchup (reuse entities by index).
+        m.enemies.forEach((spec, i) => {
+            const e = enemies[i] || newEntity();
+            e.id = spec.id;
+            e.emoji = spec.emoji;
+            e.label = spec.label;
+            e.maxHP = spec.maxHP;
+            e.ranged = !!spec.ranged;
+            e.role = spec.role;
+            enemies[i] = e;
+        });
+        enemies.length = m.enemies.length;
     }
 
-    /** Advance to a fresh matchup: full HP, respawn the mob away from the hero. */
+    /** Advance to a fresh pack: full HP, respawn the mobs away from the hero. */
     function nextMatchup(m) {
         resize();
         curRank = m.rank;
+        enemies = [];
         applyLabels(m);
+
         player.hp = m.playerHP;
-        enemy.hp = m.enemyHP;
-        enemy.alive = true;
-        enemy.deathAt = 0;
-        enemy.aggro = false;   // fresh mobs start passive until the hero gets close
 
         // First spawn: drop the hero near the left side of the room.
         if (player.x === 0 && player.y === 0) {
             const p = tileCenter(2, Math.floor(ROWS / 2));
             player.x = p.x; player.y = p.y;
         }
-        // Spawn the mob at whichever far corner is most distant from the hero.
-        const sp = farSpawn();
-        enemy.x = sp.x; enemy.y = sp.y;
-        enemy.wanderAt = 0;
+
+        // Spread the pack across far spawn points, most-distant first.
+        const spots = farSpawns(m.enemies.length);
+        m.enemies.forEach((spec, i) => {
+            const e = enemies[i];
+            const sp = spots[i % spots.length];
+            e.x = sp.x; e.y = sp.y;
+            e.hp = spec.maxHP;
+            e.alive = true;
+            e.deathAt = 0;
+            e.aggro = false;
+            e.wanderAt = 0;
+            e.r = player.r;
+        });
 
         engaged = false;
         awaitingEngage = true;
     }
 
-    /** A state change against the *same* opponent — refresh labels/HP, no teleport. */
+    /** A state change against the *same* pack — refresh labels/HP, no teleport. */
     function refreshMatchup(m) {
-        if (m.rank !== curRank || (player.x === 0 && player.y === 0)) { nextMatchup(m); return; }
+        if (m.rank !== curRank || (player.x === 0 && player.y === 0) || enemies.length !== m.enemies.length) {
+            nextMatchup(m); return;
+        }
         applyLabels(m);
-        if (!engaged) { player.hp = m.playerHP; enemy.hp = m.enemyHP; }
+        if (!engaged) {
+            player.hp = m.playerHP;
+            m.enemies.forEach((spec, i) => { if (enemies[i]) enemies[i].hp = spec.maxHP; });
+        }
     }
 
-    function setHp(side, hp, maxHP) {
-        const e = side === 'player' ? player : enemy;
+    function setHp(id, hp, maxHP) {
+        const e = entityById(id);
+        if (!e) return;
         e.hp = hp;
-        e.maxHP = maxHP;
+        if (maxHP != null) e.maxHP = maxHP;
     }
 
-    /** A combat event from the screen. side = who took the hit. */
-    function floater(side, text, cls = '') {
-        const target = side === 'player' ? player : enemy;
-        const attacker = side === 'player' ? enemy : player;
-        const dmg = !cls || cls === 'crit';
-        if (dmg) {
-            // The attacker lunges toward the victim; spawn a slash on the victim.
-            const dx = target.x - attacker.x, dy = target.y - attacker.y;
-            const len = Math.hypot(dx, dy) || 1;
+    /** Visualise an attack from `fromId` at `toId` — melee lunge or ranged shot. */
+    function attack(fromId, toId, { ranged = false } = {}) {
+        const attacker = entityById(fromId);
+        const target = entityById(toId);
+        if (!attacker || !target) return;
+        const dx = target.x - attacker.x, dy = target.y - attacker.y;
+        const len = Math.hypot(dx, dy) || 1;
+        attacker.facing = dx < 0 ? -1 : 1;
+        const hostile = fromId !== 'player';
+        if (ranged) {
+            // A small lunge for recoil, then a projectile flies to the target.
+            attacker.lungeAt = now();
+            attacker.lungeDir = { x: dx / len * 0.4, y: dy / len * 0.4 };
+            shots.push({
+                x: attacker.x, y: attacker.y - attacker.r * 0.4,
+                tx: target.x, ty: target.y,
+                bornAt: now(), dur: fast ? 150 : 240, hostile,
+            });
+        } else {
             attacker.lungeAt = now();
             attacker.lungeDir = { x: dx / len, y: dy / len };
-            attacker.facing = dx < 0 ? -1 : 1;
-            slashes.push({ x: target.x, y: target.y, bornAt: now(), hostile: side === 'player' });
+            slashes.push({ x: target.x, y: target.y, bornAt: now(), hostile });
         }
+    }
+
+    /** Floating combat text over an entity. */
+    function floater(id, text, cls = '') {
+        const target = entityById(id);
+        if (!target) return;
         const color = cls === 'crit' ? '#f5c451'
             : cls === 'heal' ? '#4ade80'
                 : cls === 'gold' ? '#f5c451'
                     : cls === 'xp' ? '#a78bfa'
-                        : side === 'player' ? '#ef5466' : '#ffd9de';
+                        : id === 'player' ? '#ef5466' : '#ffd9de';
         floaters.push({ x: target.x, y: target.y - target.r - 6, vy: -34, text, color, bornAt: now() });
     }
 
-    /** Play the mob's death, then resolve. */
-    function killEnemy() {
-        enemy.alive = false;
-        enemy.deathAt = now();
-        return new Promise((res) => setTimeout(res, fast ? 320 : 520));
+    /** Play one mob's death animation. Resolves after the anim. */
+    function killEnemy(id) {
+        const e = entityById(id);
+        if (e && e !== player) { e.alive = false; e.deathAt = now(); }
+        return new Promise((res) => setTimeout(res, fast ? 300 : 480));
     }
 
     function start() {
@@ -187,21 +249,20 @@ export function createDungeon({ onEngage } = {}) {
         const speedScale = fast ? 1.7 : 1;
 
         if (!engaged) {
-            // Hero: fully automatic — pathfinds around obstacles to the closest
-            // enemy. There is no manual control of the combat zone.
-            if (auto && enemy.alive) seek(player, enemy, 3.4 * speedScale * tile, dt);
-            // Mob stays passive until the hero enters its aggressive area.
-            if (enemy.alive) updateEnemy(dt, speedScale);
+            const target = nearestEnemy();
+            // Hero: fully automatic — pathfinds to the nearest living enemy.
+            if (auto && target) seek(player, target, 3.4 * speedScale * tile, dt);
+            for (const e of aliveEnemies()) updateEnemy(e, dt, speedScale);
 
-            // Contact → fight.
-            if (enemy.alive && awaitingEngage && dist(player, enemy) <= player.r + enemy.r + 4) {
+            // Contact with any mob → start the fight.
+            if (target && awaitingEngage && contactRange(target)) {
                 awaitingEngage = false;
                 engaged = true;
                 onEngage?.();
             }
         }
 
-        // Age floaters & slashes.
+        // Age floaters, slashes, projectiles.
         for (let i = floaters.length - 1; i >= 0; i--) {
             const f = floaters[i];
             f.y += f.vy * dt;
@@ -210,14 +271,24 @@ export function createDungeon({ onEngage } = {}) {
         for (let i = slashes.length - 1; i >= 0; i--) {
             if (t - slashes[i].bornAt > 240) slashes.splice(i, 1);
         }
+        for (let i = shots.length - 1; i >= 0; i--) {
+            if (t - shots[i].bornAt > shots[i].dur) shots.splice(i, 1);
+        }
+    }
+
+    // Whether the hero is close enough to `e` to engage (ranged mobs count once
+    // the hero is within their standoff band).
+    function contactRange(e) {
+        const reach = e.ranged ? RANGED_STANDOFF * tile : player.r + e.r + 4;
+        return dist(player, e) <= reach;
     }
 
     // Move `e` toward `target`, routing around walls/pillars and stopping at
     // melee range. Walks straight when it has line of sight; otherwise follows a
     // BFS path through the room so it never gets stuck on an obstacle.
-    function seek(e, target, speed, dt) {
+    function seek(e, target, speed, dt, stopAt = e.r + target.r + 2) {
         const d = dist(e, target);
-        if (d <= e.r + target.r + 2) return;
+        if (d <= stopAt) return;
 
         let aimX = target.x, aimY = target.y;
         if (!clearPath(e.x, e.y, target.x, target.y, e.r)) {
@@ -227,35 +298,34 @@ export function createDungeon({ onEngage } = {}) {
         const dx = aimX - e.x, dy = aimY - e.y;
         const l = Math.hypot(dx, dy) || 1;
         stepEntity(e, dx / l, dy / l, speed, dt);
-        // Always face the actual target, not the intermediate waypoint.
         e.facing = (target.x - e.x) < 0 ? -1 : 1;
     }
 
-    // Enemy AI: passive (idle patrol) until the hero steps inside its aggressive
-    // area, then it wakes up and chases the hero — also avoiding obstacles.
-    function updateEnemy(dt, speedScale) {
-        if (!enemy.aggro && dist(player, enemy) <= AGGRO_TILES * tile) {
-            enemy.aggro = true;
-            // Surprise alert so the wake-up reads clearly.
-            floaters.push({ x: enemy.x, y: enemy.y - enemy.r - 6, vy: -34, text: '!', color: '#f5c451', bornAt: now() });
+    // Enemy AI: passive patrol until the hero enters its aggressive area, then it
+    // closes in (melee) or advances to a standoff distance (ranged).
+    function updateEnemy(e, dt, speedScale) {
+        if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
+            e.aggro = true;
+            floaters.push({ x: e.x, y: e.y - e.r - 6, vy: -34, text: '!', color: '#f5c451', bornAt: now() });
         }
-        if (enemy.aggro) {
-            seek(enemy, player, 2.3 * speedScale * tile, dt);
+        if (e.aggro) {
+            const stopAt = e.ranged ? RANGED_STANDOFF * tile : e.r + player.r + 2;
+            seek(e, player, 2.3 * speedScale * tile, dt, stopAt);
         } else {
-            idleEnemy(dt, speedScale);
+            idleEnemy(e, dt, speedScale);
         }
     }
 
     // Passive wandering — small, aimless drift in place; never seeks the hero.
-    function idleEnemy(dt, speedScale) {
+    function idleEnemy(e, dt, speedScale) {
         const t = now();
-        if (t > enemy.wanderAt) {
-            enemy.wanderAt = t + 900 + Math.random() * 1200;
+        if (t > e.wanderAt) {
+            e.wanderAt = t + 900 + Math.random() * 1200;
             const ang = Math.random() * Math.PI * 2;
-            enemy.wander = { x: Math.cos(ang), y: Math.sin(ang) };
+            e.wander = { x: Math.cos(ang), y: Math.sin(ang) };
         }
-        stepEntity(enemy, enemy.wander.x, enemy.wander.y, 1.1 * speedScale * tile, dt);
-        if (enemy.wander.x) enemy.facing = enemy.wander.x < 0 ? -1 : 1;
+        stepEntity(e, e.wander.x, e.wander.y, 1.1 * speedScale * tile, dt);
+        if (e.wander.x) e.facing = e.wander.x < 0 ? -1 : 1;
     }
 
     // ── Pathfinding (BFS over the tile grid) ──────────────────────────────────
@@ -277,8 +347,7 @@ export function createDungeon({ onEngage } = {}) {
         return true;
     }
 
-    // Center of the next tile `e` should head for to reach `target`. Picks the
-    // furthest BFS waypoint still in line of sight so motion stays smooth.
+    // Center of the next tile `e` should head for to reach `target`.
     function nextWaypoint(e, target) {
         const path = findPath(tileOf(e), tileOf(target));
         if (!path || !path.length) return null;
@@ -290,8 +359,8 @@ export function createDungeon({ onEngage } = {}) {
         return tileCenter(wp.c, wp.r);
     }
 
-    // Breadth-first search; returns the list of tiles from start (exclusive) to
-    // goal (inclusive), or null if unreachable.
+    // Breadth-first search; returns tiles from start (exclusive) to goal
+    // (inclusive), or null if unreachable.
     function findPath(start, goal) {
         if (start.c === goal.c && start.r === goal.r) return [];
         const key = (c, r) => r * COLS + c;
@@ -333,7 +402,6 @@ export function createDungeon({ onEngage } = {}) {
     }
 
     function hitsWall(x, y, r) {
-        // Sample the four cardinal edges of the circle.
         return isWall(x - r, y) || isWall(x + r, y) || isWall(x, y - r) || isWall(x, y + r);
     }
 
@@ -345,47 +413,46 @@ export function createDungeon({ onEngage } = {}) {
 
     function tileCenter(c, r) { return { x: (c + 0.5) * tile, y: (r + 0.5) * tile }; }
 
-    function farSpawn() {
+    // Spread up to `n` mobs across the far reaches of the room, most-distant
+    // points first so a pack fans out instead of stacking.
+    function farSpawns(n) {
         const candidates = [
             tileCenter(COLS - 3, 2), tileCenter(COLS - 3, ROWS - 3),
-            tileCenter(COLS - 2, Math.floor(ROWS / 2)), tileCenter(2, 2), tileCenter(2, ROWS - 3),
+            tileCenter(COLS - 2, Math.floor(ROWS / 2)), tileCenter(COLS - 4, 2),
+            tileCenter(COLS - 4, ROWS - 3), tileCenter(2, 2), tileCenter(2, ROWS - 3),
         ].filter((p) => !isWall(p.x, p.y));
-        let best = candidates[0], bestD = -1;
-        for (const c of candidates) {
-            const d = dist(player, c);
-            if (d > bestD) { bestD = d; best = c; }
-        }
-        return best;
+        candidates.sort((a, b) => dist(player, b) - dist(player, a));
+        const out = [];
+        for (let i = 0; i < Math.max(1, n); i++) out.push(candidates[i % candidates.length]);
+        return out;
     }
 
     // ── Render ───────────────────────────────────────────────────────────────
     function draw() {
         ctx.clearRect(0, 0, COLS * tile, ROWS * tile);
         drawFloor();
-        drawAggroArea();
+        for (const e of enemies) drawAggroArea(e);
 
         // Draw back-to-front by y so overlaps look right.
-        const order = [];
-        if (enemy.alive || now() - enemy.deathAt < 520) order.push(enemy);
-        order.push(player);
+        const order = [...enemies.filter((e) => e.alive || now() - e.deathAt < 500), player];
         order.sort((a, b) => a.y - b.y);
-        for (const e of order) drawEntity(e, e === enemy);
+        for (const e of order) drawEntity(e, e !== player);
 
+        for (const s of shots) drawShot(s);
         for (const s of slashes) drawSlash(s);
         for (const f of floaters) drawFloater(f);
     }
 
-    // Faint dashed ring showing a passive mob's aggressive area. Disappears the
-    // moment it wakes up and starts chasing.
-    function drawAggroArea() {
-        if (!enemy.alive || enemy.aggro) return;
+    // Faint dashed ring showing a passive mob's aggressive area.
+    function drawAggroArea(e) {
+        if (!e.alive || e.aggro) return;
         ctx.save();
         ctx.globalAlpha = 0.5;
         ctx.strokeStyle = 'rgba(239,84,102,.5)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        ctx.arc(enemy.x, enemy.y, AGGRO_TILES * tile, 0, Math.PI * 2);
+        ctx.arc(e.x, e.y, AGGRO_TILES * tile, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
     }
@@ -415,11 +482,15 @@ export function createDungeon({ onEngage } = {}) {
     function drawEntity(e, isEnemy) {
         const t = now();
         let drawX = e.x, drawY = e.y, alpha = 1, scale = 1;
+        // Bosses render a touch bigger so they read as the threat.
+        const roleScale = e.role === 'bigboss' ? 1.45 : e.role === 'boss' ? 1.22 : 1;
 
-        // Death animation for the mob.
+        // Death animation for a mob.
         if (isEnemy && !e.alive) {
-            const k = clamp((t - e.deathAt) / 520, 0, 1);
-            alpha = 1 - k; scale = 1 + k * 0.6;
+            const k = clamp((t - e.deathAt) / 500, 0, 1);
+            alpha = 1 - k; scale = roleScale * (1 + k * 0.6);
+        } else {
+            scale = roleScale;
         }
         // Attack lunge.
         const lk = clamp((t - e.lungeAt) / 180, 0, 1);
@@ -433,14 +504,15 @@ export function createDungeon({ onEngage } = {}) {
         ctx.globalAlpha = alpha * 0.35;
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.ellipse(drawX, drawY + e.r * 0.85, e.r * 0.9, e.r * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(drawX, drawY + e.r * 0.85, e.r * 0.9 * scale, e.r * 0.4 * scale, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Body glow ring (hero violet / mob red).
+        // Body glow ring (hero violet / mob red; ranged mobs tinted gold).
         ctx.globalAlpha = alpha;
         ctx.beginPath();
         ctx.arc(drawX, drawY, e.r * 1.05 * scale, 0, Math.PI * 2);
-        ctx.fillStyle = isEnemy ? 'rgba(239,84,102,.16)' : 'rgba(139,92,246,.18)';
+        ctx.fillStyle = !isEnemy ? 'rgba(139,92,246,.18)'
+            : e.ranged ? 'rgba(245,196,81,.18)' : 'rgba(239,84,102,.16)';
         ctx.fill();
 
         // Emoji sprite (flip horizontally to face the right way).
@@ -455,7 +527,7 @@ export function createDungeon({ onEngage } = {}) {
         ctx.restore();
 
         // HP bar above the head.
-        if (e.alive || !isEnemy) drawHpBar(drawX, drawY - e.r - 9, e, isEnemy);
+        if (e.alive || !isEnemy) drawHpBar(drawX, drawY - e.r * scale - 9, e, isEnemy);
         ctx.globalAlpha = 1;
     }
 
@@ -469,6 +541,33 @@ export function createDungeon({ onEngage } = {}) {
         ctx.fillRect(x, cy, w, hgt);
         ctx.fillStyle = isEnemy ? '#ef5466' : '#4ade80';
         ctx.fillRect(x, cy, w * pct, hgt);
+    }
+
+    function drawShot(s) {
+        const k = clamp((now() - s.bornAt) / s.dur, 0, 1);
+        const x = s.x + (s.tx - s.x) * k;
+        const y = s.y + (s.ty - s.y) * k;
+        const ang = Math.atan2(s.ty - s.y, s.tx - s.x);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ang);
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = s.hostile ? '#f5c451' : '#cdb4ff';
+        ctx.lineWidth = 2.5;
+        const len = tile * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-len / 2, 0);
+        ctx.lineTo(len / 2, 0);
+        ctx.stroke();
+        // Arrowhead.
+        ctx.beginPath();
+        ctx.moveTo(len / 2, 0);
+        ctx.lineTo(len / 2 - 4, -3);
+        ctx.moveTo(len / 2, 0);
+        ctx.lineTo(len / 2 - 4, 3);
+        ctx.stroke();
+        ctx.restore();
+        ctx.globalAlpha = 1;
     }
 
     function drawSlash(s) {
@@ -494,7 +593,10 @@ export function createDungeon({ onEngage } = {}) {
         ctx.globalAlpha = 1;
     }
 
-    return { el, mount, start, stop, setAuto, setFast, setEngaged, nextMatchup, refreshMatchup, setHp, floater, killEnemy };
+    return {
+        el, mount, start, stop, setAuto, setFast, setEngaged,
+        nextMatchup, refreshMatchup, setHp, attack, floater, killEnemy,
+    };
 }
 
 // Room layout: solid perimeter + interior pillars.

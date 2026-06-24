@@ -53,6 +53,10 @@ function normalizeItem(raw) {
             ? raw.bonuses.filter((b) => b && typeof b.type === 'string' && typeof b.value === 'number')
             : [],
     };
+    // Weapons carry a melee/ranged style; default legacy saves to melee.
+    if (type === 'weapon') {
+        item.attackStyle = raw.attackStyle === 'ranged' ? 'ranged' : 'melee';
+    }
     item.name = raw.name || itemName(item);
     return item;
 }

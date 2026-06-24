@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
     BASE_HEALTH, BASE_DAMAGE, HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, MAX_PLAYER_LEVEL,
-    playerBaseHealth, playerBaseDamage, computeStatsFromEquipment, playerPowerScore,
+    BASE_ATTACK_PERIOD, playerBaseHealth, playerBaseDamage, computeStatsFromEquipment,
+    playerPowerScore, weaponStyle,
 } from '../stats.js';
 
 describe('player level base stats', () => {
@@ -46,5 +47,25 @@ describe('playerPowerScore', () => {
     it('increases with player level even with the same gear', () => {
         const equipment = {};
         expect(playerPowerScore(equipment, 30)).toBeGreaterThan(playerPowerScore(equipment, 1));
+    });
+});
+
+describe('combat style', () => {
+    it('paces combat at roughly half a hit per second by default', () => {
+        expect(BASE_ATTACK_PERIOD).toBeGreaterThan(0);
+        expect(1 / BASE_ATTACK_PERIOD).toBeCloseTo(0.5, 1);
+    });
+
+    it('resolves weapon attack style, defaulting to melee', () => {
+        expect(weaponStyle(null)).toBe('melee');
+        expect(weaponStyle({ attackStyle: 'melee' })).toBe('melee');
+        expect(weaponStyle({ attackStyle: 'ranged' })).toBe('ranged');
+        expect(weaponStyle({})).toBe('melee');
+    });
+
+    it('derives the player ranged flag from the equipped weapon', () => {
+        expect(computeStatsFromEquipment({}).ranged).toBe(false);
+        expect(computeStatsFromEquipment({ weapon: { type: 'weapon', level: 5, tier: 2, attackStyle: 'ranged' } }).ranged).toBe(true);
+        expect(computeStatsFromEquipment({ weapon: { type: 'weapon', level: 5, tier: 2, attackStyle: 'melee' } }).ranged).toBe(false);
     });
 });

@@ -1,5 +1,8 @@
 // Item presentation: names, icons, rarity helpers.
-import { TIERS, BONUS_STATS, SLOT_ICONS, SLOT_LABELS } from './config.js';
+import { TIERS, BONUS_STATS, SLOT_ICONS, SLOT_LABELS, weaponStyle } from './config.js';
+
+// Ranged weapons get their own icon so the gear grid reads at a glance.
+export const RANGED_WEAPON_ICON = '🏹';
 
 export function tierDef(tier) {
     return TIERS[(tier || 1) - 1] || TIERS[0];
@@ -15,6 +18,12 @@ export function rarityColor(tier) {
 
 export function slotIcon(type) {
     return SLOT_ICONS[type] || '❔';
+}
+
+/** Icon for a concrete item — ranged weapons swap the blade for a bow. */
+export function itemIcon(item) {
+    if (item?.type === 'weapon' && weaponStyle(item) === 'ranged') return RANGED_WEAPON_ICON;
+    return slotIcon(item?.type);
 }
 
 export function slotLabel(type) {
@@ -43,6 +52,9 @@ const SLOT_NOUN = {
     ring: ['Band', 'Signet', 'Loop', 'Seal'],
 };
 
+// Ranged weapons draw from their own noun pool so the name matches the bow icon.
+const RANGED_WEAPON_NOUN = ['Bow', 'Longbow', 'Crossbow', 'Sling', 'Recurve'];
+
 function pick(arr, seed) {
     return arr[Math.abs(seed) % arr.length];
 }
@@ -53,7 +65,10 @@ export function itemName(item) {
     const tier = item?.tier || 1;
     const seed = (item?.level || 1) * 31 + tier * 7;
     const prefix = pick(TIER_PREFIX[tier - 1] || TIER_PREFIX[0], seed);
-    const noun = pick(SLOT_NOUN[item?.type] || ['Relic'], seed >> 1);
+    const nouns = item?.type === 'weapon' && weaponStyle(item) === 'ranged'
+        ? RANGED_WEAPON_NOUN
+        : (SLOT_NOUN[item?.type] || ['Relic']);
+    const noun = pick(nouns, seed >> 1);
     return `${prefix} ${noun}`;
 }
 
