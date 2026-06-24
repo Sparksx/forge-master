@@ -25,14 +25,17 @@ export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
 
 // --- Tier system ---
 
+// Vivid, high-saturation rarity colours. Hues are spread so that no two
+// contiguous tiers sit close on the colour wheel, and none are pastel — each
+// gear card gets a solid, easily distinguishable background.
 export const TIERS = [
-    { id: 1, name: 'Common',    color: '#b9c2d0', bonusCount: 0 },
-    { id: 2, name: 'Uncommon',  color: '#3ddc84', bonusCount: 1 },
-    { id: 3, name: 'Rare',      color: '#2e9bff', bonusCount: 1 },
-    { id: 4, name: 'Epic',      color: '#b15cff', bonusCount: 1 },
-    { id: 5, name: 'Legendary', color: '#ff9d2e', bonusCount: 2 },
-    { id: 6, name: 'Mythic',    color: '#ff4d6d', bonusCount: 2 },
-    { id: 7, name: 'Divine',    color: '#ffd64a', bonusCount: 3 },
+    { id: 1, name: 'Common',    color: '#9aa6b8', bonusCount: 0 }, // steel gray
+    { id: 2, name: 'Uncommon',  color: '#2ecc40', bonusCount: 1 }, // green
+    { id: 3, name: 'Rare',      color: '#1f9bff', bonusCount: 1 }, // azure blue
+    { id: 4, name: 'Epic',      color: '#b14dff', bonusCount: 1 }, // violet
+    { id: 5, name: 'Legendary', color: '#ff8c1a', bonusCount: 2 }, // orange
+    { id: 6, name: 'Mythic',    color: '#ff2d68', bonusCount: 2 }, // crimson rose
+    { id: 7, name: 'Divine',    color: '#ffd11a', bonusCount: 3 }, // gold
 ];
 
 export const MAX_TIER = TIERS.length;
