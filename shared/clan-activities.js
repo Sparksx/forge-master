@@ -19,10 +19,10 @@ const HOUR = 3600 * 1000;
 // joins — more participants means a thinner per-head share, not more minted gold.
 // `powerPerSlot` keeps difficulty proportional to the (variable) party size.
 export const EXPEDITIONS = [
-    { key: 'patrol', name: 'Border Patrol', difficulty: 'Easy', minClanLevel: 1, powerPerSlot: 3000, xpPerHour: 400, goldPerHour: 150 },
-    { key: 'ruins', name: 'Lost Ruins', difficulty: 'Normal', minClanLevel: 3, powerPerSlot: 8000, xpPerHour: 450, goldPerHour: 200 },
-    { key: 'caverns', name: 'Frost Caverns', difficulty: 'Hard', minClanLevel: 6, powerPerSlot: 15000, xpPerHour: 550, goldPerHour: 260 },
-    { key: 'lair', name: "Dragon's Lair", difficulty: 'Epic', minClanLevel: 10, powerPerSlot: 28000, xpPerHour: 700, goldPerHour: 340 },
+    { key: 'patrol', name: 'Border Patrol', difficulty: 'Easy', minClanLevel: 1, powerPerSlot: 3000, xpPerHour: 400, goldPerHour: 6 },
+    { key: 'ruins', name: 'Lost Ruins', difficulty: 'Normal', minClanLevel: 3, powerPerSlot: 8000, xpPerHour: 450, goldPerHour: 10 },
+    { key: 'caverns', name: 'Frost Caverns', difficulty: 'Hard', minClanLevel: 6, powerPerSlot: 15000, xpPerHour: 550, goldPerHour: 15 },
+    { key: 'lair', name: "Dragon's Lair", difficulty: 'Epic', minClanLevel: 10, powerPerSlot: 28000, xpPerHour: 700, goldPerHour: 22 },
 ];
 
 const EXPEDITION_BY_KEY = Object.fromEntries(EXPEDITIONS.map((e) => [e.key, e]));
@@ -44,6 +44,19 @@ export function clampExpeditionHours(hours) {
     return Math.max(EXPEDITION_MIN_HOURS, Math.min(EXPEDITION_MAX_HOURS, h));
 }
 
+// Longer commitments pay better PER HOUR, so there's a real reason to run one long
+// expedition instead of spamming short ones. Reward = rate · hours · bonus, where
+// bonus rises linearly from 1× at the minimum length to (1 + DURATION_BONUS)× at the
+// maximum — making total reward grow super-linearly with the chosen duration.
+const DURATION_BONUS = 1.0; // up to +100% per-hour efficiency at the longest run
+
+export function expeditionDurationMultiplier(hours) {
+    const h = clampExpeditionHours(hours);
+    const span = EXPEDITION_MAX_HOURS - EXPEDITION_MIN_HOURS;
+    const t = span > 0 ? (h - EXPEDITION_MIN_HOURS) / span : 0;
+    return 1 + DURATION_BONUS * t;
+}
+
 /** Available slots for a clan of `memberCount`, clamped to the collaboration band. */
 export function expeditionSlots(memberCount) {
     const n = Math.floor(Number(memberCount) || 0);
@@ -52,18 +65,21 @@ export function expeditionSlots(memberCount) {
 
 /**
  * Concrete run parameters for launching `def` over `hours` with `slots` seats.
- * Reward scales linearly with duration; `rewardGold` is the total pot (split per
- * participant on resolve), `rewardXp` is the clan-wide grant, and `powerReq`
- * scales with party size so a bigger party isn't automatically a walkover.
+ * Reward grows super-linearly with duration (longer runs pay better per hour, see
+ * expeditionDurationMultiplier); `rewardGold` is the total pot (split per
+ * participant on resolve) and is deliberately a small trickle to fit the scarce
+ * gold economy, `rewardXp` is the clan-wide grant, and `powerReq` scales with
+ * party size so a bigger party isn't automatically a walkover.
  */
 export function expeditionPlan(def, hours, slots) {
     const h = clampExpeditionHours(hours);
+    const mult = expeditionDurationMultiplier(h);
     return {
         durationMs: h * HOUR,
         hours: h,
         slots,
-        rewardXp: Math.round(def.xpPerHour * h),
-        rewardGold: Math.round(def.goldPerHour * h),
+        rewardXp: Math.round(def.xpPerHour * h * mult),
+        rewardGold: Math.round(def.goldPerHour * h * mult),
         powerReq: def.powerPerSlot * slots,
     };
 }

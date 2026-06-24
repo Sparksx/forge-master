@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     EXPEDITIONS, expeditionDef, expeditionOutcome, maxActiveExpeditions,
-    expeditionSlots, clampExpeditionHours, expeditionPlan,
+    expeditionSlots, clampExpeditionHours, expeditionPlan, expeditionDurationMultiplier,
     EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS, EXPEDITION_MIN_SLOTS, EXPEDITION_MAX_SLOTS,
     MISSIONS, missionDef, MISSION_TYPES, MISSION_PROGRESS_MAX_PER_REPORT,
 } from '../clan-activities.js';
@@ -63,15 +63,27 @@ describe('clampExpeditionHours', () => {
     });
 });
 
+describe('expeditionDurationMultiplier', () => {
+    it('is 1 at the minimum length and rises with duration', () => {
+        expect(expeditionDurationMultiplier(EXPEDITION_MIN_HOURS)).toBe(1);
+        expect(expeditionDurationMultiplier(EXPEDITION_MAX_HOURS)).toBeGreaterThan(1);
+        expect(expeditionDurationMultiplier(EXPEDITION_MAX_HOURS))
+            .toBeGreaterThan(expeditionDurationMultiplier(Math.floor((EXPEDITION_MIN_HOURS + EXPEDITION_MAX_HOURS) / 2)));
+    });
+});
+
 describe('expeditionPlan', () => {
     const def = EXPEDITIONS[0];
 
-    it('scales reward linearly with duration', () => {
+    it('time scales linearly but reward grows super-linearly (longer = better per hour)', () => {
         const one = expeditionPlan(def, 1, 4);
         const four = expeditionPlan(def, 4, 4);
-        expect(four.rewardXp).toBe(one.rewardXp * 4);
-        expect(four.rewardGold).toBe(one.rewardGold * 4);
         expect(four.durationMs).toBe(one.durationMs * 4);
+        // 4× the time pays MORE than 4× the reward thanks to the duration bonus.
+        expect(four.rewardXp).toBeGreaterThan(one.rewardXp * 4);
+        expect(four.rewardGold).toBeGreaterThan(one.rewardGold * 4);
+        // …which means a longer run earns strictly more per hour.
+        expect(four.rewardXp / 4).toBeGreaterThan(one.rewardXp);
     });
 
     it('scales power requirement with party size', () => {
