@@ -203,16 +203,23 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
     background: var(--bg-2);
 }
 .gear-slot.filled {
-    border-color: var(--rarity);
-    background: color-mix(in srgb, var(--rarity) 18%, var(--bg-2));
+    /* Solid, vivid rarity fill (subtle top-down sheen for depth) */
+    border-color: color-mix(in srgb, var(--rarity) 65%, #000);
+    background:
+        linear-gradient(160deg,
+            color-mix(in srgb, var(--rarity) 82%, #fff) 0%,
+            var(--rarity) 42%,
+            color-mix(in srgb, var(--rarity) 82%, #000) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 2px 6px rgba(0, 0, 0, .25);
 }
 .gear-slot-icon { font-size: 2.2rem; z-index: 1; }
+.gear-slot.filled .gear-slot-icon { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); }
 .gear-slot-icon.empty { opacity: .22; filter: grayscale(1); }
 .gear-slot-lvl { /* full-width bottom strip */
     position: absolute; left: 0; right: 0; bottom: 0; top: auto;
     text-align: center; padding: 3px 0; font-size: .72rem; font-weight: 800; letter-spacing: .3px;
     color: #fff;
-    background: color-mix(in srgb, var(--rarity) 60%, rgba(0,0,0,.75));
+    background: color-mix(in srgb, var(--rarity) 35%, rgba(0, 0, 0, .82));
     z-index: 2;
 }
 
@@ -267,16 +274,14 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .gear-header { font-family: 'Cinzel', serif; font-weight: 700; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
 .gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .gear-slot {
-    position: relative; aspect-ratio: 1; border-radius: 12px;
-    background: var(--bg-2); border: 1px solid var(--line);
+    position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden;
+    background: var(--bg-2); border: 2px solid var(--line);
     display: flex; align-items: center; justify-content: center; cursor: pointer;
     transition: transform .1s ease;
 }
 .gear-slot:active { transform: scale(.95); }
-.gear-slot.filled { border-color: var(--rarity); }
-.gear-slot-icon { font-size: 1.9rem; }
-.gear-slot-icon.empty { opacity: .25; }
-.gear-slot-lvl { position: absolute; bottom: 4px; right: 6px; font-size: .72rem; font-weight: 800; color: var(--rarity, var(--muted)); }
+/* Filled background, border, icon and level styling live in the
+   “Vivid rarity gear cards” block above — solid per-rarity fills. */
 
 /* ── Item cards / reveal ─────────────────────────────────── */
 .item-card { background: var(--bg-2); border: 1px solid var(--rarity, var(--line)); border-left: 4px solid var(--rarity, var(--line)); border-radius: 12px; padding: 14px; }
