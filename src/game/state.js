@@ -198,6 +198,21 @@ export function spendGold(amount) {
     return true;
 }
 
+/**
+ * Add gold that the server already granted out-of-band (e.g. a resolved clan
+ * expedition reward). Flat — the server reward is final, so we don't re-apply the
+ * clan gold bonus. Mirroring it locally keeps the client's authoritative gold in
+ * sync so the next debounced save doesn't overwrite the reward. Returns the amount.
+ */
+export function creditServerGold(amount) {
+    const amt = Math.floor(Number(amount));
+    if (!Number.isFinite(amt) || amt <= 0) return 0;
+    state.gold += amt;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return amt;
+}
+
 // ── Admin/dev helpers (used by the in-game staff panel) ─────────────────────
 /** Grant gold directly, bypassing clan bonus. For admin self-grants only. */
 export function addGold(amount) {

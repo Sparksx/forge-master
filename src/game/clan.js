@@ -90,14 +90,18 @@ export async function transferLeadership(userId) {
 // ── Expeditions ──────────────────────────────────────────────────────────────
 export const listExpeditions = async () => readJson(await apiFetch('/api/clans/expeditions'));
 
-export async function startExpedition(defKey) {
-    const clan = await readJson(await apiFetch('/api/clans/expeditions', { method: 'POST', body: { defKey } }));
+export async function startExpedition(defKey, durationHours) {
+    const clan = await readJson(await apiFetch('/api/clans/expeditions', { method: 'POST', body: { defKey, durationHours } }));
     setMyClan(clan);
     return clan;
 }
 
-export function joinExpedition(id) {
-    return readJson(apiFetch(`/api/clans/expeditions/${id}/join`, { method: 'POST' }));
+export async function joinExpedition(id) {
+    return readJson(await apiFetch(`/api/clans/expeditions/${id}/join`, { method: 'POST' }));
+}
+
+export async function cancelExpedition(id) {
+    return readJson(await apiFetch(`/api/clans/expeditions/${id}/cancel`, { method: 'POST' }));
 }
 
 // ── Missions ──────────────────────────────────────────────────────────────────
