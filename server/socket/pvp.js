@@ -25,6 +25,17 @@ const BASE_ELO_RANGE = 200;
 const ELO_RANGE_EXPANSION = 100;
 const RANGE_INTERVAL = PVP_RANGE_INTERVAL;
 
+const QUEUE_TTL = 5 * 60 * 1000; // 5 min — evict stale entries
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, entry] of queue) {
+        if (now - entry.queuedAt > QUEUE_TTL) {
+            entry.socket.emit('pvp:cancelled', { reason: 'timeout' });
+            queue.delete(id);
+        }
+    }
+}, 30_000);
+
 export function registerPvpHandlers(io, socket) {
     socket.on('pvp:queue', async () => {
         try {

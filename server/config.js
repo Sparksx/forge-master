@@ -3,8 +3,8 @@ import 'dotenv/config';
 export const PORT = process.env.PORT || 3000;
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production';
-export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-in-production';
+export const JWT_SECRET = process.env.JWT_SECRET || (NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET env var is required in production'); })() : 'dev-jwt-secret-change-in-production');
+export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (NODE_ENV === 'production' ? (() => { throw new Error('JWT_REFRESH_SECRET env var is required in production'); })() : 'dev-jwt-secret-change-in-production');
 export const JWT_ACCESS_EXPIRY = '15m';
 export const JWT_REFRESH_EXPIRY = '30d';
 
