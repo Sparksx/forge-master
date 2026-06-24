@@ -10,7 +10,7 @@ import {
     getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
     upgradeForge, equipItem, trashItem, getGold,
     getArenaRank, setArenaRank, getPowerScore, getAvatar, getCombatStats, grantGold,
-    grantPlayerXp, getForgeLevelProgress,
+    grantPlayerXp, getForgeLevelProgress, getForgeSpeedPct, getForgeBestOf,
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
@@ -206,13 +206,13 @@ function doForge() {
     setTimeout(() => {
         btn.classList.remove('forging');
         forging = false;
-        const { item, gold } = forge();
+        const { item, gold, rolls } = forge(getForgeBestOf());
         gameEvents.emit(EVENTS.ITEM_FORGED, item);
         if (gold > 0) {
             const granted = grantGold(gold);
             forgeFloater(`+${fmt(granted)}💰`, '#ffcf4d');
         }
-        showReveal(item);
+        showReveal(item, rolls);
     }, 700);
 }
 
@@ -225,9 +225,12 @@ function toggleAutoForge() {
 
 function scheduleAutoForge() {
     clearTimeout(autoForgeTimer);
+    // Clan forge-speed perk shortens the interval (capped so it never gets silly).
+    const base = fast ? 900 : 1600;
+    const delay = Math.max(400, Math.round(base / (1 + getForgeSpeedPct() / 100)));
     autoForgeTimer = setTimeout(() => {
         if (!visible || !autoForge) return;
-        const { item, gold } = forge();
+        const { item, gold } = forge(getForgeBestOf());
         gameEvents.emit(EVENTS.ITEM_FORGED, item);
         if (gold > 0) {
             const granted = grantGold(gold);
@@ -242,7 +245,7 @@ function scheduleAutoForge() {
             forgeFloater('🗑️', '');
         }
         scheduleAutoForge();
-    }, fast ? 900 : 1600);
+    }, delay);
 }
 
 function forgeFloater(text, color) {
@@ -255,7 +258,7 @@ function forgeFloater(text, color) {
 }
 
 // ── Reveal / slot detail / forge upgrade (kept from the old Forge screen) ─────
-function showReveal(item) {
+function showReveal(item, rolls = 1) {
     let decided = false;
     const { delta } = powerDelta(item);
     const equipped = getEquippedItem(item.type);
@@ -265,6 +268,7 @@ function showReveal(item) {
 
     const body = h('div', { className: 'reveal', style: { '--rarity': rarityColor(item.tier) } },
         h('div', { className: 'reveal-flash', text: rarityName(item.tier) }),
+        rolls > 1 ? h('div', { className: 'reveal-bestof muted', text: `🍀 Best of ${rolls} (clan perk)` }) : null,
         renderItemCard(item),
         h('div', { className: 'reveal-delta' }, renderDeltaBadge(delta)),
         equipped ? h('p', { className: 'reveal-replaces', text: `Replaces ${itemName(equipped)} (Lv ${equipped.level})` }) : null,

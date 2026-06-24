@@ -7,6 +7,7 @@ import { getAccessToken } from './api.js';
 import { connectSocket } from './socket-client.js';
 import { loadFromServer, loadLocal } from './game/state.js';
 import { loadMyClan } from './game/clan.js';
+import { initClanMissions } from './game/clan-missions.js';
 import { initPvp } from './game/pvp.js';
 import { initApp } from './screens/app.js';
 
@@ -32,6 +33,9 @@ async function startGame() {
 
     // Load the player's clan so perks apply before the UI renders.
     await loadMyClan();
+
+    // Track gameplay toward clan missions (forge/defeat/boss/swap/arena).
+    initClanMissions();
 
     initApp(document.getElementById('game-container'));
 }

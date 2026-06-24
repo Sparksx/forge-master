@@ -13,7 +13,7 @@ export const canUseClans = () => !!getAccessToken();
 function setMyClan(clan) {
     myClan = clan || null;
     loaded = true;
-    setClanPerks(clan?.perks || { goldBonusPct: 0, forgeLuckPct: 0 });
+    setClanPerks(clan?.perks || {});
     gameEvents.emit(EVENTS.CLAN_CHANGED, myClan);
 }
 
@@ -69,4 +69,47 @@ export async function contribute(amount) {
 export async function refreshMyClan() {
     if (!myClan) return null;
     return loadMyClan();
+}
+
+// ── Rank management ──────────────────────────────────────────────────────────
+async function memberAction(userId, action) {
+    const clan = await readJson(await apiFetch(`/api/clans/members/${userId}/${action}`, { method: 'POST' }));
+    setMyClan(clan);
+    return clan;
+}
+export const promoteMember = (userId) => memberAction(userId, 'promote');
+export const demoteMember = (userId) => memberAction(userId, 'demote');
+export const kickMember = (userId) => memberAction(userId, 'kick');
+
+export async function transferLeadership(userId) {
+    const clan = await readJson(await apiFetch('/api/clans/transfer', { method: 'POST', body: { userId } }));
+    setMyClan(clan);
+    return clan;
+}
+
+// ── Expeditions ──────────────────────────────────────────────────────────────
+export const listExpeditions = async () => readJson(await apiFetch('/api/clans/expeditions'));
+
+export async function startExpedition(defKey) {
+    const clan = await readJson(await apiFetch('/api/clans/expeditions', { method: 'POST', body: { defKey } }));
+    setMyClan(clan);
+    return clan;
+}
+
+export function joinExpedition(id) {
+    return readJson(apiFetch(`/api/clans/expeditions/${id}/join`, { method: 'POST' }));
+}
+
+// ── Missions ──────────────────────────────────────────────────────────────────
+export const listMissions = async () => readJson(await apiFetch('/api/clans/missions'));
+
+export async function startMission(defKey) {
+    return readJson(await apiFetch('/api/clans/missions', { method: 'POST', body: { defKey } }));
+}
+
+/** Report play progress toward clan missions of a given type. Fire-and-forget. */
+export function reportMissionProgress(type, amount) {
+    return apiFetch('/api/clans/missions/progress', { method: 'POST', body: { type, amount } })
+        .then(readJson)
+        .catch(() => null);
 }

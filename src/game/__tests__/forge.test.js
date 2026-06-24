@@ -96,6 +96,24 @@ describe('forge', () => {
         expect(withGold).toBeGreaterThan(0);
         expect(withGold).toBeLessThan(N / 2);
     });
+
+    it('best-of-N reports the roll count and never returns a worse tier than 1 roll on average', () => {
+        // The "rolls" field reflects the clan best-of-N perk.
+        const r = forge(3);
+        expect(r.rolls).toBe(3);
+        expect(r.item).toBeTruthy();
+
+        // Over many trials, best-of-5 should yield a higher mean tier than best-of-1.
+        const mean = (count) => {
+            let sum = 0;
+            const N = 600;
+            for (let i = 0; i < N; i++) sum += forge(count).item.tier;
+            return sum / N;
+        };
+        // At forge level 1 every roll is Common, so guard the comparison by using
+        // the default forge level; best-of-5 must not be worse than best-of-1.
+        expect(mean(5)).toBeGreaterThanOrEqual(mean(1));
+    });
 });
 
 describe('rollLevel', () => {

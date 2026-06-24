@@ -28,7 +28,7 @@ const state = {
     playerXp: 0,           // XP toward the next player level (resets each level)
     avatar: 'wizard',
     // Clan perks, refreshed by clan.js after loading the player's clan.
-    perks: { goldBonusPct: 0, forgeLuckPct: 0 },
+    perks: { goldBonusPct: 0, forgeLuckPct: 0, forgeSpeedPct: 0, forgeBestOf: 1, statBonusPct: 0 },
 };
 
 // ── Validation / migration ────────────────────────────────────────────────
@@ -72,6 +72,9 @@ export const getPlayerLevel = () => state.playerLevel;
 export const getAvatar = () => state.avatar;
 export const getForgeLuckPct = () => state.perks.forgeLuckPct || 0;
 export const getGoldBonusPct = () => state.perks.goldBonusPct || 0;
+export const getForgeSpeedPct = () => state.perks.forgeSpeedPct || 0;
+export const getForgeBestOf = () => Math.max(1, state.perks.forgeBestOf || 1);
+export const getStatBonusPct = () => state.perks.statBonusPct || 0;
 
 /** Player XP progress toward the next level: { level, xp, need, pct, maxed }. */
 export function getPlayerLevelProgress() {
@@ -100,11 +103,11 @@ export function getForgeLevelProgress() {
 }
 
 export function getCombatStats() {
-    return computeStatsFromEquipment(state.equipment, state.playerLevel);
+    return computeStatsFromEquipment(state.equipment, state.playerLevel, getStatBonusPct());
 }
 
 export function getPowerScore() {
-    return playerPowerScore(state.equipment, state.playerLevel);
+    return playerPowerScore(state.equipment, state.playerLevel, getStatBonusPct());
 }
 
 export function getBestLevelForSlot(type, tier) {
@@ -257,6 +260,9 @@ export function setClanPerks(perks) {
     state.perks = {
         goldBonusPct: perks?.goldBonusPct || 0,
         forgeLuckPct: perks?.forgeLuckPct || 0,
+        forgeSpeedPct: perks?.forgeSpeedPct || 0,
+        forgeBestOf: Math.max(1, perks?.forgeBestOf || 1),
+        statBonusPct: perks?.statBonusPct || 0,
     };
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
