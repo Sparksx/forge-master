@@ -37,8 +37,11 @@ export function getCombatLog(combatId) {
 }
 
 const ALLOWED_CHANNELS = ['general', 'trading', 'clans'];
+const CHAT_COOLDOWN_MS = 1500;
 
 export function registerChatHandlers(io, socket) {
+    let lastMessageAt = 0;
+
     // Join the general channel by default
     socket.join('chat:general');
 
@@ -47,6 +50,13 @@ export function registerChatHandlers(io, socket) {
 
     // Handle new message
     socket.on('chat:message', async (data) => {
+        const now = Date.now();
+        if (now - lastMessageAt < CHAT_COOLDOWN_MS) {
+            socket.emit('chat:error', { message: 'Please wait before sending another message' });
+            return;
+        }
+        lastMessageAt = now;
+
         const { content, channel = 'general' } = data || {};
         if (!ALLOWED_CHANNELS.includes(channel)) return;
 

@@ -35,10 +35,11 @@ const server = createServer(app);
 // Security headers
 app.use(helmet({
     contentSecurityPolicy: false,
+    hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // CORS
-app.use(cors(CORS_ORIGIN === '*' ? {} : { origin: CORS_ORIGIN }));
+app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
 
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
@@ -53,7 +54,7 @@ app.use('/api/', apiLimiter);
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -68,7 +69,7 @@ app.use('/api/clans', clanRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', env: NODE_ENV });
+    res.json({ status: 'ok' });
 });
 
 // Setup Socket.io

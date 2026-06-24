@@ -26,15 +26,32 @@ const ELO_RANGE_EXPANSION = 100;
 const RANGE_INTERVAL = PVP_RANGE_INTERVAL;
 
 const QUEUE_TTL = 5 * 60 * 1000; // 5 min — evict stale entries
+const MATCH_TTL = 15 * 60 * 1000; // 15 min — cleanup abandoned matches
+
 setInterval(() => {
     const now = Date.now();
     for (const [id, entry] of queue) {
         if (now - entry.queuedAt > QUEUE_TTL) {
-            entry.socket.emit('pvp:cancelled', { reason: 'timeout' });
+            if (entry.socket.connected) {
+                entry.socket.emit('pvp:cancelled', { reason: 'timeout' });
+            }
             queue.delete(id);
         }
     }
 }, 30_000);
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, match] of matches) {
+        const matchCreatedAt = parseInt(id.split('_')[1]) || 0;
+        if (now - matchCreatedAt > MATCH_TTL) {
+            if (match.turnTimer) clearTimeout(match.turnTimer);
+            if (match.player1.socket.connected) delete match.player1.socket.matchId;
+            if (match.player2.socket.connected) delete match.player2.socket.matchId;
+            matches.delete(id);
+        }
+    }
+}, 60_000);
 
 export function registerPvpHandlers(io, socket) {
     socket.on('pvp:queue', async () => {
@@ -215,8 +232,8 @@ function startTurnTimer(io, match) {
     match.player1.action = null;
     match.player2.action = null;
 
-    match.player1.socket.emit('pvp:turn', { turn: match.turn, timeLimit: TURN_TIMEOUT });
-    match.player2.socket.emit('pvp:turn', { turn: match.turn, timeLimit: TURN_TIMEOUT });
+    if (match.player1.socket.connected) match.player1.socket.emit('pvp:turn', { turn: match.turn, timeLimit: TURN_TIMEOUT });
+    if (match.player2.socket.connected) match.player2.socket.emit('pvp:turn', { turn: match.turn, timeLimit: TURN_TIMEOUT });
 
     match.turnTimer = setTimeout(() => {
         // Auto-attack for players who didn't act
@@ -271,12 +288,12 @@ function resolveTurn(io, match) {
     match.turnLog.push(turnResult);
 
     // Send perspective-aware results
-    p1.socket.emit('pvp:turn-result', {
+    if (p1.socket.connected) p1.socket.emit('pvp:turn-result', {
         ...turnResult,
         you: turnResult.player1,
         opponent: turnResult.player2,
     });
-    p2.socket.emit('pvp:turn-result', {
+    if (p2.socket.connected) p2.socket.emit('pvp:turn-result', {
         ...turnResult,
         you: turnResult.player2,
         opponent: turnResult.player1,
@@ -446,8 +463,8 @@ async function endMatch(io, match, winnerId, reason) {
         player2: { userId: p2.userId, username: p2.username, ratingChange: p2Change, power: p2.power },
     };
 
-    p1.socket.emit('pvp:end', { ...endData, you: endData.player1, opponent: endData.player2 });
-    p2.socket.emit('pvp:end', { ...endData, you: endData.player2, opponent: endData.player1 });
+    if (p1.socket.connected) p1.socket.emit('pvp:end', { ...endData, you: endData.player1, opponent: endData.player2 });
+    if (p2.socket.connected) p2.socket.emit('pvp:end', { ...endData, you: endData.player2, opponent: endData.player1 });
 
     // Cleanup
     delete p1.socket.matchId;

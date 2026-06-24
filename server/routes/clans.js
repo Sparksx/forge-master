@@ -233,25 +233,25 @@ router.post('/contribute', requireAuth, async (req, res) => {
         const membership = await prisma.clanMember.findUnique({ where: { userId: req.user.userId } });
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
-        // Verify the player actually has enough gold (server-side check)
-        const gameState = await prisma.gameState.findUnique({ where: { userId: req.user.userId }, select: { gold: true } });
-        if (!gameState || gameState.gold < amount) {
-            return res.status(400).json({ error: 'Insufficient gold' });
-        }
-
-        // Atomically deduct gold from player AND credit the clan treasury
-        await prisma.$transaction([
-            prisma.gameState.update({ where: { userId: req.user.userId }, data: { gold: { decrement: amount } } }),
-            prisma.clanMember.update({ where: { userId: req.user.userId }, data: { contributed: { increment: amount } } }),
-            prisma.clan.update({ where: { id: membership.clanId }, data: { treasury: { increment: amount } } }),
-        ]);
+        // Gold check + deduction inside one interactive transaction to prevent race conditions
+        const remainingGold = await prisma.$transaction(async (tx) => {
+            const gameState = await tx.gameState.findUnique({ where: { userId: req.user.userId }, select: { gold: true } });
+            if (!gameState || gameState.gold < amount) {
+                throw Object.assign(new Error('Insufficient gold'), { status: 400 });
+            }
+            await tx.gameState.update({ where: { userId: req.user.userId }, data: { gold: { decrement: amount } } });
+            await tx.clanMember.update({ where: { userId: req.user.userId }, data: { contributed: { increment: amount } } });
+            await tx.clan.update({ where: { id: membership.clanId }, data: { treasury: { increment: amount } } });
+            return gameState.gold - amount;
+        });
 
         const full = await prisma.clan.findUnique({
             where: { id: membership.clanId },
             include: { ...MEMBER_INCLUDE, _count: { select: { members: true } } },
         });
-        res.json({ ...serializeClan(full, { withMembers: true }), gold: gameState.gold - amount });
+        res.json({ ...serializeClan(full, { withMembers: true }), gold: remainingGold });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Contribute error:', err);
         res.status(500).json({ error: 'Failed to contribute' });
     }
