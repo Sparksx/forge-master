@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
     BASE_HEALTH, BASE_DAMAGE, HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, MAX_PLAYER_LEVEL,
     BASE_ATTACK_PERIOD, playerBaseHealth, playerBaseDamage, computeStatsFromEquipment,
-    playerPowerScore, weaponStyle,
+    playerPowerScore, weaponStyle, gearPowerFromEquipment, calculateItemStats,
+    MAX_ITEM_LEVEL, MAX_TIER, BONUS_STATS,
 } from '../stats.js';
 
 describe('player level base stats', () => {
@@ -47,6 +48,57 @@ describe('playerPowerScore', () => {
     it('increases with player level even with the same gear', () => {
         const equipment = {};
         expect(playerPowerScore(equipment, 30)).toBeGreaterThan(playerPowerScore(equipment, 1));
+    });
+});
+
+describe('gearPowerFromEquipment is tamper-resistant', () => {
+    // An honest weapon: stats are the canonical value for its level/tier.
+    const honestWeapon = {
+        type: 'weapon', level: 10, tier: 3,
+        stats: calculateItemStats(10, 3, false), statType: 'damage', bonuses: [],
+    };
+
+    it('matches the canonical power for honest gear', () => {
+        const power = gearPowerFromEquipment({ weapon: honestWeapon });
+        expect(power).toBeGreaterThan(0);
+    });
+
+    it('ignores a fabricated raw `stats` value (recomputes from level/tier)', () => {
+        const cheater = { ...honestWeapon, stats: 999999999 };
+        expect(gearPowerFromEquipment({ weapon: cheater }))
+            .toBe(gearPowerFromEquipment({ weapon: honestWeapon }));
+    });
+
+    it('clamps an over-cap item level so it cannot inflate power', () => {
+        const overLevel = { ...honestWeapon, level: 1e9 };
+        const capped = { ...honestWeapon, level: MAX_ITEM_LEVEL };
+        expect(gearPowerFromEquipment({ weapon: overLevel }))
+            .toBe(gearPowerFromEquipment({ weapon: capped }));
+    });
+
+    it('clamps an over-cap tier', () => {
+        const overTier = { ...honestWeapon, tier: 999 };
+        const capped = { ...honestWeapon, tier: MAX_TIER };
+        expect(gearPowerFromEquipment({ weapon: overTier }))
+            .toBe(gearPowerFromEquipment({ weapon: capped }));
+    });
+
+    it('ignores unknown bonus stats and clamps out-of-range bonus values', () => {
+        const max = BONUS_STATS.critChance.max;
+        const bogus = {
+            ...honestWeapon,
+            bonuses: [{ type: 'instantWin', value: 1000 }, { type: 'critChance', value: 100000 }],
+        };
+        const legit = { ...honestWeapon, bonuses: [{ type: 'critChance', value: max }] };
+        expect(gearPowerFromEquipment({ weapon: bogus }))
+            .toBe(gearPowerFromEquipment({ weapon: legit }));
+    });
+
+    it('ignores items in unknown slots and handles junk input', () => {
+        expect(gearPowerFromEquipment({ wings: honestWeapon })).toBe(0);
+        expect(gearPowerFromEquipment(null)).toBe(0);
+        expect(gearPowerFromEquipment([])).toBe(0);
+        expect(gearPowerFromEquipment({ weapon: null })).toBe(0);
     });
 });
 

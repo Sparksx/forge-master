@@ -1,16 +1,20 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { calculateStats, calculatePowerScore } from '../../shared/stats.js';
+import { gearPowerFromEquipment } from '../../shared/stats.js';
 import { clanLevelFromTreasury, clanPerks } from '../../shared/clan-config.js';
 
 const router = Router();
 
-/** Power score for a single member from their saved equipment. */
+/**
+ * Power score for a single member from their saved equipment. Uses the
+ * tamper-resistant calculation (recomputed from each item's slot/level/tier,
+ * ignoring any client-supplied raw `stats`) so a modified save can't inflate a
+ * member's standing on the clan leaderboard.
+ */
 function memberPower(gameState) {
     if (!gameState || !gameState.equipment) return 0;
-    const { totalHealth, totalDamage, bonuses } = calculateStats(gameState.equipment);
-    return calculatePowerScore(totalHealth, totalDamage, bonuses);
+    return gearPowerFromEquipment(gameState.equipment);
 }
 
 /** Serialize a clan (with members) into the client shape. */
