@@ -4,6 +4,8 @@ import { avatarEmoji } from '../game/config.js';
 import { getGold, getPowerScore, getAvatar } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
 
+import { initAdminUI } from './admin.js';
+
 import * as home from './home.js';
 import * as pvp from './pvp.js';
 import * as clan from './clan.js';
@@ -46,6 +48,9 @@ export function initApp(mountEl) {
         active?.refresh?.();
     });
     gameEvents.on(EVENTS.CLAN_CHANGED, updateHeader);
+
+    // Staff-only floating tools button (moderation, resources, stats…).
+    initAdminUI(mountEl.querySelector('.app-root'));
 
     switchTab('home');
     updateHeader();

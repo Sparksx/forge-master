@@ -427,6 +427,30 @@ router.post('/users/:id/level', requireRole('admin'), async (req, res) => {
     }
 });
 
+// ─── POST /api/admin/users/:id/forge-level ───────────────────────
+router.post('/users/:id/forge-level', requireRole('admin'), async (req, res) => {
+    const userId = parseInt(req.params.id);
+    const { forgeLevel } = req.body;
+    if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+    if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > 12) {
+        return res.status(400).json({ error: 'Forge level must be between 1 and 12' });
+    }
+
+    try {
+        const state = await prisma.gameState.findUnique({ where: { userId } });
+        if (!state) return res.status(404).json({ error: 'Game state not found' });
+
+        const newLevel = Math.floor(forgeLevel);
+        await prisma.gameState.update({ where: { userId }, data: { forgeLevel: newLevel } });
+        await logAudit(req.user.userId, 'set_forge_level', userId, { forgeLevel: newLevel });
+
+        res.json({ forgeLevel: newLevel });
+    } catch (err) {
+        console.error('Set forge level error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // ─── PUT /api/admin/users/:id/role ───────────────────────────────
 router.put('/users/:id/role', requireRole('admin'), async (req, res) => {
     const userId = parseInt(req.params.id);

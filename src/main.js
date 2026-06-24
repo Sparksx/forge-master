@@ -1,5 +1,6 @@
 // Forge Master: Reforged — entry point.
 import '../css/reforged.css';
+import '../css/admin-panel.css';
 
 import { initAuth, setAuthSuccessCallback, getCurrentUser } from './auth.js';
 import { getAccessToken } from './api.js';
