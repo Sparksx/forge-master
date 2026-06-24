@@ -337,7 +337,6 @@ function updateGearGrid() {
         if (item) {
             slot.style.setProperty('--rarity', rarityColor(item.tier));
             slot.classList.add('filled');
-            slot.appendChild(h('span', { className: 'gear-slot-pip', attrs: { title: rarityName(item.tier) } }));
             slot.appendChild(h('span', { className: 'gear-slot-icon', text: slotIcon(type) }));
             slot.appendChild(h('span', { className: 'gear-slot-lvl', text: `Lv ${item.level}` }));
         } else {
