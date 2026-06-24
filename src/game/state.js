@@ -1,7 +1,7 @@
 // Game state: equipment, gold, forge level, arena rank, avatar.
 // Persists via the existing /api/game/state endpoint (+ localStorage fallback).
 import {
-    EQUIPMENT_TYPES, HEALTH_ITEMS, MAX_TIER, MAX_ITEM_LEVEL, SAVE_KEY,
+    EQUIPMENT_TYPES, HEALTH_ITEMS, MAX_TIER, MAX_ITEM_LEVEL, SAVE_KEY, STARTING_GOLD,
     FORGE_LEVELS, MAX_FORGE_LEVEL, MAX_PLAYER_LEVEL, calculateItemStats,
     computeStatsFromEquipment, playerPowerScore,
     forgeXpForLevel, playerXpForLevel,
@@ -18,7 +18,7 @@ function emptyEquipment() {
 
 const state = {
     equipment: emptyEquipment(),
-    gold: 0,
+    gold: STARTING_GOLD,
     forgeLevel: 1,
     forgeXp: 0,            // XP toward the next forge level (resets each level)
     bestLevels: {},        // { [type]: { [tier]: level } }
@@ -206,7 +206,7 @@ export function addGold(amount) {
 /** Reset the local player's progression to a fresh start (admin self-reset). */
 export function resetProgress() {
     state.equipment = emptyEquipment();
-    state.gold = 0;
+    state.gold = STARTING_GOLD;
     state.forgeLevel = 1;
     state.forgeXp = 0;
     state.bestLevels = {};

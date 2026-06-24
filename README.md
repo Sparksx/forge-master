@@ -27,9 +27,12 @@
 5. **Clan** — Create or join a clan, pool gold into a shared treasury to level it up,
    and grant passive perks (**+gold**, **+forge luck**) to every member.
 
-**One currency — Gold**, and it's deliberately **scarce** — it powers forge upgrades and
-clan contributions. You earn it from **boss kills** in the arena and the occasional lucky
-**forge** drop; normal mobs pay nothing and gear can't be sold back for gold.
+**One currency — Gold**, and it's deliberately **scarce**. You start with a small purse
+(100) and every in-game payout is a *tiny gift*: a few coins from **boss kills** and the
+occasional lucky **forge** nugget — normal mobs pay nothing and gear can't be sold back for
+gold. Costs are small to match (forge upgrades start at 10 gold, a clan costs 500).
+Stockpiling gold in real quantity is meant to come from the gold shop (coming later), not
+from grinding.
 
 ## Features
 

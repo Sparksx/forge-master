@@ -143,4 +143,11 @@ describe('real-time combat helpers', () => {
         // Big bosses pay more than regular bosses at the same rank.
         expect(encounterReward(50, 'bigboss', true)).toBeGreaterThan(encounterReward(50, 'boss', true));
     });
+
+    it('boss payouts stay a tiny gift even at great depth (gold is bought, not farmed)', () => {
+        // Guard against silent re-inflation: a deep boss/big-boss still pays only
+        // a small handful of gold, never a faucet.
+        expect(encounterReward(100, 'boss', true)).toBeLessThan(50);
+        expect(encounterReward(200, 'bigboss', true)).toBeLessThan(150);
+    });
 });

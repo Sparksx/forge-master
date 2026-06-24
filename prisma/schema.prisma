@@ -72,7 +72,7 @@ model GameState {
   userId            Int      @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   equipment         Json     @default("{}")
-  gold              Int      @default(0)
+  gold              Int      @default(100)
   forgeLevel        Int      @default(1)
   forgeUpgrade      Json?
   combat            Json     @default("{\"currentWave\":1,\"currentSubWave\":1,\"highestWave\":1,\"highestSubWave\":1}")

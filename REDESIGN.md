@@ -38,9 +38,11 @@ stat math, database) and **rebuilds the game on top of it** around one tight loo
 ## One currency
 
 **Gold** does everything: forge upgrades and clan contributions. It's deliberately
-**scarce** — you earn it from **boss kills** in the arena and the occasional lucky
-**forge** drop; normal mobs pay nothing and gear can't be sold back for gold. Diamonds,
-essence, shards, and the IAP shop are gone.
+**scarce** — you start with a small purse (100) and every in-game payout is a *tiny gift*:
+a few coins from **boss kills** and the occasional lucky **forge** nugget. Normal mobs pay
+nothing and gear can't be sold back for gold. Costs are kept small to match, and real gold
+quantity is meant to come from the gold shop (later), not grinding. Diamonds, essence,
+shards, and the IAP shop are gone.
 
 ## What was kept (infra)
 
