@@ -31,9 +31,14 @@ stat math, database) and **rebuilds the game on top of it** around one tight loo
    gets you deeper.
 4. **PvP** — Live duels against real players over the existing Socket.io engine.
    Elo ladder + leaderboard.
-5. **Clan** — Create or join a clan. Contribute gold to the clan treasury to raise
-   the **clan level**, which grants passive perks (**+gold**, **+forge luck**) to
-   *every* member. Clans rank on a global leaderboard by total member power.
+5. **Clan** — Create or join a clan and **play together** to raise the **clan level**,
+   which is driven by **clan XP — never gold** (deliberately non-pay-to-win). XP comes
+   from cooperative **Expeditions** (timed, slot-based runs) and **Missions** (clan goals
+   tracked from real play). Level grants passive perks to *every* member: **+gold**,
+   **+forge luck**, **+forge speed**, **best-of-N forge**, and **+HP & damage**. A 4-tier
+   rank ladder (Leader/Co-Leader/Officer/Member) governs who can manage members and launch
+   activities. The gold **treasury** is now just a non-power "clan bank" that funds
+   expedition launches. Clans rank on a global leaderboard by clan XP.
 
 ## One currency
 
