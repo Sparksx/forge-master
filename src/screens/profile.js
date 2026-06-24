@@ -1,7 +1,10 @@
 // Profile screen — avatar, stats summary, account, logout.
 import { h, clear, fmt, toast } from './components.js';
 import { AVATARS, avatarEmoji } from '../game/config.js';
-import { getAvatar, setAvatar, getPowerScore, getHighestArenaRank, getArenaRank, getGold, getForgeLevel } from '../game/state.js';
+import {
+    getAvatar, setAvatar, getPowerScore, getHighestArenaRank, getArenaRank, getGold, getForgeLevel,
+    getPlayerLevel, getPlayerLevelProgress, getForgeLevelProgress,
+} from '../game/state.js';
 import { getCurrentUser, performLogout } from '../auth.js';
 
 let root = null;
@@ -31,12 +34,18 @@ function rerender() {
             ),
         ),
         h('div', { className: 'profile-stats' },
+            statCard('⭐', 'Level', String(getPlayerLevel())),
             statCard('💪', 'Power', fmt(getPowerScore())),
             statCard('⚔️', 'Arena Rank', `${getArenaRank()} (best ${getHighestArenaRank()})`),
             statCard('🏆', 'PvP ELO', fmt(u.pvpRating ?? 1000)),
             statCard('📊', 'PvP Record', `${u.pvpWins ?? 0}W / ${u.pvpLosses ?? 0}L`),
             statCard('💰', 'Gold', fmt(getGold())),
             statCard('🔨', 'Forge Lv', String(getForgeLevel())),
+        ),
+        h('div', { className: 'profile-section' },
+            h('h3', { text: 'Progression' }),
+            xpRow('⭐', 'Player Level', getPlayerLevelProgress(), 'Defeat enemies to gain XP'),
+            xpRow('🔨', 'Forge Level', getForgeLevelProgress(), 'Forge gear to gain XP'),
         ),
         h('div', { className: 'profile-section' },
             h('h3', { text: 'Avatar' }),
@@ -59,5 +68,18 @@ function statCard(icon, label, value) {
         h('span', { className: 'stat-card-icon', text: icon }),
         h('span', { className: 'stat-card-value', text: value }),
         h('span', { className: 'stat-card-label', text: label }),
+    );
+}
+
+function xpRow(icon, label, prog, hint) {
+    const right = prog.maxed ? 'MAX' : `${fmt(prog.xp)} / ${fmt(prog.need)} XP`;
+    return h('div', { className: 'xp-row' },
+        h('div', { className: 'xp-row-head' },
+            h('span', { className: 'xp-row-label', text: `${icon} ${label} ${prog.level}` }),
+            h('span', { className: 'xp-row-val muted', text: right }),
+        ),
+        h('div', { className: 'xp-row-bar' },
+            h('div', { className: 'xp-row-fill', style: { width: `${Math.round(prog.pct * 100)}%` } })),
+        h('div', { className: 'xp-row-hint muted', text: prog.maxed ? 'Maxed out' : hint }),
     );
 }

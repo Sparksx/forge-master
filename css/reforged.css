@@ -114,6 +114,7 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .hdr-pill { display: flex; align-items: center; gap: 6px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-weight: 700; font-size: .9rem; }
 .hdr-gold .hdr-gold-val { color: var(--gold); }
 .hdr-power .hdr-power-val { color: var(--accent-2); }
+.hdr-level .hdr-level-val { color: #a78bfa; }
 
 .screen-stage { flex: 1; overflow-y: auto; padding: 16px 14px 90px; }
 .screen { animation: fade .2s ease; }
@@ -140,12 +141,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 /* Stage track header */
 .stage-head { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .stage-title { font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.35rem; color: var(--text); text-shadow: 0 2px 10px rgba(0,0,0,.5); }
-.stage-track { display: flex; align-items: center; gap: 0; }
-.stage-node { width: 12px; height: 12px; border-radius: 50%; background: var(--bg-3); border: 2px solid var(--line); position: relative; }
-.stage-node + .stage-node { margin-left: 34px; }
-.stage-node + .stage-node::before { content: ''; position: absolute; right: 12px; top: 50%; width: 34px; height: 2px; background: var(--line); transform: translateY(-50%); }
-.stage-node.prev { background: var(--accent); border-color: var(--accent); }
-.stage-node.cur { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 12px var(--gold); transform: scale(1.25); }
 
 /* Battle stage — a 2D top-down dungeon the hero & mobs move around in */
 .dungeon-host {
@@ -166,9 +161,7 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .stage-meta { display: flex; justify-content: space-between; font-size: .76rem; font-weight: 700; color: var(--muted); }
 .rank-chip { color: var(--accent-2); }
 
-/* Control buttons (auto / speed / boost / auto-forge) */
-.battle-controls { display: flex; gap: 10px; }
-.battle-controls .ctrl-btn { flex: 1; }
+/* Control buttons (auto-forge, etc.) */
 .ctrl-btn {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     padding: 11px 8px; border: 1px solid var(--line);
@@ -180,14 +173,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .ctrl-btn:active { transform: translateY(1px) scale(.98); }
 .ctrl-btn:hover { filter: brightness(1.1); }
 .ctrl-btn .ctrl-icon { font-size: 1.1rem; }
-/* Boost: gold idle outline → glowing gold active */
-.boost-btn { border-color: color-mix(in srgb, var(--gold) 55%, transparent); color: var(--gold); }
-.boost-btn.active {
-    background: var(--gold); color: #3a2900; border-color: transparent;
-    animation: boostPulse 1.1s ease-in-out infinite;
-}
-@keyframes boostPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
-.boost-btn.cooling { opacity: .5; color: var(--muted); border-color: var(--line); }
 /* Auto-forge ON: green */
 .auto-forge.on {
     background: var(--success); color: #06270f; border-color: transparent;
@@ -323,6 +308,10 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .odds-bars { display: flex; height: 16px; border-radius: 8px; overflow: hidden; margin-top: 4px; background: var(--bg); }
 .odds-bar { min-width: 2px; }
 .maxed { text-align: center; color: var(--gold); font-weight: 700; padding: 10px; }
+.forge-xp { margin: 10px 0; }
+.forge-xp-bar { height: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.forge-xp-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .35s ease; }
+.forge-xp-label { margin-top: 4px; font-size: .72rem; }
 
 /* ── Arena ───────────────────────────────────────────────── */
 .arena-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -424,6 +413,13 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .stat-card-label { font-size: .68rem; color: var(--muted); }
 .profile-section { margin-bottom: 20px; }
 .profile-section h3 { margin-bottom: 12px; }
+.xp-row { margin-bottom: 14px; }
+.xp-row-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+.xp-row-label { font-weight: 800; font-size: .85rem; }
+.xp-row-val { font-size: .74rem; }
+.xp-row-bar { height: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.xp-row-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .35s ease; }
+.xp-row-hint { font-size: .68rem; margin-top: 4px; }
 .avatar-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .avatar-opt { font-size: 1.5rem; aspect-ratio: 1; border-radius: 12px; background: var(--bg-3); border: 1px solid var(--line); cursor: pointer; }
 .avatar-opt.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
