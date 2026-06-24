@@ -7,7 +7,6 @@ import {
     BOSS_LEAD_SHARE, BIG_BOSS_LEAD_SHARE, ESCORT_SHARE, MAX_GROUP,
     BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION,
 } from './config.js';
-import { getCombatStats, getArenaRank } from './state.js';
 
 // Melee minion flavour.
 const MELEE_NAMES = [
@@ -116,7 +115,8 @@ export function makeEnemy(rank) {
     return makeEncounter(rank).enemies[0];
 }
 
-function attackDamage(att) {
+/** Roll one attack's damage for a fighter (crit + ±10% variance). */
+export function computeHit(att) {
     let dmg = att.damage;
     let crit = false;
     if (att.critChance > 0 && Math.random() * 100 < att.critChance) {
@@ -125,6 +125,13 @@ function attackDamage(att) {
     }
     dmg = Math.max(1, Math.floor(dmg * (0.9 + Math.random() * 0.2)));
     return { dmg, crit };
+}
+
+/** Gold reward for clearing (or losing) an encounter of the given kind/rank. */
+export function encounterReward(rank, kind, win) {
+    const base = arenaReward(rank);
+    const mult = kind === 'bigboss' ? 3 : kind === 'boss' ? 1.8 : 1;
+    return win ? Math.round(base * mult) : Math.floor(base * 0.25);
 }
 
 const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0) / 100);
@@ -182,7 +189,7 @@ export function simulateBattle(allies, enemies) {
         if (!foes.length) break;
         const target = foes[0];
 
-        const { dmg, crit } = attackDamage(actor);
+        const { dmg, crit } = computeHit(actor);
         target.hp = Math.max(0, target.hp - dmg);
         let heal = 0;
         if (actor.lifeSteal > 0) {
@@ -224,17 +231,4 @@ export function simulateDuel(player, enemy) {
         ? { by: 'player', dmg: ev.dmg, crit: ev.crit, heal: ev.heal, pHp: ev.attackerHp, eHp: ev.targetHp }
         : { by: 'enemy', dmg: ev.dmg, crit: ev.crit, heal: 0, pHp: ev.targetHp, eHp: ev.attackerHp });
     return { win: r.win, events, player, enemy };
-}
-
-/** Run an encounter at the given rank. Reward/XP are returned for the caller. */
-export function fightArena(rank = getArenaRank()) {
-    const player = { ...getCombatStats(), id: 'player', name: 'You' };
-    const encounter = makeEncounter(rank);
-    const result = simulateBattle([player], encounter.enemies);
-    result.rank = rank;
-    result.encounter = encounter;
-    const base = arenaReward(rank);
-    const mult = encounter.kind === 'bigboss' ? 3 : encounter.kind === 'boss' ? 1.8 : 1;
-    result.reward = result.win ? Math.round(base * mult) : Math.floor(base * 0.25);
-    return result;
 }
