@@ -74,7 +74,6 @@ function buildHeader() {
     const power = h('span', { className: 'hdr-power-val', text: '0' });
     const el = h('header', { className: 'app-hdr' },
         avatarBtn,
-        h('div', { className: 'hdr-title' }, h('span', { className: 'hdr-logo', text: '🔨' }), h('span', { text: 'Gear Master' })),
         h('div', { className: 'hdr-stats' },
             h('div', { className: 'hdr-pill hdr-power' }, h('span', { text: '💪' }), power),
             h('div', { className: 'hdr-pill hdr-gold' }, h('span', { text: '💰' }), gold),
