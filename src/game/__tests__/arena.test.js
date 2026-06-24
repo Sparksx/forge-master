@@ -84,7 +84,8 @@ describe('simulateBattle (group combat)', () => {
     it('ranged fighters strike before melee at equal stats', () => {
         const base = { maxHP: 5000, damage: 20, critChance: 0, critMultiplier: 0, attackSpeed: 0, lifeSteal: 0, healthRegen: 0 };
         const { events } = simulateBattle([{ ...base, ranged: true }], [{ ...base, ranged: false }]);
-        // The very first hit lands at the ranged head-start, well under one period.
+        // Ranged fire the instant they have focus (t=0); melee open after an
+        // approach delay — so the ranged ally lands the first hit, under a period.
         expect(events[0].bySide).toBe('ally');
         expect(events[0].t).toBeLessThan(BASE_ATTACK_PERIOD);
     });

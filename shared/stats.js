@@ -12,16 +12,17 @@ export const DAMAGE_PER_LEVEL = 2;
 export const GROWTH_EXPONENT = 1.2;
 
 // --- Combat cadence & range ---
-// Fights are paced so every combatant lands roughly one hit every two seconds
-// (0.5 hits/sec) at zero Attack Speed. Attack Speed shortens the interval.
-export const BASE_ATTACK_PERIOD = 2.0;          // seconds between attacks at 0% AS
+// Fights are paced so every combatant lands roughly one hit every second
+// (1 hit/sec) at zero Attack Speed. Attack Speed shortens the interval.
+export const BASE_ATTACK_PERIOD = 1.0;          // seconds between attacks at 0% AS
 export const MAX_BATTLE_SECONDS = 22;           // hard cap; resolve by HP% past this
 
-// Weapons (and enemies) are either melee or ranged. Ranged fighters open the
-// fight sooner — they get shots off while the gap is still closing — modelled
-// as a head start on their first attack.
+// Weapons (and enemies) are either melee or ranged. Everyone fires the instant
+// they acquire focus — there is no opening wait — but ranged acquire it sooner
+// because they strike from a standoff while melee still have to close the gap.
+// In the abstract model this is a small approach delay on the melee opener.
 export const ATTACK_STYLES = ['melee', 'ranged'];
-export const RANGED_OPENING_FRACTION = 0.35;    // ranged first strike at 35% of a period
+export const RANGED_OPENING_FRACTION = 0.35;    // melee approach delay (ranged open at t=0)
 
 /** Resolve a weapon's attack style, defaulting to melee. */
 export function weaponStyle(weapon) {

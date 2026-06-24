@@ -51,9 +51,9 @@ describe('playerPowerScore', () => {
 });
 
 describe('combat style', () => {
-    it('paces combat at roughly half a hit per second by default', () => {
+    it('paces combat at roughly one hit per second by default', () => {
         expect(BASE_ATTACK_PERIOD).toBeGreaterThan(0);
-        expect(1 / BASE_ATTACK_PERIOD).toBeCloseTo(0.5, 1);
+        expect(1 / BASE_ATTACK_PERIOD).toBeCloseTo(1.0, 1);
     });
 
     it('resolves weapon attack style, defaulting to melee', () => {
