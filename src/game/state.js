@@ -127,6 +127,26 @@ export function spendGold(amount) {
     return true;
 }
 
+// ── Admin/dev helpers (used by the in-game staff panel) ─────────────────────
+/** Grant gold directly, bypassing clan bonus. For admin self-grants only. */
+export function addGold(amount) {
+    state.gold = Math.max(0, state.gold + Math.floor(amount));
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
+/** Reset the local player's progression to a fresh start (admin self-reset). */
+export function resetProgress() {
+    state.equipment = emptyEquipment();
+    state.gold = 0;
+    state.forgeLevel = 1;
+    state.bestLevels = {};
+    state.arenaRank = 1;
+    state.highestArenaRank = 1;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+}
+
 // ── Equipment ─────────────────────────────────────────────────────────────
 /** Equip an item; the replaced item (if any) is auto-sold for gold. */
 export function equipItem(item) {
