@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL } from '../../shared/stats.js';
+import { EQUIPMENT_TYPES, MAX_TIER, MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL } from '../../shared/stats.js';
 
 const router = Router();
 
@@ -142,7 +142,7 @@ router.put('/state', requireAuth, async (req, res) => {
             data.diamonds = Math.floor(diamonds);
         }
         if (forgeLevel !== undefined) {
-            if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > 30) {
+            if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
                 return res.status(400).json({ error: 'Invalid forge level' });
             }
             data.forgeLevel = Math.floor(forgeLevel);

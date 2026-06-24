@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-    MAX_FORGE_LEVEL, MAX_TIER, forgeXpForLevel, forgeXpForRarity, playerXpForLevel, arenaXp,
-    arenaFallbackRank, stageInfo,
+    MAX_FORGE_LEVEL, MAX_TIER, FORGE_LEVELS, forgeXpForLevel, forgeXpForRarity,
+    forgesForLevel, playerXpForLevel, arenaXp, arenaFallbackRank, stageInfo,
 } from '../config.js';
 
 describe('arena loss fallback', () => {
@@ -54,6 +54,79 @@ describe('forge XP curve', () => {
     it('returns null once the forge is maxed', () => {
         expect(forgeXpForLevel(MAX_FORGE_LEVEL)).toBeNull();
         expect(forgeXpForLevel(MAX_FORGE_LEVEL + 5)).toBeNull();
+    });
+});
+
+// The forge rarity rows are generated from a math model (see docs/forge-balance.md
+// and docs/forge-curve.gen.mjs). These tests lock in the design constraints so a
+// hand-edit that breaks them fails loudly — re-run the generator instead.
+describe('forge rarity curve (generated)', () => {
+    it('has 35 levels', () => {
+        expect(MAX_FORGE_LEVEL).toBe(35);
+    });
+
+    it('keeps the design table length in sync with the shared cap', () => {
+        // The server validates saves against MAX_FORGE_LEVEL (shared/stats.js); if the
+        // table and the cap drift, high-level saves get rejected. Lock them together.
+        expect(FORGE_LEVELS.length).toBe(MAX_FORGE_LEVEL);
+    });
+
+    it('starts at 100% Common', () => {
+        expect(FORGE_LEVELS[0].chances).toEqual([100, 0, 0, 0, 0, 0, 0]);
+    });
+
+    it('every level’s odds sum to 100', () => {
+        for (const { chances } of FORGE_LEVELS) {
+            expect(chances.reduce((a, b) => a + b, 0)).toBe(100);
+        }
+    });
+
+    it('never offers more than 4 rarities at once', () => {
+        for (const { chances } of FORGE_LEVELS) {
+            expect(chances.filter((c) => c > 0).length).toBeLessThanOrEqual(4);
+        }
+    });
+
+    it('caps the top rarity (Divine) at 20% at max forge level', () => {
+        expect(FORGE_LEVELS[MAX_FORGE_LEVEL - 1].chances[MAX_TIER - 1]).toBe(20);
+    });
+
+    it('retires the lowest rarities to exactly 0 (Common, Uncommon, Rare)', () => {
+        const top = FORGE_LEVELS[MAX_FORGE_LEVEL - 1].chances;
+        expect(top[0]).toBe(0); // Common
+        expect(top[1]).toBe(0); // Uncommon
+        expect(top[2]).toBe(0); // Rare
+    });
+
+    it('introduces each higher rarity later than the one below it', () => {
+        const firstSeen = (tier) => FORGE_LEVELS.findIndex((l) => l.chances[tier] > 0);
+        for (let t = 1; t < MAX_TIER; t++) {
+            expect(firstSeen(t)).toBeGreaterThan(firstSeen(t - 1));
+        }
+    });
+
+    it('gold shortcut cost is non-decreasing', () => {
+        for (let i = 1; i < FORGE_LEVELS.length; i++) {
+            expect(FORGE_LEVELS[i].cost).toBeGreaterThanOrEqual(FORGE_LEVELS[i - 1].cost);
+        }
+    });
+});
+
+describe('forge pacing (forges per level)', () => {
+    it('takes ~100 forges for the first level', () => {
+        expect(forgesForLevel(1)).toBe(100);
+    });
+
+    it('strictly increases per level', () => {
+        for (let L = 2; L < MAX_FORGE_LEVEL; L++) {
+            expect(forgesForLevel(L)).toBeGreaterThan(forgesForLevel(L - 1));
+        }
+    });
+
+    it('totals at least 1,000,000 forges to reach the cap', () => {
+        let total = 0;
+        for (let L = 1; L < MAX_FORGE_LEVEL; L++) total += forgesForLevel(L);
+        expect(total).toBeGreaterThanOrEqual(1_000_000);
     });
 });
 

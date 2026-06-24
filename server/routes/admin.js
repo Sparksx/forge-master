@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireRole, logAudit } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
-import { MAX_PLAYER_LEVEL } from '../../shared/stats.js';
+import { MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL } from '../../shared/stats.js';
 
 const router = Router();
 
@@ -433,8 +433,8 @@ router.post('/users/:id/forge-level', requireRole('admin'), async (req, res) => 
     const userId = parseInt(req.params.id);
     const { forgeLevel } = req.body;
     if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
-    if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > 12) {
-        return res.status(400).json({ error: 'Forge level must be between 1 and 12' });
+    if (typeof forgeLevel !== 'number' || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
+        return res.status(400).json({ error: `Forge level must be between 1 and ${MAX_FORGE_LEVEL}` });
     }
 
     try {
