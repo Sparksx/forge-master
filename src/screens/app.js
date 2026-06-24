@@ -1,7 +1,7 @@
 // App shell — header, bottom nav, screen routing, toast/modal roots.
 import { h, clear, fmt, setToastRoot, setModalRoot } from './components.js';
 import { avatarEmoji } from '../game/config.js';
-import { getGold, getPowerScore, getAvatar, getPlayerLevel } from '../game/state.js';
+import { getGold, getPowerScore, getAvatar, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 import { initAdminUI } from './admin.js';
@@ -70,23 +70,33 @@ export function switchTab(name) {
 // ── Header ──────────────────────────────────────────────────────────────────
 function buildHeader() {
     const avatarBtn = h('button', { className: 'hdr-avatar', text: avatarEmoji(getAvatar()), onclick: () => switchTab('profile') });
-    const level = h('span', { className: 'hdr-level-val', text: '1' });
+    const level = h('span', { className: 'hdr-hero-lvl-val', text: '1' });
+    const xpFill = h('div', { className: 'hdr-xp-fill' });
+    // Level + mini XP bar sit right next to the avatar; tapping jumps to profile.
+    const hero = h('div', { className: 'hdr-hero' },
+        avatarBtn,
+        h('div', { className: 'hdr-hero-info', onclick: () => switchTab('profile') },
+            h('div', { className: 'hdr-hero-lvl' }, h('span', { className: 'muted', text: 'Lv' }), level),
+            h('div', { className: 'hdr-xp-bar' }, xpFill),
+        ),
+    );
     const gold = h('span', { className: 'hdr-gold-val', text: '0' });
     const power = h('span', { className: 'hdr-power-val', text: '0' });
     const el = h('header', { className: 'app-hdr' },
-        avatarBtn,
+        hero,
         h('div', { className: 'hdr-stats' },
-            h('div', { className: 'hdr-pill hdr-level' }, h('span', { text: '⭐' }), level),
             h('div', { className: 'hdr-pill hdr-power' }, h('span', { text: '💪' }), power),
             h('div', { className: 'hdr-pill hdr-gold' }, h('span', { text: '💰' }), gold),
         ),
     );
-    return { el, avatarBtn, level, gold, power };
+    return { el, avatarBtn, level, xpFill, gold, power };
 }
 
 function updateHeader() {
     if (!header) return;
+    const xp = getPlayerLevelProgress();
     header.level.textContent = fmt(getPlayerLevel());
+    header.xpFill.style.width = `${Math.round(xp.pct * 100)}%`;
     header.gold.textContent = fmt(getGold());
     header.power.textContent = fmt(getPowerScore());
     header.avatarBtn.textContent = avatarEmoji(getAvatar());
