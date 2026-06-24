@@ -34,6 +34,12 @@ export function weaponStyle(weapon) {
 // separate track (see config.js) and is unaffected by player level.
 export const MAX_PLAYER_LEVEL = 500;
 
+// Forge level cap. Lives here (not just in the client config) so the server's
+// save validator and admin tools agree with the client on the maximum. The
+// client's FORGE_LEVELS design table (src/game/config.js) must have exactly this
+// many entries — a test asserts it. Bump both together (re-run the generator).
+export const MAX_FORGE_LEVEL = 35;
+
 /** Base health for a player at the given level (level 1 = BASE_HEALTH). */
 export function playerBaseHealth(level = 1) {
     return BASE_HEALTH + (Math.max(1, level) - 1) * HEALTH_PER_LEVEL;

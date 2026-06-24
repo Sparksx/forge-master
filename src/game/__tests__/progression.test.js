@@ -65,6 +65,12 @@ describe('forge rarity curve (generated)', () => {
         expect(MAX_FORGE_LEVEL).toBe(35);
     });
 
+    it('keeps the design table length in sync with the shared cap', () => {
+        // The server validates saves against MAX_FORGE_LEVEL (shared/stats.js); if the
+        // table and the cap drift, high-level saves get rejected. Lock them together.
+        expect(FORGE_LEVELS.length).toBe(MAX_FORGE_LEVEL);
+    });
+
     it('starts at 100% Common', () => {
         expect(FORGE_LEVELS[0].chances).toEqual([100, 0, 0, 0, 0, 0, 0]);
     });

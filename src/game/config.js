@@ -2,6 +2,11 @@
 // Item stat math + tiers live in shared/stats.js (single source of truth, shared
 // with the server). This file holds the client-side game-design knobs.
 
+// MAX_FORGE_LEVEL is imported (not derived) so the client and the server's save
+// validator share one source of truth; FORGE_LEVELS must match it (asserted in tests).
+import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
+
+export { MAX_FORGE_LEVEL };
 export {
     EQUIPMENT_TYPES, HEALTH_ITEMS, DAMAGE_ITEMS,
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
@@ -80,7 +85,6 @@ export const FORGE_LEVELS = [
     { cost:  91885, chances: [  0,  0,  0,  5, 36, 47, 12] },
     { cost: 122210, chances: [  0,  0,  0,  2, 26, 52, 20] },
 ];
-export const MAX_FORGE_LEVEL = FORGE_LEVELS.length;
 
 // ── Forge XP ────────────────────────────────────────────────────────────────
 // Each forge grants XP toward the next forge level, so forging more makes the
