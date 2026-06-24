@@ -13,7 +13,7 @@ import {
     grantPlayerXp, getForgeLevelProgress,
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
-import { fightArena, makeEncounter } from '../game/arena.js';
+import { makeEncounter, encounterReward } from '../game/arena.js';
 import { createDungeon } from './dungeon.js';
 import { gameEvents, EVENTS } from '../events.js';
 
@@ -21,11 +21,11 @@ let root = null;
 let visible = false;
 let dungeon = null;
 
-// Battle loop
-let battleBusy = false;
+// Battle loop — the dungeon runs a live, real-time fight and reports the result.
+let currentEncounter = null;
+let nextTimer = null;
 // Combat is always automatic at normal speed — the hero walks to mobs and
-// fights on its own; neither auto nor speed is player-toggleable.
-const autoBattle = true;
+// fights on its own; speed is not player-toggleable.
 const fast = false;
 
 // Forge
@@ -49,9 +49,8 @@ export function onShow() {
     visible = true;
     refresh();
     dungeon?.start();
-    dungeon?.setAuto(autoBattle);
     dungeon?.setFast(fast);
-    updateStage(); // spawn the current matchup; auto-walk will engage it
+    startEncounter(); // spawn a fresh fight: hero left, pack right
     if (autoForge) scheduleAutoForge();
 }
 
@@ -60,6 +59,8 @@ export function onHide() {
     dungeon?.stop();
     clearTimeout(autoForgeTimer);
     autoForgeTimer = null;
+    clearTimeout(nextTimer);
+    nextTimer = null;
 }
 
 export function refresh() {
@@ -68,14 +69,14 @@ export function refresh() {
     const chip = root.querySelector('.forge-level-chip');
     if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
     syncForgeXp();
-    // Don't disturb a fight in progress; just keep the idle preview fresh.
-    if (!battleBusy) syncPreview();
+    // A live fight is never disturbed by a gear/gold change — the next encounter
+    // picks up the new stats. So there's nothing battle-related to sync here.
 }
 
 // ── Battle zone ─────────────────────────────────────────────────────────────
 function buildBattle() {
     const dungeonHost = h('div', { className: 'dungeon-host' });
-    dungeon = createDungeon({ onEngage: () => runFight() });
+    dungeon = createDungeon({ onResolve: (r) => onFightResolved(r) });
     dungeon.mount(dungeonHost);
 
     return h('div', { className: 'battle-zone' },
@@ -86,103 +87,61 @@ function buildBattle() {
     );
 }
 
-// Build the matchup payload for the current rank and sync the stage header text.
-function matchupPayload() {
-    const rank = getArenaRank();
-    const encounter = makeEncounter(rank);
-    const player = getCombatStats();
-
+// Build the full matchup payload (player + pack combat stats) and sync the
+// stage header. The dungeon owns positions/timing from here.
+function encounterPayload(encounter) {
+    const rank = encounter.rank;
+    const p = getCombatStats();
     const tag = encounter.kind === 'bigboss' ? ' · 💀 BIG BOSS'
         : encounter.kind === 'boss' ? ' · ☠️ BOSS' : '';
-    root.querySelector('.stage-title').textContent = stageInfo(rank).label + tag;
+    const titleEl = root.querySelector('.stage-title');
+    if (titleEl) titleEl.textContent = stageInfo(rank).label + tag;
 
     return {
-        rank,
-        playerEmoji: avatarEmoji(getAvatar()),
-        playerLabel: `You · ${fmt(getPowerScore())}`,
-        playerHP: player.maxHP,
-        playerRanged: !!player.ranged,
+        player: {
+            id: 'player',
+            emoji: avatarEmoji(getAvatar()),
+            label: `You · ${fmt(getPowerScore())}`,
+            maxHP: p.maxHP, damage: p.damage,
+            critChance: p.critChance, critMultiplier: p.critMultiplier,
+            attackSpeed: p.attackSpeed, lifeSteal: p.lifeSteal, healthRegen: p.healthRegen,
+            ranged: !!p.ranged,
+        },
         enemies: encounter.enemies.map((e) => ({
-            id: e.id,
-            emoji: e.emoji,
-            label: `${e.name} · ${fmt(e.power)}`,
-            maxHP: e.maxHP,
-            ranged: e.ranged,
-            role: e.role,
+            id: e.id, emoji: e.emoji, label: `${e.name} · ${fmt(e.power)}`,
+            maxHP: e.maxHP, damage: e.damage,
+            critChance: e.critChance, critMultiplier: e.critMultiplier,
+            attackSpeed: e.attackSpeed, lifeSteal: e.lifeSteal, healthRegen: e.healthRegen,
+            ranged: e.ranged, role: e.role,
         })),
     };
 }
 
-// Spawn the next opponent (onShow / after a fight): the mob respawns and, with
-// auto on, the hero walks over to engage it.
-function updateStage() {
-    if (dungeon) dungeon.nextMatchup(matchupPayload());
+// Spawn a fresh fight for the current rank: hero on the left, pack on the right.
+function startEncounter() {
+    if (!dungeon || !visible) return;
+    currentEncounter = makeEncounter(getArenaRank());
+    dungeon.setMatchup(encounterPayload(currentEncounter));
 }
 
-// Lightweight refresh on a state change (gear/gold) — never moves the mob.
-function syncPreview() {
-    if (dungeon) dungeon.refreshMatchup(matchupPayload());
-}
+// The dungeon finished a live fight — grant rewards, advance on a win, and queue
+// the next encounter.
+function onFightResolved({ win }) {
+    const enc = currentEncounter;
+    if (!enc) return;
 
-// ── Battle loop ─────────────────────────────────────────────────────────────
-// Triggered by the dungeon when the hero auto-walks into the mob.
-async function runFight() {
-    if (battleBusy || !visible) return;
-    battleBusy = true;
-    dungeon.setEngaged(true);
-
-    const result = fightArena();
-    const { events, encounter } = result;
-    const player = getCombatStats();
-    const info = stageInfo(result.rank);
-    const tag = encounter.kind === 'bigboss' ? ' · 💀 BIG BOSS'
-        : encounter.kind === 'boss' ? ' · ☠️ BOSS' : '';
-    root.querySelector('.stage-title').textContent = info.label + tag;
-
-    // Reset every HP bar to full at the opening bell.
-    dungeon.setHp('player', player.maxHP, player.maxHP);
-    encounter.enemies.forEach((e) => dungeon.setHp(e.id, e.maxHP, e.maxHP));
-
-    // Playback follows the battle's own seconds time line (~0.5 hits/sec base),
-    // lightly accelerated so idle fights stay readable but never drag.
-    const perSecond = fast ? 620 : 950; // ms of real time per battle-second
-    let prevT = 0;
-    const killed = new Set();
-    for (const ev of events) {
-        if (!visible) break;
-        const wait = Math.min(1500, Math.max(60, (ev.t - prevT) * perSecond));
-        prevT = ev.t;
-        await sleep(wait);
-        dungeon.attack(ev.by, ev.target, { ranged: ev.ranged });
-        if (ev.ranged) await sleep(fast ? 90 : 150); // let the arrow land first
-        dungeon.setHp(ev.target, ev.targetHp);
-        if (ev.attackerHp != null) dungeon.setHp(ev.by, ev.attackerHp);
-        dungeon.floater(ev.target, `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '');
-        if (ev.heal) dungeon.floater(ev.by, `+${fmt(ev.heal)}`, 'heal');
-        if (ev.targetSide === 'enemy' && ev.targetHp <= 0 && !killed.has(ev.target)) {
-            killed.add(ev.target);
-            dungeon.killEnemy(ev.target);
-        }
-    }
-
-    await sleep(fast ? 120 : 220);
-    resolveFight(result);
-
-    dungeon.setEngaged(false);
-    battleBusy = false;
-    if (visible) updateStage(); // spawn the next pack (advanced rank on a win)
-}
-
-function resolveFight(result) {
-    const granted = grantGold(result.reward);
+    const granted = grantGold(encounterReward(enc.rank, enc.kind, win));
     dungeon.floater('player', `+${fmt(granted)}💰`, 'gold');
 
-    if (result.win) {
-        setArenaRank(result.rank + 1);
-        const xp = grantPlayerXp(arenaXp(result.rank));
+    if (win) {
+        setArenaRank(enc.rank + 1);
+        const xp = grantPlayerXp(arenaXp(enc.rank));
         if (xp) dungeon.floater('player', `+${fmt(xp)} XP`, 'xp');
     }
-    gameEvents.emit(EVENTS.ARENA_RESULT, result);
+    gameEvents.emit(EVENTS.ARENA_RESULT, { win, rank: enc.rank });
+
+    clearTimeout(nextTimer);
+    nextTimer = setTimeout(() => { if (visible) startEncounter(); }, win ? 650 : 900);
 }
 
 // ── Forge zone ──────────────────────────────────────────────────────────────
@@ -399,5 +358,3 @@ function showForgeUpgrade() {
     );
     openModal(body);
 }
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

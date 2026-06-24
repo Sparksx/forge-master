@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeEnemy, makeEncounter, simulateDuel, simulateBattle } from '../arena.js';
+import { makeEnemy, makeEncounter, simulateDuel, simulateBattle, computeHit, encounterReward } from '../arena.js';
 import { arenaEnemyPower, arenaReward, rankKind, MAX_GROUP, BASE_ATTACK_PERIOD } from '../config.js';
 
 describe('arena scaling', () => {
@@ -105,5 +105,27 @@ describe('simulateDuel (1v1 compatibility)', () => {
     it('a far weaker fighter loses', () => {
         const { win } = simulateDuel(weak, strong);
         expect(win).toBe(false);
+    });
+});
+
+describe('real-time combat helpers', () => {
+    it('computeHit returns a positive damage roll and crit flag', () => {
+        for (let i = 0; i < 50; i++) {
+            const { dmg, crit } = computeHit({ damage: 100, critChance: 50, critMultiplier: 100 });
+            expect(dmg).toBeGreaterThanOrEqual(1);
+            expect(typeof crit).toBe('boolean');
+        }
+        // Never-crit fighters stay near their base damage (±10% variance).
+        const { dmg, crit } = computeHit({ damage: 100, critChance: 0, critMultiplier: 0 });
+        expect(crit).toBe(false);
+        expect(dmg).toBeGreaterThanOrEqual(90);
+        expect(dmg).toBeLessThanOrEqual(110);
+    });
+
+    it('encounterReward pays more for a win and scales with boss kind', () => {
+        const normalWin = encounterReward(10, 'normal', true);
+        expect(encounterReward(10, 'normal', false)).toBeLessThan(normalWin);
+        expect(encounterReward(10, 'boss', true)).toBeGreaterThan(normalWin);
+        expect(encounterReward(10, 'bigboss', true)).toBeGreaterThan(encounterReward(10, 'boss', true));
     });
 });
