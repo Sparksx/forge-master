@@ -294,7 +294,7 @@ model Purchase {
   stripeSessionId String   @unique
   stripePaymentId String?
   packId          String   @db.VarChar(30)
-  goldGranted     Int
+  goldGranted     Int      @default(0) // default lets `prisma db push` add this column to pre-existing rows (e.g. legacy diamond purchases) without a force-reset; every real insert sets it explicitly
   amountCents     Int
   currency        String   @default("usd") @db.VarChar(10)
   status          String   @default("pending") @db.VarChar(20) // pending, completed, refunded
