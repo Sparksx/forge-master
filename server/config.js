@@ -10,7 +10,7 @@ export const JWT_REFRESH_EXPIRY = '30d';
 
 export const DATABASE_URL = process.env.DATABASE_URL;
 
-export const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' ? 'https://web-production-aeea.up.railway.app' : '*');
+export const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' ? 'https://web-production-aeea.up.railway.app' : 'http://localhost:5173');
 
 // OAuth — Discord
 export const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';

@@ -34,7 +34,19 @@ const server = createServer(app);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://discord.com", "https://accounts.google.com", "https://oauth2.googleapis.com", "wss:", "ws:"],
+            frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -128,10 +140,17 @@ function shutdown(signal) {
     console.log(`${signal} received — shutting down gracefully`);
     io.close();
     server.close(async () => {
-        await prisma.$disconnect();
+        try {
+            await prisma.$disconnect();
+        } catch (err) {
+            console.error('Prisma disconnect error during shutdown:', err);
+        }
         process.exit(0);
     });
-    setTimeout(() => process.exit(1), 10_000);
+    setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+    }, 10_000);
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));

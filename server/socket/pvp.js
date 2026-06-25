@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
 import { clanPerks, clanLevelFromXp } from '../../shared/clan-config.js';
-import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_RANGE_INTERVAL, PVP_TURN_TIMEOUT } from '../../shared/pvp-config.js';
+import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION, PVP_MAX_POWER_RANGE, PVP_RANGE_INTERVAL, PVP_TURN_TIMEOUT } from '../../shared/pvp-config.js';
 import { storeCombatLog } from './chat.js';
 
 // Clan stat perk (HP/damage %) for a clanMembership include of shape
@@ -161,7 +161,7 @@ function tryMatch(io) {
             const maxWait = Math.max(waitA, waitB);
             const expansions = Math.floor(maxWait / RANGE_INTERVAL);
 
-            const allowedPowerRange = BASE_POWER_RANGE + expansions * POWER_RANGE_EXPANSION;
+            const allowedPowerRange = Math.min(PVP_MAX_POWER_RANGE, BASE_POWER_RANGE + expansions * POWER_RANGE_EXPANSION);
             const allowedEloRange = BASE_ELO_RANGE + expansions * ELO_RANGE_EXPANSION;
 
             if (powerDiffPct <= allowedPowerRange && eloDiff <= allowedEloRange) {
@@ -439,9 +439,10 @@ async function endMatch(io, match, winnerId, reason) {
                 prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpWins: { increment: 1 } } }),
             ]);
         }
-        leaderboardCache = null;
     } catch (err) {
         console.error('PvP rating update error:', err);
+    } finally {
+        leaderboardCache = null;
     }
 
     // Store combat log for sharing in chat
@@ -487,7 +488,7 @@ async function getPlayerStats(userId) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true, ...CLAN_PERK_SELECT }
+            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: { select: { equipment: true, player: true } }, ...CLAN_PERK_SELECT }
         });
         if (!user || !user.gameState) return null;
 

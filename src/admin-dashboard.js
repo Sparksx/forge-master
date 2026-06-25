@@ -57,43 +57,43 @@ function getSocket() {
 // ─── Admin API wrappers ──────────────────────────────────────────
 async function searchUsers(query) {
     const res = await apiFetch(`/api/admin/users/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error('Recherche echouee');
+    if (!res.ok) throw new Error('Search failed');
     return res.json();
 }
 
 async function getUserProfile(userId) {
     const res = await apiFetch(`/api/admin/users/${userId}/profile`);
-    if (!res.ok) throw new Error('Chargement du profil echoue');
+    if (!res.ok) throw new Error('Failed to load profile');
     return res.json();
 }
 
 async function warnUser(userId, reason) {
     const res = await apiFetch(`/api/admin/users/${userId}/warn`, { method: 'POST', body: { reason } });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Echec'); }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
     return res.json();
 }
 
 async function muteUser(userId, reason, duration) {
     const res = await apiFetch(`/api/admin/users/${userId}/mute`, { method: 'POST', body: { reason, duration } });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Echec'); }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
     return res.json();
 }
 
 async function unmuteUser(userId) {
     const res = await apiFetch(`/api/admin/users/${userId}/unmute`, { method: 'POST', body: {} });
-    if (!res.ok) throw new Error('Unmute echoue');
+    if (!res.ok) throw new Error('Unmute failed');
     return res.json();
 }
 
 async function banUser(userId, reason, duration) {
     const res = await apiFetch(`/api/admin/users/${userId}/ban`, { method: 'POST', body: { reason, duration: duration || undefined } });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Echec'); }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
     return res.json();
 }
 
 async function unbanUser(userId) {
     const res = await apiFetch(`/api/admin/users/${userId}/unban`, { method: 'POST', body: {} });
-    if (!res.ok) throw new Error('Unban echoue');
+    if (!res.ok) throw new Error('Unban failed');
     return res.json();
 }
 
@@ -104,43 +104,43 @@ function kickUser(userId) {
 
 async function addGoldToUser(userId, amount) {
     const res = await apiFetch(`/api/admin/users/${userId}/gold`, { method: 'POST', body: { amount } });
-    if (!res.ok) throw new Error('Echec ajout gold');
+    if (!res.ok) throw new Error('Failed to add gold');
     return res.json();
 }
 
 async function addEssenceToUser(userId, amount) {
     const res = await apiFetch(`/api/admin/users/${userId}/essence`, { method: 'POST', body: { amount } });
-    if (!res.ok) throw new Error('Echec ajout essence');
+    if (!res.ok) throw new Error('Failed to add essence');
     return res.json();
 }
 
 async function addDiamondsToUser(userId, amount) {
     const res = await apiFetch(`/api/admin/users/${userId}/diamonds`, { method: 'POST', body: { amount } });
-    if (!res.ok) throw new Error('Echec ajout diamants');
+    if (!res.ok) throw new Error('Failed to add diamonds');
     return res.json();
 }
 
 async function setUserLevel(userId, level) {
     const res = await apiFetch(`/api/admin/users/${userId}/level`, { method: 'POST', body: { level } });
-    if (!res.ok) throw new Error('Echec set level');
+    if (!res.ok) throw new Error('Failed to set level');
     return res.json();
 }
 
 async function setUserRole(userId, role) {
     const res = await apiFetch(`/api/admin/users/${userId}/role`, { method: 'PUT', body: { role } });
-    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Echec'); }
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
     return res.json();
 }
 
 async function resetUserState(userId) {
     const res = await apiFetch(`/api/admin/users/${userId}/reset-state`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Reset echoue');
+    if (!res.ok) throw new Error('Reset failed');
     return res.json();
 }
 
 async function getServerStats() {
     const res = await apiFetch('/api/admin/stats');
-    if (!res.ok) throw new Error('Stats echouees');
+    if (!res.ok) throw new Error('Failed to load stats');
     return res.json();
 }
 
@@ -148,7 +148,7 @@ async function getAuditLog(page = 1, action = null) {
     let url = `/api/admin/audit-log?page=${page}`;
     if (action) url += `&action=${encodeURIComponent(action)}`;
     const res = await apiFetch(url);
-    if (!res.ok) throw new Error('Logs echoues');
+    if (!res.ok) throw new Error('Failed to load logs');
     return res.json();
 }
 
@@ -223,7 +223,7 @@ function initPlayersSection() {
         const q = searchInput.value.trim();
         if (!q) return;
         const resultsEl = document.getElementById('adm-player-results');
-        resultsEl.innerHTML = '<p class="adm-loading">Recherche...</p>';
+        resultsEl.innerHTML = '<p class="adm-loading">Searching...</p>';
         try {
             const data = await searchUsers(q);
             renderPlayerResults(data.users);
@@ -253,7 +253,7 @@ function initPlayersSection() {
 function renderPlayerResults(users) {
     const container = document.getElementById('adm-player-results');
     if (!users.length) {
-        container.innerHTML = '<p class="adm-empty">Aucun joueur trouve.</p>';
+        container.innerHTML = '<p class="adm-empty">No players found.</p>';
         return;
     }
 
@@ -262,7 +262,7 @@ function renderPlayerResults(users) {
         const roleBadge = u.role !== 'user'
             ? `<span class="adm-role-tag adm-role-${u.role}">${u.role}</span>`
             : '';
-        const guestTag = u.isGuest ? '<span class="adm-guest-tag">invite</span>' : '';
+        const guestTag = u.isGuest ? '<span class="adm-guest-tag">guest</span>' : '';
         html += `<div class="adm-player-item" data-uid="${u.id}">` +
             `<span class="adm-player-name">${escapeHtml(u.username)}</span>` +
             `${roleBadge}${guestTag}` +
@@ -285,7 +285,7 @@ function renderPlayerResults(users) {
 
 async function loadPlayerDetail(userId) {
     const detail = document.getElementById('adm-player-detail');
-    detail.innerHTML = '<p class="adm-loading">Chargement du profil...</p>';
+    detail.innerHTML = '<p class="adm-loading">Loading profile...</p>';
 
     try {
         const data = await getUserProfile(userId);
@@ -308,15 +308,15 @@ function renderPlayerDetail(container, data) {
     html += '<div class="adm-detail-header">';
     html += `<h3>${escapeHtml(user.username)}</h3>`;
     html += `<span class="adm-role-tag adm-role-${user.role}">${user.role}</span>`;
-    if (user.isGuest) html += '<span class="adm-guest-tag">invite</span>';
+    if (user.isGuest) html += '<span class="adm-guest-tag">guest</span>';
     html += '</div>';
 
     // Stats grid
     html += '<div class="adm-detail-stats">';
-    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${level}</span><span class="adm-stat-lbl">Niveau</span></div>`;
+    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${level}</span><span class="adm-stat-lbl">Level</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.gold || 0).toLocaleString()}</span><span class="adm-stat-lbl">Gold</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.essence || 0).toLocaleString()}</span><span class="adm-stat-lbl">Essence</span></div>`;
-    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.diamonds || 0).toLocaleString()}</span><span class="adm-stat-lbl">Diamants</span></div>`;
+    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.diamonds || 0).toLocaleString()}</span><span class="adm-stat-lbl">Diamonds</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">Lv.${gs.forgeLevel || 1}</span><span class="adm-stat-lbl">Forge</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${user.pvpRating}</span><span class="adm-stat-lbl">ELO</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${user.pvpWins}/${user.pvpLosses}</span><span class="adm-stat-lbl">W/L</span></div>`;
@@ -326,12 +326,12 @@ function renderPlayerDetail(container, data) {
     html += '<div class="adm-detail-actions">';
     html += '<h4>Moderation</h4>';
     html += '<div class="adm-btn-row">';
-    html += `<button class="adm-btn adm-btn-warn" data-action="warn">Avertir</button>`;
+    html += `<button class="adm-btn adm-btn-warn" data-action="warn">Warn</button>`;
     html += `<button class="adm-btn adm-btn-mute" data-action="mute">Mute</button>`;
-    html += `<button class="adm-btn adm-btn-ban" data-action="ban">Ban Temp</button>`;
+    html += `<button class="adm-btn adm-btn-ban" data-action="ban">Temp Ban</button>`;
     html += `<button class="adm-btn adm-btn-kick" data-action="kick">Kick</button>`;
     if (isAdm) {
-        html += `<button class="adm-btn adm-btn-permban" data-action="permban">Ban Perm</button>`;
+        html += `<button class="adm-btn adm-btn-permban" data-action="permban">Perm Ban</button>`;
     }
     html += '</div>';
 
@@ -349,14 +349,14 @@ function renderPlayerDetail(container, data) {
     // Admin-only: resource management
     if (isAdm) {
         html += '<div class="adm-detail-resources">';
-        html += '<h4>Ressources (Admin)</h4>';
+        html += '<h4>Resources (Admin)</h4>';
         html += '<div class="adm-btn-row">';
         html += `<button class="adm-btn adm-btn-gold" data-action="gold-10k">+10K Gold</button>`;
         html += `<button class="adm-btn adm-btn-gold" data-action="gold-100k">+100K Gold</button>`;
         html += `<button class="adm-btn adm-btn-essence-btn" data-action="essence-1k">+1K Essence</button>`;
         html += `<button class="adm-btn adm-btn-essence-btn" data-action="essence-10k">+10K Essence</button>`;
-        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-100">+100 Diamants</button>`;
-        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-1k">+1K Diamants</button>`;
+        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-100">+100 Diamonds</button>`;
+        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-1k">+1K Diamonds</button>`;
         html += '</div>';
         html += '<div class="adm-btn-row adm-resource-extra">';
         html += `<label>Role: <select id="adm-role-select">`;
@@ -364,28 +364,28 @@ function renderPlayerDetail(container, data) {
             html += `<option value="${r}" ${user.role === r ? 'selected' : ''}>${r}</option>`;
         });
         html += `</select></label>`;
-        html += `<button class="adm-btn adm-btn-secondary" data-action="set-role">Changer Role</button>`;
-        html += `<button class="adm-btn adm-btn-danger" data-action="reset">Reset Etat</button>`;
+        html += `<button class="adm-btn adm-btn-secondary" data-action="set-role">Set Role</button>`;
+        html += `<button class="adm-btn adm-btn-danger" data-action="reset">Reset State</button>`;
         html += '</div>';
         html += '</div>';
     }
 
     // Warnings history
     html += '<div class="adm-detail-history">';
-    html += `<h4>Avertissements (${warnings?.length || 0})</h4>`;
+    html += `<h4>Warnings (${warnings?.length || 0})</h4>`;
     if (warnings?.length > 0) {
         html += '<div class="adm-history-list">';
         warnings.forEach(w => {
-            const date = new Date(w.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const date = new Date(w.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
             html += `<div class="adm-history-item adm-history-warn">`;
             html += `<span class="adm-history-date">${date}</span>`;
-            html += `<span class="adm-history-by">par ${escapeHtml(w.issuer?.username || '?')}</span>`;
+            html += `<span class="adm-history-by">by ${escapeHtml(w.issuer?.username || '?')}</span>`;
             html += `<span class="adm-history-reason">${escapeHtml(w.reason)}</span>`;
             html += `</div>`;
         });
         html += '</div>';
     } else {
-        html += '<p class="adm-empty">Aucun avertissement</p>';
+        html += '<p class="adm-empty">No warnings</p>';
     }
 
     // Bans history
@@ -393,15 +393,15 @@ function renderPlayerDetail(container, data) {
     if (bans?.length > 0) {
         html += '<div class="adm-history-list">';
         bans.forEach(b => {
-            const date = new Date(b.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-            const status = b.active ? '<span class="adm-status-active">Actif</span>' : '<span class="adm-status-expired">Expire</span>';
-            const expiry = b.expiresAt ? new Date(b.expiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Permanent';
+            const date = new Date(b.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const status = b.active ? '<span class="adm-status-active">Active</span>' : '<span class="adm-status-expired">Expired</span>';
+            const expiry = b.expiresAt ? new Date(b.expiresAt).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Permanent';
             html += `<div class="adm-history-item adm-history-ban">${status} ${date} — ${expiry}`;
             html += `<span class="adm-history-reason">${escapeHtml(b.reason)}</span></div>`;
         });
         html += '</div>';
     } else {
-        html += '<p class="adm-empty">Aucun ban</p>';
+        html += '<p class="adm-empty">No bans</p>';
     }
 
     // Mutes history
@@ -409,14 +409,14 @@ function renderPlayerDetail(container, data) {
     if (mutes?.length > 0) {
         html += '<div class="adm-history-list">';
         mutes.forEach(m => {
-            const date = new Date(m.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-            const status = m.active ? '<span class="adm-status-active">Actif</span>' : '<span class="adm-status-expired">Expire</span>';
+            const date = new Date(m.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const status = m.active ? '<span class="adm-status-active">Active</span>' : '<span class="adm-status-expired">Expired</span>';
             html += `<div class="adm-history-item adm-history-mute">${status} ${date}`;
             html += `<span class="adm-history-reason">${escapeHtml(m.reason)}</span></div>`;
         });
         html += '</div>';
     } else {
-        html += '<p class="adm-empty">Aucun mute</p>';
+        html += '<p class="adm-empty">No mutes</p>';
     }
 
     html += '</div>'; // history
@@ -434,53 +434,53 @@ async function handleUserAction(action, userId) {
     try {
         switch (action) {
             case 'warn': {
-                const reason = prompt('Raison de l\'avertissement:');
+                const reason = prompt('Reason for warning:');
                 if (!reason) return;
                 await warnUser(userId, reason);
-                showToast('Avertissement envoye', 'success');
+                showToast('Warning sent', 'success');
                 break;
             }
             case 'mute': {
-                const reason = prompt('Raison du mute:');
+                const reason = prompt('Reason for mute:');
                 if (!reason) return;
-                const duration = prompt('Duree (ex: 30m, 1h, 24h):', '1h');
+                const duration = prompt('Duration (e.g. 30m, 1h, 24h):', '1h');
                 if (!duration) return;
                 await muteUser(userId, reason, duration);
-                showToast('Joueur mute', 'success');
+                showToast('Player muted', 'success');
                 break;
             }
             case 'ban': {
-                const reason = prompt('Raison du ban temporaire:');
+                const reason = prompt('Reason for temp ban:');
                 if (!reason) return;
-                const duration = prompt('Duree (ex: 1h, 1d, 7d):', '1d');
+                const duration = prompt('Duration (e.g. 1h, 1d, 7d):', '1d');
                 if (!duration) return;
                 await banUser(userId, reason, duration);
-                showToast('Joueur banni', 'success');
+                showToast('Player banned', 'success');
                 kickUser(userId);
                 break;
             }
             case 'permban': {
-                const reason = prompt('Raison du ban permanent:');
+                const reason = prompt('Reason for permanent ban:');
                 if (!reason) return;
-                if (!confirm('Confirmer le ban permanent?')) return;
+                if (!confirm('Confirm permanent ban?')) return;
                 await banUser(userId, reason, null);
-                showToast('Joueur banni definitivement', 'success');
+                showToast('Player permanently banned', 'success');
                 kickUser(userId);
                 break;
             }
             case 'kick': {
                 kickUser(userId);
-                showToast('Joueur kick', 'success');
+                showToast('Player kicked', 'success');
                 break;
             }
             case 'unban': {
                 await unbanUser(userId);
-                showToast('Joueur unbanned', 'success');
+                showToast('Player unbanned', 'success');
                 break;
             }
             case 'unmute': {
                 await unmuteUser(userId);
-                showToast('Joueur unmuted', 'success');
+                showToast('Player unmuted', 'success');
                 break;
             }
             case 'gold-10k': {
@@ -517,29 +517,29 @@ async function handleUserAction(action, userId) {
                 const select = document.getElementById('adm-role-select');
                 if (!select) return;
                 const role = select.value;
-                if (!confirm(`Changer le role en "${role}"?`)) return;
+                if (!confirm(`Change role to "${role}"?`)) return;
                 await setUserRole(userId, role);
-                showToast(`Role change: ${role}`, 'success');
+                showToast(`Role changed: ${role}`, 'success');
                 break;
             }
             case 'reset': {
-                if (!confirm('Reinitialiser l\'etat du joueur? Irreversible!')) return;
+                if (!confirm('Reset player state? This is irreversible!')) return;
                 await resetUserState(userId);
-                showToast('Etat reinitialise', 'success');
+                showToast('State reset', 'success');
                 break;
             }
         }
         // Reload user detail
         loadPlayerDetail(userId);
     } catch (err) {
-        showToast(`Erreur: ${err.message}`, 'error');
+        showToast(`Error: ${err.message}`, 'error');
     }
 }
 
 // ─── Stats Section ───────────────────────────────────────────────
 async function loadStats() {
     const container = document.getElementById('adm-stats-content');
-    container.innerHTML = '<p class="adm-loading">Chargement des statistiques...</p>';
+    container.innerHTML = '<p class="adm-loading">Loading stats...</p>';
 
     try {
         const stats = await getServerStats();
@@ -547,31 +547,31 @@ async function loadStats() {
             '<div class="adm-stats-grid">' +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.totalUsers}</div>` +
-                    `<div class="adm-stats-label">Joueurs Total</div>` +
+                    `<div class="adm-stats-label">Total Players</div>` +
                 `</div>` +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.registeredUsers}</div>` +
-                    `<div class="adm-stats-label">Inscrits</div>` +
+                    `<div class="adm-stats-label">Registered</div>` +
                 `</div>` +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.totalGuests}</div>` +
-                    `<div class="adm-stats-label">Invites</div>` +
+                    `<div class="adm-stats-label">Guests</div>` +
                 `</div>` +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.totalGoldInCirculation.toLocaleString()}</div>` +
-                    `<div class="adm-stats-label">Gold en Circulation</div>` +
+                    `<div class="adm-stats-label">Gold in Circulation</div>` +
                 `</div>` +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.totalEssenceInCirculation.toLocaleString()}</div>` +
-                    `<div class="adm-stats-label">Essence en Circulation</div>` +
+                    `<div class="adm-stats-label">Essence in Circulation</div>` +
                 `</div>` +
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${(stats.totalDiamondsInCirculation || 0).toLocaleString()}</div>` +
-                    `<div class="adm-stats-label">Diamants en Circulation</div>` +
+                    `<div class="adm-stats-label">Diamonds in Circulation</div>` +
                 `</div>` +
             '</div>';
     } catch (err) {
-        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="adm-error">Error: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -582,21 +582,21 @@ function initStatsSection() {
 // ─── Logs Section ────────────────────────────────────────────────
 async function loadLogs() {
     const container = document.getElementById('adm-logs-content');
-    container.innerHTML = '<p class="adm-loading">Chargement des logs...</p>';
+    container.innerHTML = '<p class="adm-loading">Loading logs...</p>';
 
     try {
         const data = await getAuditLog(logsPage);
         let html = '';
 
         if (data.logs.length === 0) {
-            html = '<p class="adm-empty">Aucun log</p>';
+            html = '<p class="adm-empty">No logs</p>';
         } else {
             html += '<div class="adm-logs-table-wrap">';
             html += '<table class="adm-logs-table">';
             html += '<thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Cible</th><th>Details</th></tr></thead>';
             html += '<tbody>';
             data.logs.forEach(log => {
-                const date = new Date(log.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const date = new Date(log.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const details = log.details ? JSON.stringify(log.details).slice(0, 120) : '-';
                 html += `<tr>`;
                 html += `<td>${date}</td>`;
@@ -611,9 +611,9 @@ async function loadLogs() {
 
             // Pagination
             html += '<div class="adm-pagination">';
-            html += `<button class="adm-btn adm-btn-secondary" id="adm-logs-prev" ${data.page <= 1 ? 'disabled' : ''}>Precedent</button>`;
+            html += `<button class="adm-btn adm-btn-secondary" id="adm-logs-prev" ${data.page <= 1 ? 'disabled' : ''}>Previous</button>`;
             html += `<span class="adm-page-info">Page ${data.page} / ${data.pages}</span>`;
-            html += `<button class="adm-btn adm-btn-secondary" id="adm-logs-next" ${data.page >= data.pages ? 'disabled' : ''}>Suivant</button>`;
+            html += `<button class="adm-btn adm-btn-secondary" id="adm-logs-next" ${data.page >= data.pages ? 'disabled' : ''}>Next</button>`;
             html += '</div>';
         }
 
@@ -626,7 +626,7 @@ async function loadLogs() {
             if (logsPage < data.pages) { logsPage++; loadLogs(); }
         });
     } catch (err) {
-        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="adm-error">Error: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -651,7 +651,7 @@ let spriteSheets = [];
 
 async function fetchAllSprites() {
     const res = await apiFetch('/api/sprites/admin/list');
-    if (!res.ok) throw new Error('Chargement sprites echoue');
+    if (!res.ok) throw new Error('Failed to load sprites');
     const data = await res.json();
     allSprites = data.sprites;
     return allSprites;
@@ -659,7 +659,7 @@ async function fetchAllSprites() {
 
 async function fetchSpriteSheets() {
     const res = await apiFetch('/api/equipment/admin/sprite-sheets');
-    if (!res.ok) throw new Error('Chargement sprite sheets echoue');
+    if (!res.ok) throw new Error('Failed to load sprite sheets');
     const data = await res.json();
     spriteSheets = data.sheets;
     return spriteSheets;
@@ -693,7 +693,7 @@ function renderSpriteList() {
     const sprites = getFilteredSprites();
 
     if (sprites.length === 0) {
-        container.innerHTML = '<p class="adm-empty">Aucun sprite trouve.</p>';
+        container.innerHTML = '<p class="adm-empty">No sprites found.</p>';
         return;
     }
 
@@ -724,8 +724,8 @@ function renderSpriteList() {
             }
             html += `</div>`;
             html += `<div class="adm-equip-card-actions">`;
-            html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-sprite="${spr.id}">Modifier</button>`;
-            html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-sprite="${spr.id}">Suppr.</button>`;
+            html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-sprite="${spr.id}">Edit</button>`;
+            html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-sprite="${spr.id}">Delete</button>`;
             html += `</div>`;
             html += `</div>`;
         }
@@ -753,9 +753,9 @@ async function deleteSprite(spriteId) {
         const res = await apiFetch(`/api/sprites/admin/${spriteId}`, { method: 'DELETE' });
         if (!res.ok) {
             const d = await res.json();
-            throw new Error(d.error || 'Suppression echouee');
+            throw new Error(d.error || 'Delete failed');
         }
-        showToast('Sprite supprime', 'success');
+        showToast('Sprite deleted', 'success');
         await fetchAllSprites();
         renderSpriteList();
     } catch (err) {
@@ -803,7 +803,7 @@ function openSpriteModal(spriteId) {
     if (spriteId) {
         const spr = allSprites.find(s => s.id === spriteId);
         if (!spr) return;
-        title.textContent = 'Modifier Sprite';
+        title.textContent = 'Edit Sprite';
         document.getElementById('adm-spr-id').value = spr.id;
         document.getElementById('adm-spr-name').value = spr.name;
         document.getElementById('adm-spr-sheet').value = spr.spriteSheetId;
@@ -812,7 +812,7 @@ function openSpriteModal(spriteId) {
         document.getElementById('adm-spr-sw').value = spr.spriteW;
         document.getElementById('adm-spr-sh').value = spr.spriteH;
     } else {
-        title.textContent = 'Nouveau Sprite';
+        title.textContent = 'New Sprite';
         document.getElementById('adm-spr-id').value = '';
         document.getElementById('adm-sprite-form').reset();
         if (spriteSheets.length > 0) {
@@ -848,14 +848,14 @@ async function saveSpriteForm(e) {
                 const d = await res.json();
                 throw new Error(d.error || 'Echec');
             }
-            showToast('Sprite mis a jour', 'success');
+            showToast('Sprite updated', 'success');
         } else {
             const res = await apiFetch('/api/sprites/admin', { method: 'POST', body: data });
             if (!res.ok) {
                 const d = await res.json();
                 throw new Error(d.error || 'Echec');
             }
-            showToast('Sprite cree', 'success');
+            showToast('Sprite created', 'success');
         }
         closeSpriteModal();
         await fetchAllSprites();
@@ -1281,20 +1281,20 @@ function initSpriteEditor() {
 
 async function loadSpritesSection() {
     const container = document.getElementById('adm-sprite-list');
-    container.innerHTML = '<p class="adm-loading">Chargement des sprites...</p>';
+    container.innerHTML = '<p class="adm-loading">Loading sprites...</p>';
     try {
         await Promise.all([fetchAllSprites(), fetchSpriteSheets()]);
 
         // Populate sheet filter dropdown
         const filterSelect = document.getElementById('adm-sprite-filter-sheet');
-        filterSelect.innerHTML = '<option value="">Toutes les feuilles</option>';
+        filterSelect.innerHTML = '<option value="">All sheets</option>';
         spriteSheets.forEach(s => {
             filterSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.type)}</option>`;
         });
 
         renderSpriteList();
     } catch (err) {
-        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="adm-error">Error: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -1316,7 +1316,7 @@ let allItems = [];
 
 async function fetchEquipmentItems() {
     const res = await apiFetch('/api/equipment/admin/items');
-    if (!res.ok) throw new Error('Chargement echoue');
+    if (!res.ok) throw new Error('Failed to load equipment');
     const data = await res.json();
     allItems = data.items;
     return allItems;
@@ -1336,7 +1336,7 @@ function renderEquipmentList() {
     const items = getFilteredItems();
 
     if (items.length === 0) {
-        container.innerHTML = '<p class="adm-empty">Aucun equipement trouve.</p>';
+        container.innerHTML = '<p class="adm-empty">No equipment found.</p>';
         return;
     }
 
@@ -1369,8 +1369,8 @@ function renderEquipmentList() {
                 html += `<span class="adm-equip-card-skin">${escapeHtml(item.skin)}</span>`;
                 html += `</div>`;
                 html += `<div class="adm-equip-card-actions">`;
-                html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-item="${item.id}">Modifier</button>`;
-                html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-item="${item.id}">Suppr.</button>`;
+                html += `<button class="adm-btn adm-btn-secondary adm-btn-sm" data-edit-item="${item.id}">Edit</button>`;
+                html += `<button class="adm-btn adm-btn-danger adm-btn-sm" data-delete-item="${item.id}">Delete</button>`;
                 html += `</div>`;
                 html += `</div>`;
             }
@@ -1393,7 +1393,7 @@ function renderEquipmentList() {
 
 function populateSpriteSelect(selectedSpriteId) {
     const select = document.getElementById('adm-equip-sprite-select');
-    select.innerHTML = '<option value="">-- Selectionner un sprite --</option>';
+    select.innerHTML = '<option value="">-- Select a sprite --</option>';
 
     // Group sprites by sheet type
     const grouped = {};
@@ -1447,7 +1447,7 @@ function openEditModal(itemId) {
     if (itemId) {
         const item = allItems.find(i => i.id === itemId);
         if (!item) return;
-        title.textContent = 'Modifier Equipement';
+        title.textContent = 'Edit Equipment';
         document.getElementById('adm-equip-id').value = item.id;
         document.getElementById('adm-equip-type').value = item.type;
         document.getElementById('adm-equip-tier').value = item.tier;
@@ -1475,7 +1475,7 @@ async function saveItem(e) {
     const spriteId = parseInt(document.getElementById('adm-equip-sprite-select').value);
 
     if (!spriteId) {
-        showToast('Veuillez selectionner un sprite', 'error');
+        showToast('Please select a sprite', 'error');
         return;
     }
 
@@ -1494,14 +1494,14 @@ async function saveItem(e) {
                 const d = await res.json();
                 throw new Error(d.error || 'Echec');
             }
-            showToast('Equipement mis a jour', 'success');
+            showToast('Equipment updated', 'success');
         } else {
             const res = await apiFetch('/api/equipment/admin/items', { method: 'POST', body: data });
             if (!res.ok) {
                 const d = await res.json();
                 throw new Error(d.error || 'Echec');
             }
-            showToast('Equipement cree', 'success');
+            showToast('Equipment created', 'success');
         }
         closeEditModal();
         await fetchEquipmentItems();
@@ -1518,8 +1518,8 @@ async function deleteItem(itemId) {
 
     try {
         const res = await apiFetch(`/api/equipment/admin/items/${itemId}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Suppression echouee');
-        showToast('Equipement supprime', 'success');
+        if (!res.ok) throw new Error('Delete failed');
+        showToast('Equipment deleted', 'success');
         await fetchEquipmentItems();
         renderEquipmentList();
     } catch (err) {
@@ -1529,12 +1529,12 @@ async function deleteItem(itemId) {
 
 async function loadEquipmentSection() {
     const container = document.getElementById('adm-equip-list');
-    container.innerHTML = '<p class="adm-loading">Chargement des equipements...</p>';
+    container.innerHTML = '<p class="adm-loading">Loading equipment...</p>';
     try {
         await Promise.all([fetchEquipmentItems(), fetchAllSprites(), fetchSpriteSheets()]);
         renderEquipmentList();
     } catch (err) {
-        container.innerHTML = `<p class="adm-error">Erreur: ${escapeHtml(err.message)}</p>`;
+        container.innerHTML = `<p class="adm-error">Error: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -1563,11 +1563,11 @@ function initBroadcastSection() {
         const textarea = document.getElementById('adm-broadcast-text');
         const text = textarea?.value.trim();
         if (!text) {
-            showToast('Le message ne peut pas etre vide', 'error');
+            showToast('Message cannot be empty', 'error');
             return;
         }
         broadcastMessage(text);
-        showToast('Annonce envoyee', 'success');
+        showToast('Broadcast sent', 'success');
         textarea.value = '';
     });
 }
@@ -1600,14 +1600,14 @@ async function init() {
     // 1. Restore session
     const user = await restoreSession();
     if (!user) {
-        gateText.textContent = 'Session invalide. Redirection...';
+        gateText.textContent = 'Invalid session. Redirecting...';
         setTimeout(() => { window.location.href = '/'; }, 1500);
         return;
     }
 
     // 2. Check role
     if (user.role !== 'admin' && user.role !== 'moderator') {
-        gateText.textContent = 'Acces refuse. Permissions insuffisantes.';
+        gateText.textContent = 'Access denied. Insufficient permissions.';
         setTimeout(() => { window.location.href = '/'; }, 1500);
         return;
     }

@@ -60,7 +60,7 @@ export function registerChatHandlers(io, socket) {
         const { content, channel = 'general' } = data || {};
         if (!ALLOWED_CHANNELS.includes(channel)) return;
 
-        if (!content || typeof content !== 'string') return;
+        if (!content || typeof content !== 'string' || content.length > 2000) return;
         const trimmed = content.trim().slice(0, 500);
         if (!trimmed) return;
 
@@ -195,12 +195,8 @@ export function registerChatHandlers(io, socket) {
             // Determine ELO rank
             const rank = getEloRank(user.pvpRating);
 
-            // Get requesting user's role to decide what to include
-            const requestingUser = await prisma.user.findUnique({
-                where: { id: socket.user.userId },
-                select: { role: true },
-            });
-            const isStaff = requestingUser && (requestingUser.role === 'admin' || requestingUser.role === 'moderator');
+            // Use role from socket auth context instead of a second DB query
+            const isStaff = socket.user.role === 'admin' || socket.user.role === 'moderator';
 
             const profileData = {
                 userId: user.id,

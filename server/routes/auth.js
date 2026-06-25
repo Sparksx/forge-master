@@ -575,6 +575,13 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
+    // Only allow known keys
+    const ALLOWED_SETTINGS = ['theme', 'volume', 'language', 'notifications', 'autoForge'];
+    const unknownKeys = Object.keys(settings).filter(k => !ALLOWED_SETTINGS.includes(k));
+    if (unknownKeys.length > 0) {
+        return res.status(400).json({ error: `Unknown settings: ${unknownKeys.join(', ')}` });
+    }
+
     // Validate known keys
     const VALID_THEMES = ['dark', 'light'];
     if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
@@ -610,7 +617,8 @@ router.put('/settings', requireAuth, async (req, res) => {
 router.put('/profile-picture', requireAuth, async (req, res) => {
     const { profilePicture } = req.body;
 
-    if (typeof profilePicture !== 'string' || profilePicture.length < 1 || profilePicture.length > 30) {
+    if (typeof profilePicture !== 'string' || profilePicture.length < 1 || profilePicture.length > 30
+        || !/^[a-zA-Z0-9_-]+$/.test(profilePicture)) {
         return res.status(400).json({ error: 'Invalid profile picture' });
     }
 
