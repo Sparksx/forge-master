@@ -42,5 +42,7 @@ function emit(evt, payload) {
 
 export const pvpQueue = () => emit('pvp:queue');
 export const pvpCancel = () => emit('pvp:cancel');
+/** Challenge a clanmate to an unranked friendly duel (no ELO change). */
+export const pvpFriendly = (targetUserId) => emit('pvp:friendly', { targetUserId });
 export const pvpAction = (type) => emit('pvp:action', { type });
 export const pvpRequestLeaderboard = () => emit('pvp:leaderboard');

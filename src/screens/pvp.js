@@ -3,12 +3,13 @@ import { h, clear, fmt, toast } from './components.js';
 import { avatarEmoji } from '../game/config.js';
 import { getAvatar, getPowerScore, getCombatStats } from '../game/state.js';
 import { getCurrentUser } from '../auth.js';
-import { setPvpHandlers, initPvp, pvpQueue, pvpCancel, pvpAction, pvpRequestLeaderboard } from '../game/pvp.js';
+import { setPvpHandlers, initPvp, pvpQueue, pvpCancel, pvpAction, pvpFriendly, pvpRequestLeaderboard } from '../game/pvp.js';
 
 let root = null;
 let mode = 'idle'; // idle | queue | fight | result
 let myMaxHP = 0;
 let countdown = null;
+let friendly = false; // current bout is an unranked clan duel
 
 export const id = 'pvp';
 export const icon = '🏆';
@@ -55,6 +56,18 @@ export function onShow() {
     pvpRequestLeaderboard();
 }
 
+/**
+ * Kick off an unranked friendly duel against a clanmate. Called after navigating
+ * to this screen (e.g. from the clan roster). The opponent is an AI snapshot, so
+ * the match resolves the moment the server responds with `pvp:matched`.
+ */
+export function startFriendly(targetUserId) {
+    initPvp();
+    friendly = true;
+    if (pvpFriendly(targetUserId)) show('queue');
+    else toast('Not connected — try again', 'error');
+}
+
 // ── Sections ────────────────────────────────────────────────────────────────
 function buildIdle() {
     return h('div', {},
@@ -66,7 +79,7 @@ function buildIdle() {
                 stat('Record', 'pvp-record', '0W / 0L'),
             ),
         ),
-        h('button', { className: 'btn btn-primary btn-block', text: 'Find Match', onclick: () => { initPvp(); if (pvpQueue()) show('queue'); else toast('Not connected', 'error'); } }),
+        h('button', { className: 'btn btn-primary btn-block', text: 'Find Match', onclick: () => { initPvp(); friendly = false; if (pvpQueue()) show('queue'); else toast('Not connected', 'error'); } }),
         h('div', { className: 'pvp-leaderboard' },
             h('h3', { text: '🏅 Top Players' }),
             h('div', { className: 'pvp-lb-list', id: 'pvp-lb-list' }, h('p', { className: 'muted', text: 'Loading…' })),
@@ -153,11 +166,12 @@ function bindHandlers() {
         onCancelled: () => show('idle'),
         onError: (d) => { toast(d?.message || 'PvP error', 'error'); if (mode === 'queue') show('idle'); },
         onMatched: (d) => {
+            friendly = !!d.friendly;
             myMaxHP = getCombatStats().maxHP;
             const oppMax = d.opponent.maxHP;
             clear(root.querySelector('#pvp-log'));
             root.querySelector('.pvp-fighter-name[data-side="you"]').textContent = `You · ${fmt(d.you.power)}pwr`;
-            root.querySelector('.pvp-fighter-name[data-side="opp"]').textContent = `${d.opponent.username} · ${fmt(d.opponent.power)}pwr`;
+            root.querySelector('.pvp-fighter-name[data-side="opp"]').textContent = `${d.opponent.username}${friendly ? ' (friendly)' : ''} · ${fmt(d.opponent.power)}pwr`;
             setHp('you', myMaxHP, myMaxHP);
             setHp('opp', oppMax, oppMax);
             root.querySelector('.pvp-fighter-name[data-side="opp"]').dataset.max = String(oppMax);
@@ -173,14 +187,20 @@ function bindHandlers() {
         },
         onEnd: (d) => {
             clearInterval(countdown);
+            const isFriendly = friendly || !!d.friendly;
             const won = d.winnerId && d.you && d.winnerId === d.you.userId;
             const draw = !d.winnerId;
             const change = d.you?.ratingChange ?? 0;
             root.querySelector('.pvp-result-title').textContent = draw ? 'Draw' : won ? 'Victory! 🏆' : 'Defeat';
-            root.querySelector('.pvp-result-rating').textContent = `ELO ${change >= 0 ? '+' : ''}${change}`;
+            root.querySelector('.pvp-result-rating').textContent = isFriendly
+                ? 'Friendly duel — ELO unaffected'
+                : `ELO ${change >= 0 ? '+' : ''}${change}`;
             // Update local user record so the lobby reflects the result immediately.
-            const u = getCurrentUser();
-            if (u) { u.pvpRating = (u.pvpRating ?? 1000) + change; if (!draw) { if (won) u.pvpWins = (u.pvpWins ?? 0) + 1; else u.pvpLosses = (u.pvpLosses ?? 0) + 1; } }
+            // Friendly duels are unranked, so leave the record untouched.
+            if (!isFriendly) {
+                const u = getCurrentUser();
+                if (u) { u.pvpRating = (u.pvpRating ?? 1000) + change; if (!draw) { if (won) u.pvpWins = (u.pvpWins ?? 0) + 1; else u.pvpLosses = (u.pvpLosses ?? 0) + 1; } }
+            }
             show('result');
         },
         onLeaderboard: (list) => renderLeaderboard(list),

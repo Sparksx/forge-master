@@ -98,6 +98,46 @@ export function registerPvpHandlers(io, socket) {
         socket.emit('pvp:cancelled', {});
     });
 
+    // Friendly duel: challenge a clanmate to an unranked fight against a snapshot of
+    // their saved stats. No ELO/win-loss change for either side. The opponent does not
+    // need to be online — they're played by a simple AI from their public battle data.
+    socket.on('pvp:friendly', async (data) => {
+        try {
+            if (socket.matchId) { socket.emit('pvp:error', { message: 'Finish your current match first' }); return; }
+
+            const targetUserId = Number(data?.targetUserId);
+            if (!Number.isInteger(targetUserId) || targetUserId === socket.user.userId) {
+                socket.emit('pvp:error', { message: 'Invalid opponent' });
+                return;
+            }
+
+            // Friendly duels are clanmate-only (the button lives in the clan roster).
+            const [mine, theirs] = await Promise.all([
+                prisma.clanMember.findUnique({ where: { userId: socket.user.userId }, select: { clanId: true } }),
+                prisma.clanMember.findUnique({ where: { userId: targetUserId }, select: { clanId: true } }),
+            ]);
+            if (!mine || !theirs || mine.clanId !== theirs.clanId) {
+                socket.emit('pvp:error', { message: 'You can only duel your clanmates' });
+                return;
+            }
+
+            const [myStats, oppStats] = await Promise.all([
+                getPlayerStats(socket.user.userId),
+                getPlayerStats(targetUserId),
+            ]);
+            if (!myStats) { socket.emit('pvp:error', { message: 'Could not load your stats' }); return; }
+            if (!oppStats) { socket.emit('pvp:error', { message: 'That player has no battle data yet' }); return; }
+
+            queue.delete(socket.id); // bail out of matchmaking if we were searching
+            startFriendlyMatch(io, socket,
+                { userId: socket.user.userId, username: socket.user.username, stats: myStats },
+                { userId: targetUserId, username: oppStats.username, stats: oppStats });
+        } catch (err) {
+            console.error('pvp:friendly error:', err);
+            socket.emit('pvp:error', { message: 'Failed to start duel' });
+        }
+    });
+
     socket.on('pvp:action', (data) => {
         const match = matches.get(socket.matchId);
         if (!match) return;
@@ -237,6 +277,61 @@ function tryMatch(io) {
     startTurnTimer(io, match);
 }
 
+/**
+ * Build a match between the challenger (player1, a live socket) and a clanmate
+ * snapshot (player2, an AI with a stub socket). Marked `friendly` so endMatch
+ * skips all ELO / win-loss bookkeeping.
+ */
+function startFriendlyMatch(io, socket, my, opp) {
+    // Stub socket for the AI side: never "connected", so all emit() guards skip it.
+    const botSocket = { connected: false, emit() {} };
+    const mkPlayer = (sock, userId, username, stats) => ({
+        socket: sock,
+        userId,
+        username,
+        profilePicture: stats.profilePicture,
+        maxHP: stats.maxHP,
+        currentHP: stats.maxHP,
+        damage: stats.damage,
+        critChance: stats.critChance,
+        critMultiplier: stats.critMultiplier,
+        rating: stats.rating,
+        power: stats.power,
+        action: null,
+    });
+
+    const matchId = `match_${Date.now()}_${my.userId}_${opp.userId}`;
+    const match = {
+        id: matchId,
+        player1: mkPlayer(socket, my.userId, my.username, my.stats),
+        player2: mkPlayer(botSocket, opp.userId, opp.username, opp.stats),
+        turn: 1,
+        turnTimer: null,
+        turnLog: [],
+        friendly: true,
+    };
+
+    matches.set(matchId, match);
+    socket.matchId = matchId;
+
+    socket.emit('pvp:matched', {
+        matchId,
+        friendly: true,
+        opponent: { username: opp.username, maxHP: opp.stats.maxHP, damage: opp.stats.damage, rating: opp.stats.rating, power: opp.stats.power },
+        you: { power: my.stats.power, rating: my.stats.rating },
+    });
+
+    startTurnTimer(io, match);
+}
+
+/** Simple AI action for a friendly-duel opponent: mostly attacks, sometimes mixes it up. */
+function chooseBotAction() {
+    const r = Math.random();
+    if (r < 0.65) return 'attack';
+    if (r < 0.85) return 'special';
+    return 'defend';
+}
+
 function startTurnTimer(io, match) {
     if (match.turnTimer) clearTimeout(match.turnTimer);
 
@@ -259,6 +354,13 @@ function handleAction(io, match, userId, action) {
     if (player.action) return; // Already acted this turn
 
     player.action = action;
+
+    // In a friendly duel the opponent is an AI snapshot — act for it so the human
+    // isn't left waiting out the turn timer.
+    if (match.friendly) {
+        const bot = player === match.player1 ? match.player2 : match.player1;
+        if (!bot.action) bot.action = chooseBotAction();
+    }
 
     // If both players have acted, resolve immediately
     if (match.player1.action && match.player2.action) {
@@ -408,11 +510,12 @@ async function endMatch(io, match, winnerId, reason) {
     const p1 = match.player1;
     const p2 = match.player2;
 
-    // Calculate Elo changes with power weighting
+    // Calculate Elo changes with power weighting. Friendly duels are unranked:
+    // no rating moves and no win/loss recorded for either side.
     let p1Change = 0;
     let p2Change = 0;
 
-    if (winnerId) {
+    if (winnerId && !match.friendly) {
         const isP1Winner = winnerId === p1.userId;
         const winner = isP1Winner ? p1 : p2;
         const loser = isP1Winner ? p2 : p1;
@@ -426,50 +529,56 @@ async function endMatch(io, match, winnerId, reason) {
         p2Change = isP1Winner ? loserChange : winnerChange;
     }
 
-    // Update database — use a transaction so both players' ratings are updated atomically
-    try {
-        if (winnerId === p1.userId) {
-            await prisma.$transaction([
-                prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpWins: { increment: 1 } } }),
-                prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpLosses: { increment: 1 } } }),
-            ]);
-        } else if (winnerId === p2.userId) {
-            await prisma.$transaction([
-                prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpLosses: { increment: 1 } } }),
-                prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpWins: { increment: 1 } } }),
-            ]);
+    // Update database — use a transaction so both players' ratings are updated
+    // atomically. Skipped entirely for friendly (unranked) duels.
+    if (!match.friendly) {
+        try {
+            if (winnerId === p1.userId) {
+                await prisma.$transaction([
+                    prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpWins: { increment: 1 } } }),
+                    prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpLosses: { increment: 1 } } }),
+                ]);
+            } else if (winnerId === p2.userId) {
+                await prisma.$transaction([
+                    prisma.user.update({ where: { id: p1.userId }, data: { pvpRating: Math.max(0, p1.rating + p1Change), pvpLosses: { increment: 1 } } }),
+                    prisma.user.update({ where: { id: p2.userId }, data: { pvpRating: Math.max(0, p2.rating + p2Change), pvpWins: { increment: 1 } } }),
+                ]);
+            }
+            leaderboardCache = null;
+        } catch (err) {
+            console.error('PvP rating update error:', err);
         }
-        leaderboardCache = null;
-    } catch (err) {
-        console.error('PvP rating update error:', err);
     }
 
-    // Store combat log for sharing in chat
+    // Store combat log for sharing in chat (ranked matches only).
     const combatId = match.id;
-    storeCombatLog(combatId, {
-        player1: {
-            userId: p1.userId,
-            username: p1.username,
-            avatar: p1.profilePicture || 'wizard',
-            maxHP: p1.maxHP,
-            damage: p1.damage,
-        },
-        player2: {
-            userId: p2.userId,
-            username: p2.username,
-            avatar: p2.profilePicture || 'wizard',
-            maxHP: p2.maxHP,
-            damage: p2.damage,
-        },
-        winnerId,
-        reason,
-        turns: match.turnLog,
-    });
+    if (!match.friendly) {
+        storeCombatLog(combatId, {
+            player1: {
+                userId: p1.userId,
+                username: p1.username,
+                avatar: p1.profilePicture || 'wizard',
+                maxHP: p1.maxHP,
+                damage: p1.damage,
+            },
+            player2: {
+                userId: p2.userId,
+                username: p2.username,
+                avatar: p2.profilePicture || 'wizard',
+                maxHP: p2.maxHP,
+                damage: p2.damage,
+            },
+            winnerId,
+            reason,
+            turns: match.turnLog,
+        });
+    }
 
     const endData = {
         combatId,
         winnerId,
         reason,
+        friendly: !!match.friendly,
         player1: { userId: p1.userId, username: p1.username, ratingChange: p1Change, power: p1.power },
         player2: { userId: p2.userId, username: p2.username, ratingChange: p2Change, power: p2.power },
     };
@@ -487,7 +596,7 @@ async function getPlayerStats(userId) {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true, ...CLAN_PERK_SELECT }
+            select: { username: true, pvpRating: true, pvpWins: true, pvpLosses: true, profilePicture: true, gameState: true, ...CLAN_PERK_SELECT }
         });
         if (!user || !user.gameState) return null;
 
@@ -507,6 +616,7 @@ async function getPlayerStats(userId) {
             losses: user.pvpLosses,
             power: Math.max(1, power),
             profilePicture: user.profilePicture,
+            username: user.username,
         };
     } catch (err) {
         console.error('getPlayerStats error:', err);

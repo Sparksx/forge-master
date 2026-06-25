@@ -467,6 +467,23 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .icon-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line); cursor: pointer; font-size: .9rem; }
 .icon-btn.danger { color: var(--accent-2); }
 
+/* Roster member: framed avatar, last-seen / member-since meta, tap-for-profile */
+.member-avatar { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-3); flex-shrink: 0; box-sizing: border-box; }
+.member-meta { font-size: .72rem; margin-top: 2px; }
+.member-clickable { cursor: pointer; transition: border-color .15s, transform .05s; }
+.member-clickable:hover { border-color: var(--accent); }
+.member-clickable:active { transform: scale(.99); }
+
+/* Member profile modal */
+.member-modal { display: flex; flex-direction: column; gap: 14px; }
+.member-modal-head { display: flex; align-items: center; gap: 14px; }
+.member-modal-avatar { font-size: 2.4rem; width: 70px; height: 70px; display: grid; place-items: center; border-radius: 50%; background: var(--bg-3); box-sizing: border-box; }
+.member-modal-name { font-family: 'Cinzel', serif; font-weight: 800; font-size: 1.2rem; }
+.member-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.member-stat-row { display: flex; justify-content: space-between; gap: 8px; font-size: .82rem; }
+.member-stat-val { font-weight: 800; }
+.member-duel-note { margin: -6px 0 2px; text-align: center; }
+
 /* ── Profile ─────────────────────────────────────────────── */
 .profile-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
 .profile-avatar-big { font-size: 3.4rem; width: 76px; height: 76px; display: grid; place-items: center; background: var(--bg-3); border: 1px solid var(--line); border-radius: 50%; }

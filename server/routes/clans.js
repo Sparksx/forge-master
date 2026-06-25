@@ -26,16 +26,29 @@ function memberPower(gameState) {
 /** Serialize a clan (with members) into the client shape. Level comes from XP. */
 function serializeClan(clan, { withMembers = false } = {}) {
     const level = clanLevelFromXp(clan.xp);
-    const members = (clan.members || []).map((m) => ({
-        userId: m.userId,
-        username: m.user?.username || '???',
-        avatar: m.user?.profilePicture || 'wizard',
-        role: m.role,
-        contributed: m.contributed,
-        xpContributed: m.xpContributed,
-        power: memberPower(m.user?.gameState),
-        rating: m.user?.pvpRating ?? 1000,
-    }));
+    const members = (clan.members || []).map((m) => {
+        const gs = m.user?.gameState;
+        const player = (gs && typeof gs.player === 'object' && gs.player) || {};
+        return {
+            userId: m.userId,
+            username: m.user?.username || '???',
+            avatar: m.user?.profilePicture || 'wizard',
+            // Equipped profile frame (purely cosmetic) — surfaced so the roster can
+            // render each member's frame around their avatar.
+            frame: typeof player.frame === 'string' ? player.frame : 'none',
+            role: m.role,
+            contributed: m.contributed,
+            xpContributed: m.xpContributed,
+            power: memberPower(gs),
+            level: Number.isFinite(player.level) ? player.level : 1,
+            rating: m.user?.pvpRating ?? 1000,
+            wins: m.user?.pvpWins ?? 0,
+            losses: m.user?.pvpLosses ?? 0,
+            // "Member since" and a best-effort "last seen" (the game-state save timestamp).
+            joinedAt: m.joinedAt,
+            lastSeen: gs?.updatedAt ?? null,
+        };
+    });
     const totalPower = members.reduce((s, m) => s + m.power, 0);
     const out = {
         id: clan.id,
@@ -60,7 +73,14 @@ function serializeClan(clan, { withMembers = false } = {}) {
 
 const MEMBER_INCLUDE = {
     members: {
-        include: { user: { select: { username: true, profilePicture: true, pvpRating: true, gameState: { select: { equipment: true } } } } },
+        include: {
+            user: {
+                select: {
+                    username: true, profilePicture: true, pvpRating: true, pvpWins: true, pvpLosses: true,
+                    gameState: { select: { equipment: true, player: true, updatedAt: true } },
+                },
+            },
+        },
     },
 };
 
