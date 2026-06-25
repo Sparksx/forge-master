@@ -1,7 +1,7 @@
 // App shell — header, bottom nav, screen routing, toast/modal roots.
 import { h, clear, fmt, setToastRoot, setModalRoot } from './components.js';
 import { avatarEmoji } from '../game/config.js';
-import { getGold, getPowerScore, getAvatar, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
+import { getGold, getPowerScore, getAvatar, getFrame, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 import { initAdminUI } from './admin.js';
@@ -9,12 +9,13 @@ import { initAdminUI } from './admin.js';
 import * as home from './home.js';
 import * as pvp from './pvp.js';
 import * as clan from './clan.js';
+import * as shop from './shop.js';
 import * as profile from './profile.js';
 
-const screens = [home, pvp, clan, profile];
+const screens = [home, pvp, clan, shop, profile];
 // Bottom-nav order. Profile is omitted (reachable via the header avatar) and
-// Forge is centered between the two side tabs.
-const navScreens = [pvp, home, clan];
+// Forge (home) is centered among the tabs.
+const navScreens = [pvp, home, clan, shop];
 // screen.id -> container element. Kept here rather than on the screen modules,
 // because `import * as` namespace objects are frozen and can't take properties.
 const containers = new Map();
@@ -106,6 +107,7 @@ function updateHeader() {
     header.gold.textContent = fmt(getGold());
     header.power.textContent = fmt(getPowerScore());
     header.avatarBtn.textContent = avatarEmoji(getAvatar());
+    header.avatarBtn.className = `hdr-avatar frame-${getFrame()}`;
 }
 
 // ── Bottom nav ───────────────────────────────────────────────────────────────

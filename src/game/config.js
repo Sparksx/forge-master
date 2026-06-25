@@ -5,6 +5,7 @@
 // MAX_FORGE_LEVEL is imported (not derived) so the client and the server's save
 // validator share one source of truth; FORGE_LEVELS must match it (asserted in tests).
 import { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL } from '../../shared/stats.js';
+import { PREMIUM_AVATARS } from '../../shared/cosmetics.js';
 
 export { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL };
 export {
@@ -252,5 +253,9 @@ export const AVATARS = [
 ];
 
 export function avatarEmoji(id) {
-    return (AVATARS.find((a) => a.id === id) || AVATARS[0]).emoji;
+    const free = AVATARS.find((a) => a.id === id);
+    if (free) return free.emoji;
+    const premium = PREMIUM_AVATARS.find((a) => a.id === id);
+    if (premium) return premium.emoji;
+    return AVATARS[0].emoji;
 }

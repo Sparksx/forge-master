@@ -130,6 +130,17 @@ export function isValidPlayer(player) {
     if (!isIntInRange(player.level, 1, MAX_PLAYER_LEVEL)) return false;
     if (!isNonNegativeNumber(player.xp)) return false;
     if (player.forgeXp !== undefined && !isNonNegativeNumber(player.forgeXp)) return false;
+    // Cosmetics are purely visual (no power), but still sanity-check the shape so a
+    // crafted save can't smuggle in junk: owned list = array of short strings,
+    // equipped frame = a string. Catalog/ownership is enforced client-side.
+    if (player.cosmetics !== undefined) {
+        if (!Array.isArray(player.cosmetics)) return false;
+        if (player.cosmetics.length > 100) return false;
+        for (const c of player.cosmetics) {
+            if (typeof c !== 'string' || c.length === 0 || c.length > 30) return false;
+        }
+    }
+    if (player.frame !== undefined && typeof player.frame !== 'string') return false;
     return true;
 }
 

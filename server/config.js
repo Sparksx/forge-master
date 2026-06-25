@@ -25,12 +25,16 @@ export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-// Diamond packs available for purchase
-export const DIAMOND_PACKS = [
-    { id: 'welcome',  diamonds: 100,  bonus: 0,   priceCents: 299,  label: 'Welcome Pack',  oneTime: true },
-    { id: 'starter',  diamonds: 50,   bonus: 0,   priceCents: 499,  label: 'Starter' },
-    { id: 'popular',  diamonds: 100,  bonus: 20,  priceCents: 999,  label: 'Popular' },
-    { id: 'value',    diamonds: 200,  bonus: 60,  priceCents: 1999, label: 'Value' },
-    { id: 'premium',  diamonds: 500,  bonus: 200, priceCents: 4999, label: 'Premium' },
-    { id: 'ultimate', diamonds: 1000, bonus: 500, priceCents: 9999, label: 'Ultimate' },
+// Gold packs available for purchase. Gold is the game's single currency and is
+// deliberately scarce — the shop is the sanctioned way to acquire it in bulk
+// (it buys forge instant-upgrades and clan founding, never gear directly, so it
+// stays out of pay-to-win territory; see CLAUDE.md / REDESIGN.md). Value per
+// dollar improves with the tier. `bonus` is extra gold layered on top of `gold`.
+export const GOLD_PACKS = [
+    { id: 'welcome', gold: 1500,  bonus: 0,     priceCents: 99,   label: 'Welcome Pouch', oneTime: true, tag: 'one-time' },
+    { id: 'pouch',   gold: 1000,  bonus: 0,     priceCents: 199,  label: 'Pouch of Gold' },
+    { id: 'sack',    gold: 2750,  bonus: 250,   priceCents: 499,  label: 'Sack of Gold' },
+    { id: 'chest',   gold: 6000,  bonus: 1000,  priceCents: 999,  label: 'Chest of Gold', tag: 'popular' },
+    { id: 'vault',   gold: 13000, bonus: 3000,  priceCents: 1999, label: 'Vault of Gold' },
+    { id: 'hoard',   gold: 35000, bonus: 10000, priceCents: 4999, label: "Dragon's Hoard", tag: 'best-value' },
 ];

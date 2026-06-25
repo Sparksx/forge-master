@@ -1,8 +1,9 @@
 // Profile screen — avatar, stats summary, account, logout.
 import { h, clear, fmt, toast } from './components.js';
 import { AVATARS, avatarEmoji } from '../game/config.js';
+import { PREMIUM_AVATARS } from '../../shared/cosmetics.js';
 import {
-    getAvatar, setAvatar, getPowerScore, getHighestArenaRank, getArenaRank, getGold, getForgeLevel,
+    getAvatar, setAvatar, getFrame, ownsCosmetic, getPowerScore, getHighestArenaRank, getArenaRank, getGold, getForgeLevel,
     getPlayerLevel, getPlayerLevelProgress, getForgeLevelProgress,
 } from '../game/state.js';
 import { getCurrentUser, performLogout } from '../auth.js';
@@ -27,7 +28,7 @@ function rerender() {
     const u = getCurrentUser() || {};
     root.appendChild(h('div', { className: 'profile-screen' },
         h('div', { className: 'profile-head' },
-            h('div', { className: 'profile-avatar-big', text: avatarEmoji(getAvatar()) }),
+            h('div', { className: `profile-avatar-big frame-${getFrame()}`, text: avatarEmoji(getAvatar()) }),
             h('div', {},
                 h('div', { className: 'profile-username', text: u.username || 'Guest' }),
                 h('div', { className: 'muted', text: u.isGuest ? 'Guest account' : (u.email || 'Registered') }),
@@ -50,12 +51,13 @@ function rerender() {
         h('div', { className: 'profile-section' },
             h('h3', { text: 'Avatar' }),
             h('div', { className: 'avatar-grid' },
-                ...AVATARS.map((a) => h('button', {
+                ...[...AVATARS, ...PREMIUM_AVATARS.filter((a) => ownsCosmetic(a.id))].map((a) => h('button', {
                     className: `avatar-opt${a.id === getAvatar() ? ' selected' : ''}`,
                     text: a.emoji,
                     onclick: () => { setAvatar(a.id); rerender(); toast('Avatar updated', 'success'); },
                 })),
             ),
+            h('div', { className: 'muted profile-cos-hint', text: 'Unlock premium avatars & profile frames in the Shop ✨' }),
         ),
         h('div', { className: 'profile-section' },
             h('button', { className: 'btn btn-danger btn-block', text: 'Log Out', onclick: performLogout }),
