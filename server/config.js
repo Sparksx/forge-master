@@ -31,10 +31,10 @@ export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 // stays out of pay-to-win territory; see CLAUDE.md / REDESIGN.md). Value per
 // dollar improves with the tier. `bonus` is extra gold layered on top of `gold`.
 export const GOLD_PACKS = [
-    { id: 'welcome', gold: 1500,  bonus: 0,     priceCents: 99,   label: 'Welcome Pouch', oneTime: true, tag: 'one-time' },
-    { id: 'pouch',   gold: 1000,  bonus: 0,     priceCents: 199,  label: 'Pouch of Gold' },
-    { id: 'sack',    gold: 2750,  bonus: 250,   priceCents: 499,  label: 'Sack of Gold' },
-    { id: 'chest',   gold: 6000,  bonus: 1000,  priceCents: 999,  label: 'Chest of Gold', tag: 'popular' },
-    { id: 'vault',   gold: 13000, bonus: 3000,  priceCents: 1999, label: 'Vault of Gold' },
-    { id: 'hoard',   gold: 35000, bonus: 10000, priceCents: 4999, label: "Dragon's Hoard", tag: 'best-value' },
+    { id: 'welcome', gold: 750,   bonus: 0,    priceCents: 99,   label: 'Welcome Pouch', oneTime: true, tag: 'one-time' },
+    { id: 'pouch',   gold: 500,   bonus: 0,    priceCents: 199,  label: 'Pouch of Gold' },
+    { id: 'sack',    gold: 1375,  bonus: 125,  priceCents: 499,  label: 'Sack of Gold' },
+    { id: 'chest',   gold: 3000,  bonus: 500,  priceCents: 999,  label: 'Chest of Gold', tag: 'popular' },
+    { id: 'vault',   gold: 6500,  bonus: 1500, priceCents: 1999, label: 'Vault of Gold' },
+    { id: 'hoard',   gold: 17500, bonus: 5000, priceCents: 4999, label: "Dragon's Hoard", tag: 'best-value' },
 ];
