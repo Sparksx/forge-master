@@ -13,8 +13,9 @@ import { pvpFight, pvpLeaderboard } from '../game/pvp.js';
 let root = null;
 let dungeon = null;
 let visible = false;
-let busy = false;        // a fight request is in flight or replaying
-let lastResult = null;   // the resolved fight, shown once the replay finishes
+let busy = false;          // a fight request is in flight or replaying
+let lastResult = null;     // the resolved fight, shown once the replay finishes
+let friendlyTarget = null; // userId for a one-shot unranked clan duel
 
 export const id = 'pvp';
 export const icon = '🏆';
@@ -65,6 +66,16 @@ export function onHide() {
     dungeon?.stop();
 }
 
+/**
+ * Kick off an unranked friendly duel against a clanmate. Called after navigating
+ * to this screen (e.g. from the clan roster). Resolves through the same async
+ * fight pipeline, but the server skips all Elo / win-loss bookkeeping.
+ */
+export function startFriendly(targetUserId) {
+    friendlyTarget = targetUserId;
+    findMatch();
+}
+
 // ── Sections ────────────────────────────────────────────────────────────────
 function buildIdle() {
     return h('div', {},
@@ -76,7 +87,7 @@ function buildIdle() {
                 stat('Record', 'pvp-record', '0W / 0L'),
             ),
         ),
-        h('button', { className: 'btn btn-primary btn-block pvp-find', text: 'Find Match', onclick: findMatch }),
+        h('button', { className: 'btn btn-primary btn-block pvp-find', text: 'Find Match', onclick: () => findMatch() }),
         h('div', { className: 'pvp-leaderboard' },
             h('h3', { text: '🏅 Top Players' }),
             h('div', { className: 'pvp-lb-list', id: 'pvp-lb-list' }, h('p', { className: 'muted', text: 'Loading…' })),
@@ -116,8 +127,10 @@ async function findMatch() {
     if (busy) return;
     busy = true;
     setFindEnabled(false);
+    const target = friendlyTarget; // consume the one-shot friendly challenge, if any
+    friendlyTarget = null;
     try {
-        const data = await pvpFight();
+        const data = await pvpFight(target);
         lastResult = data;
         startReplay(data);
     } catch (err) {
@@ -139,7 +152,7 @@ function startReplay(data) {
     const you = data.you;
     const opp = data.opponent;
     root.querySelector('.pvp-vs-name[data-side="you"]').textContent = `You · ${fmt(you.power)}`;
-    root.querySelector('.pvp-vs-name[data-side="opp"]').textContent = `${opp.username} · ${fmt(opp.power)}`;
+    root.querySelector('.pvp-vs-name[data-side="opp"]').textContent = `${opp.username}${data.friendly ? ' 🤝' : ''} · ${fmt(opp.power)}`;
     show('fight');
     dungeon.start();
     dungeon.setMatchup({
@@ -173,13 +186,16 @@ function onReplayDone() {
     root.querySelector('.pvp-result-title').textContent = won ? 'Victory! 🏆' : 'Defeat';
     const change = data.ratingChange || 0;
     const ratingEl = root.querySelector('.pvp-result-rating');
-    ratingEl.textContent = data.opponent.isBot
-        ? 'Sparring match — no rating change'
-        : `ELO ${change >= 0 ? '+' : ''}${change}`;
+    ratingEl.textContent = data.friendly
+        ? 'Friendly duel — no rating change'
+        : data.opponent.isBot
+            ? 'Sparring match — no rating change'
+            : `ELO ${change >= 0 ? '+' : ''}${change}`;
 
-    // Reflect the result locally so the lobby updates instantly.
+    // Reflect the result locally so the lobby updates instantly. Friendly duels and
+    // sparring bots are unranked, so leave the record untouched.
     const u = getCurrentUser();
-    if (u && !data.opponent.isBot) {
+    if (u && !data.opponent.isBot && !data.friendly) {
         u.pvpRating = data.newRating ?? ((u.pvpRating ?? 1000) + change);
         if (won) u.pvpWins = (u.pvpWins ?? 0) + 1;
         else u.pvpLosses = (u.pvpLosses ?? 0) + 1;

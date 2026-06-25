@@ -12,6 +12,9 @@ import {
     promoteMember, demoteMember, kickMember, transferLeadership,
 } from '../game/clan.js';
 import { can, rankInfo, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
+import { FRAMES } from '../../shared/cosmetics.js';
+import { switchTab } from './app.js';
+import { startFriendly } from './pvp.js';
 import {
     maxActiveExpeditions, expeditionSlots, expeditionPlan, clampExpeditionHours,
     EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS,
@@ -409,9 +412,41 @@ function buildMembers(clan, myRole) {
     );
 }
 
+// Only render frame classes we actually ship — guards against a tampered save
+// injecting an arbitrary class name onto the avatar.
+const VALID_FRAMES = new Set(FRAMES.map((f) => f.id));
+const safeFrame = (id) => (VALID_FRAMES.has(id) ? id : 'none');
+
+/** "Member since" — an absolute date (e.g. "Jun 25, 2026"). */
+function fmtJoinDate(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/** "Last seen" — a coarse relative time from the member's last game-state save. */
+function fmtLastSeen(ts) {
+    if (!ts) return 'unknown';
+    const then = new Date(ts).getTime();
+    if (Number.isNaN(then)) return 'unknown';
+    const diff = Date.now() - then;
+    if (diff < 60_000) return 'just now';
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(months / 12)}y ago`;
+}
+
 function renderMember(m, myRole) {
     const info = rankInfo(m.role);
-    const actions = h('div', { className: 'member-actions' });
+    // Stop button clicks (promote/kick/…) from also opening the member modal.
+    const actions = h('div', { className: 'member-actions', onclick: (e) => e.stopPropagation() });
     if (can(myRole, 'promote', m.role) && nextRankUp(m.role)) {
         actions.appendChild(h('button', { className: 'icon-btn', attrs: { title: 'Promote' }, text: '⬆️', onclick: () => doRank(promoteMember, m, `Promoted ${m.username}`) }));
     }
@@ -424,14 +459,54 @@ function renderMember(m, myRole) {
     if (can(myRole, 'kick', m.role)) {
         actions.appendChild(h('button', { className: 'icon-btn danger', attrs: { title: 'Kick' }, text: '✕', onclick: () => confirmKick(m) }));
     }
-    return h('div', { className: 'clan-member' },
-        h('span', { className: 'member-avatar', text: avatarEmoji(m.avatar) }),
+    return h('div', { className: 'clan-member member-clickable', onclick: () => showMemberModal(m) },
+        h('span', { className: `member-avatar frame-${safeFrame(m.frame)}`, text: avatarEmoji(m.avatar) }),
         h('div', { className: 'member-info' },
             h('span', { className: 'member-name', text: m.username }, h('span', { className: 'member-badge', text: ` ${info.icon}` })),
             h('span', { className: 'member-sub', text: `${info.name} · ${fmt(m.power)} power · ${fmt(m.xpContributed || 0)} clan XP` }),
+            h('span', { className: 'member-meta muted', text: `📅 ${fmtJoinDate(m.joinedAt)} · 🕓 ${fmtLastSeen(m.lastSeen)}` }),
         ),
         actions,
     );
+}
+
+// Tap a member to see their public profile and (for clanmates) start a friendly duel.
+function showMemberModal(m) {
+    const me = getCurrentUser();
+    const isMe = me?.id === m.userId;
+    const info = rankInfo(m.role);
+
+    const statRow = (label, value) => h('div', { className: 'member-stat-row' },
+        h('span', { className: 'muted', text: label }),
+        h('span', { className: 'member-stat-val', text: value }),
+    );
+
+    const body = h('div', { className: 'member-modal' },
+        h('div', { className: 'member-modal-head' },
+            h('span', { className: `member-modal-avatar frame-${safeFrame(m.frame)}`, text: avatarEmoji(m.avatar) }),
+            h('div', { className: 'member-modal-id' },
+                h('div', { className: 'member-modal-name' }, h('span', { text: m.username }), h('span', { className: 'member-badge', text: ` ${info.icon}` })),
+                h('div', { className: 'muted', text: info.name }),
+            ),
+        ),
+        h('div', { className: 'member-stats' },
+            statRow('⭐ Level', fmt(m.level || 1)),
+            statRow('💪 Power', fmt(m.power)),
+            statRow('🏆 PvP ELO', fmt(m.rating ?? 1000)),
+            statRow('📊 PvP Record', `${fmt(m.wins || 0)}W / ${fmt(m.losses || 0)}L`),
+            statRow('🤝 Clan XP', fmt(m.xpContributed || 0)),
+            statRow('💰 Donated', `${fmt(m.contributed || 0)}g`),
+            statRow('📅 Member since', fmtJoinDate(m.joinedAt)),
+            statRow('🕓 Last seen', fmtLastSeen(m.lastSeen)),
+        ),
+        isMe ? null : h('button', {
+            className: 'btn btn-primary btn-block', text: '⚔️ Friendly Duel',
+            onclick: () => { closeModal(); switchTab('pvp'); startFriendly(m.userId); },
+        }),
+        isMe ? null : h('p', { className: 'muted small member-duel-note', text: 'A practice fight against their gear — your ELO and record stay unchanged.' }),
+        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
+    );
+    openModal(body);
 }
 
 async function doRank(fn, m, okMsg) {
