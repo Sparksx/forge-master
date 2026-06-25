@@ -11,6 +11,7 @@ import * as pvp from './pvp.js';
 import * as clan from './clan.js';
 import * as shop from './shop.js';
 import * as profile from './profile.js';
+import { openPowerBreakdown } from './power-breakdown.js';
 
 const screens = [home, pvp, clan, shop, profile];
 // Bottom-nav order. Profile is omitted (reachable via the header avatar) and
@@ -92,7 +93,7 @@ function buildHeader() {
     const el = h('header', { className: 'app-hdr' },
         hero,
         h('div', { className: 'hdr-stats' },
-            h('div', { className: 'hdr-pill hdr-power' }, h('span', { text: '💪' }), power),
+            h('button', { className: 'hdr-pill hdr-power', attrs: { type: 'button', title: 'How is my Power calculated?' }, onclick: openPowerBreakdown }, h('span', { text: '💪' }), power),
             h('div', { className: 'hdr-pill hdr-gold' }, h('span', { text: '💰' }), gold),
         ),
     );
