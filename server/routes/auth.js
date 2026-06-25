@@ -260,11 +260,16 @@ router.post('/discord', authLimiter, async (req, res) => {
 });
 
 // ─── POST /api/auth/google ──────────────────────────────────────
-// Client sends { credential } (Google ID token from GSI)
+// Two supported flows:
+//  - { credential }            — a Google ID token straight from GSI / One Tap
+//  - { code, redirectUri }     — an authorization code from the OAuth redirect
+//                                flow (reliable on mobile; no One Tap / FedCM /
+//                                third-party-cookie dependency). We exchange it
+//                                server-side for an ID token, then verify that.
 router.post('/google', authLimiter, async (req, res) => {
-    const { credential } = req.body;
-    if (!credential) {
-        return res.status(400).json({ error: 'Google credential required' });
+    const { credential, code, redirectUri } = req.body;
+    if (!credential && !code) {
+        return res.status(400).json({ error: 'Google credential or code required' });
     }
 
     if (!GOOGLE_CLIENT_ID) {
@@ -272,9 +277,35 @@ router.post('/google', authLimiter, async (req, res) => {
     }
 
     try {
+        let idToken = credential;
+
+        // Authorization-code flow: trade the code for an ID token at Google.
+        if (!idToken && code) {
+            if (!GOOGLE_CLIENT_SECRET) {
+                return res.status(503).json({ error: 'Google login is not configured' });
+            }
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    client_id: GOOGLE_CLIENT_ID,
+                    client_secret: GOOGLE_CLIENT_SECRET,
+                    grant_type: 'authorization_code',
+                    code,
+                    // Must exactly match the redirect_uri used in the auth request.
+                    redirect_uri: redirectUri || '',
+                }),
+            });
+            const tokenData = await tokenRes.json();
+            if (!tokenRes.ok || !tokenData.id_token) {
+                return res.status(401).json({ error: 'Google authentication failed' });
+            }
+            idToken = tokenData.id_token;
+        }
+
         // Verify the Google ID token via Google's tokeninfo endpoint
         const verifyRes = await fetch(
-            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+            `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
         );
         const payload = await verifyRes.json();
 
