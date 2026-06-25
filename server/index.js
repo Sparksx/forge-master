@@ -32,6 +32,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const server = createServer(app);
 
+// Behind Railway's (single) proxy the incoming request carries an
+// `X-Forwarded-For` header. Express defaults `trust proxy` to false, which makes
+// `req.ip` the proxy's address AND makes express-rate-limit throw
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR — that error bubbles out of the rate-limit
+// middleware on every `/api/*` request, so auth calls (login, /refresh, /me) all
+// 500 and nobody can sign in. Trust exactly the first hop in production so
+// `req.ip` resolves to the real client and the limiter keys on it correctly.
+// Left off in dev where there's no proxy (avoids trusting a spoofable header).
+app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
+
 // Security headers
 app.use(helmet({
     contentSecurityPolicy: false,
