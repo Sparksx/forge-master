@@ -150,19 +150,17 @@ export function initAuth() {
             errorEl.textContent = t('auth.googleNotConfigured');
             return;
         }
-        // If GSI is loaded, trigger the prompt; otherwise redirect with standard OAuth
-        if (window.google?.accounts?.id) {
-            window.google.accounts.id.prompt();
-        } else {
-            // Fallback: redirect to Google OAuth (authorization code flow)
-            const params = new URLSearchParams({
-                client_id: GOOGLE_CLIENT_ID,
-                redirect_uri: `${window.location.origin}/auth/google/callback`,
-                response_type: 'code',
-                scope: 'openid email profile',
-            });
-            window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-        }
+        // Use the OAuth authorization-code redirect flow. One Tap / GSI `.prompt()`
+        // dead-ends on a blank accounts.google.com/gsi/transform page on mobile
+        // browsers that block third-party cookies; a full-page redirect doesn't.
+        // We return to /auth/google/callback?code=… (handled in handleOAuthCallback).
+        const params = new URLSearchParams({
+            client_id: GOOGLE_CLIENT_ID,
+            redirect_uri: `${window.location.origin}/auth/google/callback`,
+            response_type: 'code',
+            scope: 'openid email profile',
+        });
+        window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     });
 
     // ── Login submit ──────────────────────────────────────────────
@@ -301,7 +299,45 @@ function handleOAuthCallback() {
         return handleDiscordCallback(code);
     }
 
+    if (code && path.includes('/auth/google/callback')) {
+        // The redirect_uri sent to the server must match the one used in the auth
+        // request — capture it before replaceState rewrites the path (origin is
+        // unchanged by replaceState, so reconstructing it stays correct either way).
+        const redirectUri = `${window.location.origin}/auth/google/callback`;
+        window.history.replaceState({}, '', '/');
+        return handleGoogleCallback(code, redirectUri);
+    }
+
     return null;
+}
+
+async function handleGoogleCallback(code, redirectUri) {
+    const errorEl = document.getElementById('guest-error');
+
+    try {
+        const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, redirectUri }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            if (errorEl) errorEl.textContent = data.error || t('auth.loginFailed');
+            showAuthScreen();
+            return null;
+        }
+
+        setTokens(data.accessToken, data.refreshToken);
+        currentUser = data.user;
+        hideAuthScreen();
+        if (onAuthSuccess) onAuthSuccess(currentUser);
+        return currentUser;
+    } catch (err) {
+        if (errorEl) errorEl.textContent = t('auth.networkError');
+        showAuthScreen();
+        return null;
+    }
 }
 
 async function handleDiscordCallback(code) {
