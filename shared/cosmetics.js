@@ -14,13 +14,13 @@
 // catalog: it no longer appears for sale, but anyone who already owns/wears it
 // keeps it (the emoji still resolves and the cosmetic stays valid & equippable).
 export const PREMIUM_AVATARS = [
-    { id: 'ninja',    emoji: '🥷', name: 'Shadow Ninja',  price: 2000 },
-    { id: 'fox',      emoji: '🦊', name: 'Trickster Fox', price: 2000 },
-    { id: 'unicorn',  emoji: '🦄', name: 'Unicorn',       price: 4000 },
-    { id: 'genie',    emoji: '🧞', name: 'Genie',         price: 6000 },
-    { id: 'demon',    emoji: '👹', name: 'Demon',         price: 9000 },
-    { id: 'trex',     emoji: '🦖', name: 'T-Rex',         price: 12000, hidden: true },
-    { id: 'alien',    emoji: '👽', name: 'Starborn',      price: 15000 },
+    { id: 'ninja',    emoji: '🥷', name: 'Shadow Ninja',  price: 1000 },
+    { id: 'fox',      emoji: '🦊', name: 'Trickster Fox', price: 1000 },
+    { id: 'unicorn',  emoji: '🦄', name: 'Unicorn',       price: 2000 },
+    { id: 'genie',    emoji: '🧞', name: 'Genie',         price: 3000 },
+    { id: 'demon',    emoji: '👹', name: 'Demon',         price: 4500 },
+    { id: 'trex',     emoji: '🦖', name: 'T-Rex',         price: 6000, hidden: true },
+    { id: 'alien',    emoji: '👽', name: 'Starborn',      price: 7500 },
 ];
 
 // Profile frames decorate the avatar with a CSS border/glow. `none` is the free
@@ -28,11 +28,11 @@ export const PREMIUM_AVATARS = [
 // `.frame-*` rules in css/reforged.css.
 export const FRAMES = [
     { id: 'none',   name: 'No Frame',     price: 0,     free: true },
-    { id: 'bronze', name: 'Bronze Ring',  price: 1500 },
-    { id: 'silver', name: 'Silver Ring',  price: 4000 },
-    { id: 'gold',   name: 'Gilded Ring',  price: 9000 },
-    { id: 'mythic', name: 'Mythic Halo',  price: 20000 },
-    { id: 'emerald', name: 'Emerald Halo', price: 15000, hidden: true },
+    { id: 'bronze', name: 'Bronze Ring',  price: 750 },
+    { id: 'silver', name: 'Silver Ring',  price: 2000 },
+    { id: 'gold',   name: 'Gilded Ring',  price: 4500 },
+    { id: 'mythic', name: 'Mythic Halo',  price: 10000 },
+    { id: 'emerald', name: 'Emerald Halo', price: 7500, hidden: true },
 ];
 
 // All catalog entries, tagged with their kind for unified lookups.
