@@ -160,11 +160,11 @@ function buildCosmeticsTab() {
         h('p', { className: 'shop-blurb muted', text: 'Spend gold on looks, not power. Premium avatars and profile frames are purely cosmetic.' }),
         h('div', { className: 'shop-section' },
             h('h3', { text: 'Premium Avatars' }),
-            h('div', { className: 'cos-grid' }, ...PREMIUM_AVATARS.map(avatarCard)),
+            h('div', { className: 'cos-grid' }, ...PREMIUM_AVATARS.filter((a) => !a.hidden).map(avatarCard)),
         ),
         h('div', { className: 'shop-section' },
             h('h3', { text: 'Profile Frames' }),
-            h('div', { className: 'cos-grid' }, ...FRAMES.map(frameCard)),
+            h('div', { className: 'cos-grid' }, ...FRAMES.filter((f) => !f.hidden).map(frameCard)),
         ),
     );
 }

@@ -9,13 +9,17 @@
 
 // Premium avatars (emoji) beyond the free roster in src/game/config.js. The free
 // avatars are always owned; these must be bought with gold before they can be worn.
+//
+// `hidden: true` retires an entry from the shop without removing it from the
+// catalog: it no longer appears for sale, but anyone who already owns/wears it
+// keeps it (the emoji still resolves and the cosmetic stays valid & equippable).
 export const PREMIUM_AVATARS = [
     { id: 'ninja',    emoji: '🥷', name: 'Shadow Ninja',  price: 2000 },
     { id: 'fox',      emoji: '🦊', name: 'Trickster Fox', price: 2000 },
     { id: 'unicorn',  emoji: '🦄', name: 'Unicorn',       price: 4000 },
     { id: 'genie',    emoji: '🧞', name: 'Genie',         price: 6000 },
     { id: 'demon',    emoji: '👹', name: 'Demon',         price: 9000 },
-    { id: 'trex',     emoji: '🦖', name: 'T-Rex',         price: 12000 },
+    { id: 'trex',     emoji: '🦖', name: 'T-Rex',         price: 12000, hidden: true },
     { id: 'alien',    emoji: '👽', name: 'Starborn',      price: 15000 },
 ];
 
@@ -28,7 +32,7 @@ export const FRAMES = [
     { id: 'silver', name: 'Silver Ring',  price: 4000 },
     { id: 'gold',   name: 'Gilded Ring',  price: 9000 },
     { id: 'mythic', name: 'Mythic Halo',  price: 20000 },
-    { id: 'emerald', name: 'Emerald Halo', price: 15000 },
+    { id: 'emerald', name: 'Emerald Halo', price: 15000, hidden: true },
 ];
 
 // All catalog entries, tagged with their kind for unified lookups.

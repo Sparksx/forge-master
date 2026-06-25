@@ -55,8 +55,17 @@ describe('cosmetics catalog', () => {
         expect(cosmeticPrice('does-not-exist')).toBe(0);
     });
 
+    it('keeps retired (hidden) cosmetics in the catalog so owners can still wear them', () => {
+        // `hidden` only removes an entry from the shop; it stays a valid, lookup-able
+        // cosmetic so anyone already owning/wearing it keeps it.
+        for (const c of COSMETICS.filter((c) => c.hidden)) {
+            expect(getCosmetic(c.id)).toMatchObject({ id: c.id });
+            expect(cosmeticPrice(c.id)).toBe(c.price);
+        }
+    });
+
     it('grants no power — cosmetics carry no stat/bonus fields', () => {
-        const allowed = new Set(['id', 'emoji', 'name', 'price', 'free', 'kind']);
+        const allowed = new Set(['id', 'emoji', 'name', 'price', 'free', 'kind', 'hidden']);
         for (const c of COSMETICS) {
             for (const key of Object.keys(c)) {
                 expect(allowed.has(key)).toBe(true);
