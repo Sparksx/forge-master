@@ -26,6 +26,7 @@ model User {
 
   gameState      GameState?
   sentMessages   ChatMessage[]  @relation("sender")
+  conversations  ConversationMember[]
 
   @@index([pvpRating])
   refreshTokens  RefreshToken[]
@@ -168,11 +169,40 @@ model ChatMessage {
   id        Int      @id @default(autoincrement())
   senderId  Int
   sender    User     @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+  // Logical channel. Built-ins: "general". Clan chat: "clan:<clanId>".
+  // Private DMs / custom groups: "conv:<conversationId>".
   channel   String   @default("general") @db.VarChar(50)
   content   String   @db.VarChar(500)
   createdAt DateTime @default(now())
 
   @@index([channel, createdAt])
+}
+
+// A private conversation: a 1:1 direct message ("dm") or a named custom group
+// ("group"). Messages are stored as ChatMessage rows with channel "conv:<id>".
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  type      String   @default("dm") @db.VarChar(10) // dm | group
+  name      String?  @db.VarChar(40) // group name (null for dms)
+  createdBy Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members ConversationMember[]
+
+  @@index([updatedAt])
+}
+
+model ConversationMember {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
 }
 
 model RefreshToken {

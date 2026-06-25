@@ -67,6 +67,16 @@ export function createDungeon({ onResolve } = {}) {
     let rng = Math.random;  // seeded per-fight so combat is replayable
     let accumulator = 0;    // leftover real time waiting to be stepped
 
+    // ── Replay mode (PvP) ──────────────────────────────────────────────────────
+    // When a matchup carries a precomputed `events` list, the dungeon does NOT
+    // roll its own combat: it animates that authoritative timeline (HP, crits and
+    // deaths come straight from the log) so the on-screen fight can never disagree
+    // with the server's verdict. Movement stays procedural, purely for flavour.
+    let replayMode = false;
+    let replayEvents = [];
+    let replayIdx = 0;
+    let replayWin = false;
+
     function newEntity(over = {}) {
         return {
             id: '', x: 0, y: 0, r: 10, emoji: '👹', label: '', hp: 1, maxHP: 1,
@@ -137,6 +147,13 @@ export function createDungeon({ onResolve } = {}) {
         rng = seededRng(payload.seed != null ? payload.seed : seedFromPayload(payload));
         floaters.length = 0; slashes.length = 0; shots.length = 0;
 
+        // PvP replay: animate a precomputed authoritative timeline instead of
+        // rolling combat live. `payload.win` is the result from the hero's side.
+        replayMode = Array.isArray(payload.events);
+        replayEvents = replayMode ? payload.events : [];
+        replayIdx = 0;
+        replayWin = !!payload.win;
+
         // Hero on the left, full HP, ready to strike the instant focus is acquired.
         applyStats(player, payload.player);
         player.alive = true;
@@ -156,7 +173,8 @@ export function createDungeon({ onResolve } = {}) {
             e.r = player.r;
             e.hp = e.maxHP;
             e.alive = true;
-            e.aggro = false;
+            // In a replay both duellists are already engaged (no patrol/aggro).
+            e.aggro = replayMode;
             e.facing = -1;
             e.cooldown = 0;            // fires the instant it reaches firing range
             const sp = rightSpawn(i, payload.enemies.length);
@@ -242,7 +260,10 @@ export function createDungeon({ onResolve } = {}) {
     function update(dt) {
         const t = now();
 
-        if (active) {
+        if (active && replayMode) {
+            simClock += dt;
+            stepReplay(dt);
+        } else if (active) {
             simClock += dt;
             // Hero acts independently: walk to the nearest living enemy and, once
             // in reach, strike IT (never a far-off mob).
@@ -316,6 +337,78 @@ export function createDungeon({ onResolve } = {}) {
             }
         } else if (!e.aggro) {
             idleEnemy(e, dt);
+        }
+    }
+
+    // ── Replay stepping (PvP) ──────────────────────────────────────────────────
+    // Animate the precomputed event timeline. Fighters close in for flavour, but
+    // every hit's damage / crit / resulting HP comes straight from the log, so the
+    // animation is a faithful replay of the server's authoritative fight.
+    function stepReplay(dt) {
+        const entById = (id) => (id === player.id ? player : enemies.find((e) => e.id === id));
+
+        // Flavour movement: both sides walk toward their foe, then trade in place.
+        const foe = nearestEnemy();
+        if (player.alive && foe) {
+            const reach = reachOf(player, foe);
+            if (dist(player, foe) > reach) seek(player, foe, 3.4 * tile, dt, reach);
+            else player.facing = (foe.x - player.x) < 0 ? -1 : 1;
+        }
+        for (const e of aliveEnemies()) {
+            if (!player.alive) break;
+            const reach = reachOf(e, player);
+            if (dist(e, player) > reach) seek(e, player, 2.3 * tile, dt, reach);
+            else e.facing = (player.x - e.x) < 0 ? -1 : 1;
+        }
+
+        // Fire events in order once they're due — but hold the opening blows until
+        // the attacker has actually closed on its target (so the first strike
+        // doesn't fly across the room). A 2s grace prevents any stall.
+        while (replayIdx < replayEvents.length) {
+            const ev = replayEvents[replayIdx];
+            if (simClock < ev.t) break;
+            const attacker = entById(ev.by);
+            const target = entById(ev.target);
+            if (attacker && target && attacker.alive) {
+                const inReach = dist(attacker, target) <= reachOf(attacker, target) + 2;
+                if (!inReach && simClock < ev.t + 2) break;
+            }
+            applyReplayEvent(ev, attacker, target);
+            replayIdx++;
+        }
+
+        if (replayIdx >= replayEvents.length && !resolved) finish(replayWin);
+    }
+
+    // Apply one logged event: snap HP to the authoritative values and play the
+    // hit/heal/death animation (no damage is rolled here).
+    function applyReplayEvent(ev, attacker, target) {
+        if (!attacker || !target) return;
+        target.hp = Math.max(0, ev.targetHp);
+        attacker.hp = Math.max(0, ev.attackerHp);
+
+        const dx = target.x - attacker.x, dy = target.y - attacker.y;
+        const len = Math.hypot(dx, dy) || 1;
+        attacker.facing = dx < 0 ? -1 : 1;
+        const hostile = attacker.id !== 'player';
+        if (ev.ranged) {
+            attacker.lungeAt = now();
+            attacker.lungeDir = { x: dx / len * 0.4, y: dy / len * 0.4 };
+            shots.push({
+                x: attacker.x, y: attacker.y - attacker.r * 0.4,
+                tx: target.x, ty: target.y, bornAt: now(), dur: fast ? 150 : 240, hostile,
+            });
+        } else {
+            attacker.lungeAt = now();
+            attacker.lungeDir = { x: dx / len, y: dy / len };
+        }
+        slashes.push({ x: target.x, y: target.y, bornAt: now(), hostile });
+        spawnFloater(target, `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '', target.id === 'player');
+        if (ev.heal > 0) spawnFloater(attacker, `+${fmt(ev.heal)}`, 'heal', attacker.id === 'player');
+
+        if (target.hp <= 0) {
+            target.alive = false;
+            target.deathAt = now();
         }
     }
 

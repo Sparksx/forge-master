@@ -72,4 +72,6 @@ export const EVENTS = {
     CLAN_CHANGED: 'clan:changed',
     ARENA_RESULT: 'arena:result',
     CHAT_UPDATED: 'chat:updated',
+    CHAT_CONVERSATION_OPENED: 'chat:conversation_opened',
+    CHAT_ERROR: 'chat:error',
 };

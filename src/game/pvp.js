@@ -1,48 +1,33 @@
-// Live PvP client — thin wrapper over the existing server match engine.
-// The view registers handlers; this module owns the socket protocol.
-import { getSocket } from '../socket-client.js';
+// Async PvP client. Fights are resolved server-side against a stored snapshot of
+// another player and returned as a deterministic, replayable timeline (seed +
+// stat blocks + event log) that the dungeon animates locally.
+import { apiFetch } from '../api.js';
 
-let handlers = {};
-let bound = null;
-
-export function setPvpHandlers(h) {
-    handlers = h || {};
-}
-
-const EVENTS = ['pvp:queued', 'pvp:cancelled', 'pvp:matched', 'pvp:turn', 'pvp:turn-result', 'pvp:end', 'pvp:error', 'pvp:leaderboard'];
-
-const handlerName = {
-    'pvp:queued': 'onQueued',
-    'pvp:cancelled': 'onCancelled',
-    'pvp:matched': 'onMatched',
-    'pvp:turn': 'onTurn',
-    'pvp:turn-result': 'onTurnResult',
-    'pvp:end': 'onEnd',
-    'pvp:error': 'onError',
-    'pvp:leaderboard': 'onLeaderboard',
-};
-
-/** Bind socket listeners. Safe to call repeatedly (rebinds on reconnect). */
-export function initPvp() {
-    const socket = getSocket();
-    if (!socket || socket === bound) return;
-    bound = socket;
-    EVENTS.forEach((evt) => {
-        socket.off(evt);
-        socket.on(evt, (data) => handlers[handlerName[evt]]?.(data));
+/**
+ * Resolve one async fight. With no argument the server matchmakes a random
+ * opponent (ranked); pass a clanmate's `opponentId` for an unranked friendly
+ * duel. Returns { seed, win, winner, friendly, ratingChange, newRating, events,
+ * you, opponent } or throws with a readable message.
+ */
+export async function pvpFight(opponentId) {
+    const res = await apiFetch('/api/pvp/fight', {
+        method: 'POST',
+        ...(opponentId != null ? { body: { opponentId } } : {}),
     });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not start a fight');
+    }
+    return res.json();
 }
 
-function emit(evt, payload) {
-    const socket = getSocket();
-    if (!socket) return false;
-    socket.emit(evt, payload);
-    return true;
+/** Top players by Elo. Returns [] on failure. */
+export async function pvpLeaderboard() {
+    try {
+        const res = await apiFetch('/api/pvp/leaderboard');
+        if (!res.ok) return [];
+        return res.json();
+    } catch {
+        return [];
+    }
 }
-
-export const pvpQueue = () => emit('pvp:queue');
-export const pvpCancel = () => emit('pvp:cancel');
-/** Challenge a clanmate to an unranked friendly duel (no ELO change). */
-export const pvpFriendly = (targetUserId) => emit('pvp:friendly', { targetUserId });
-export const pvpAction = (type) => emit('pvp:action', { type });
-export const pvpRequestLeaderboard = () => emit('pvp:leaderboard');

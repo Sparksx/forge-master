@@ -15,6 +15,7 @@ import {
 import { forge } from '../game/forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
 import { getRecentMessages } from '../game/chat.js';
+import { openChat } from './chat.js';
 import { createDungeon } from './dungeon.js';
 import { gameEvents, EVENTS } from '../events.js';
 
@@ -191,8 +192,10 @@ function syncForgeXp() {
 }
 
 // Recent world chat, shown as a faint strip pinned at the bottom of the screen.
+// Tapping it opens the full-width chat (General / Clan / Private tabs).
 function buildChat() {
-    const wrap = h('div', { className: 'home-chat' });
+    const wrap = h('div', { className: 'home-chat', attrs: { role: 'button', tabindex: '0' }, onclick: () => openChat('general') });
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChat('general'); } });
     syncChat(wrap);
     return wrap;
 }
@@ -201,12 +204,18 @@ function syncChat(wrap = root?.querySelector('.home-chat')) {
     if (!wrap) return;
     const msgs = getRecentMessages(3);
     clear(wrap);
-    wrap.classList.toggle('empty', msgs.length === 0);
+    if (msgs.length === 0) {
+        wrap.appendChild(h('div', { className: 'home-chat-line home-chat-hint' },
+            h('span', { className: 'home-chat-text muted', text: '💬 Tap to open chat' })));
+        return;
+    }
     msgs.forEach((m) => wrap.appendChild(
         h('div', { className: 'home-chat-line' },
             h('span', { className: 'home-chat-sender', text: `${m.sender}: ` }),
             h('span', { className: 'home-chat-text', text: m.content }),
         )));
+    wrap.appendChild(h('div', { className: 'home-chat-line home-chat-hint' },
+        h('span', { className: 'home-chat-text muted', text: '💬 Tap to open chat' })));
 }
 
 function doForge() {

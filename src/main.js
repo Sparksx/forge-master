@@ -9,7 +9,6 @@ import { loadFromServer, loadLocal } from './game/state.js';
 import { reconcileCheckoutReturn } from './game/shop.js';
 import { loadMyClan } from './game/clan.js';
 import { initClanMissions } from './game/clan-missions.js';
-import { initPvp } from './game/pvp.js';
 import { initChat } from './game/chat.js';
 import { initApp } from './screens/app.js';
 import { toast } from './screens/components.js';
@@ -35,8 +34,8 @@ async function startGame() {
     // purchased gold balance is synced and can't be clobbered by the next save.
     const checkout = await reconcileCheckoutReturn();
 
-    // Live services (chat/PvP) over the authenticated socket.
-    connectSocket({ onReconnect: () => { initPvp(); initChat(); } });
+    // Live chat over the authenticated socket. PvP is now async REST (no socket).
+    connectSocket({ onReconnect: () => initChat() });
     initChat();
 
     // Load the player's clan so perks apply before the UI renders.

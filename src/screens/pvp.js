@@ -1,15 +1,21 @@
-// PvP screen — live duels over the existing server match engine.
+// PvP screen — async, auto-resolved duels. A fight is resolved server-side
+// against a stored snapshot of another player and returned as a deterministic
+// timeline (seed + stat blocks + event log); the dungeon replays it identically.
+// No live opponent, no per-turn actions — the gear does the fighting (same model
+// as the PvE idle battler).
 import { h, clear, fmt, toast } from './components.js';
 import { avatarEmoji } from '../game/config.js';
-import { getAvatar, getPowerScore, getCombatStats } from '../game/state.js';
+import { getAvatar, getPowerScore } from '../game/state.js';
 import { getCurrentUser } from '../auth.js';
-import { setPvpHandlers, initPvp, pvpQueue, pvpCancel, pvpAction, pvpFriendly, pvpRequestLeaderboard } from '../game/pvp.js';
+import { createDungeon } from './dungeon.js';
+import { pvpFight, pvpLeaderboard } from '../game/pvp.js';
 
 let root = null;
-let mode = 'idle'; // idle | queue | fight | result
-let myMaxHP = 0;
-let countdown = null;
-let friendly = false; // current bout is an unranked clan duel
+let dungeon = null;
+let visible = false;
+let busy = false;          // a fight request is in flight or replaying
+let lastResult = null;     // the resolved fight, shown once the replay finishes
+let friendlyTarget = null; // userId for a one-shot unranked clan duel
 
 export const id = 'pvp';
 export const icon = '🏆';
@@ -20,11 +26,9 @@ export function render(container) {
     clear(root);
     root.appendChild(h('div', { className: 'pvp-screen' },
         section('idle', buildIdle()),
-        section('queue', buildQueue()),
         section('fight', buildFight()),
         section('result', buildResult()),
     ));
-    bindHandlers();
     show('idle');
     refresh();
 }
@@ -36,7 +40,6 @@ function section(name, node) {
 }
 
 function show(m) {
-    mode = m;
     root.querySelectorAll('.pvp-section').forEach((s) => s.classList.toggle('hidden', s.dataset.section !== m));
 }
 
@@ -51,21 +54,26 @@ export function refresh() {
 }
 
 export function onShow() {
+    visible = true;
     refresh();
-    initPvp();
-    pvpRequestLeaderboard();
+    dungeon?.start();
+    loadLeaderboard();
+    if (!busy) show('idle');
+}
+
+export function onHide() {
+    visible = false;
+    dungeon?.stop();
 }
 
 /**
  * Kick off an unranked friendly duel against a clanmate. Called after navigating
- * to this screen (e.g. from the clan roster). The opponent is an AI snapshot, so
- * the match resolves the moment the server responds with `pvp:matched`.
+ * to this screen (e.g. from the clan roster). Resolves through the same async
+ * fight pipeline, but the server skips all Elo / win-loss bookkeeping.
  */
 export function startFriendly(targetUserId) {
-    initPvp();
-    friendly = true;
-    if (pvpFriendly(targetUserId)) show('queue');
-    else toast('Not connected — try again', 'error');
+    friendlyTarget = targetUserId;
+    findMatch();
 }
 
 // ── Sections ────────────────────────────────────────────────────────────────
@@ -79,7 +87,7 @@ function buildIdle() {
                 stat('Record', 'pvp-record', '0W / 0L'),
             ),
         ),
-        h('button', { className: 'btn btn-primary btn-block', text: 'Find Match', onclick: () => { initPvp(); friendly = false; if (pvpQueue()) show('queue'); else toast('Not connected', 'error'); } }),
+        h('button', { className: 'btn btn-primary btn-block pvp-find', text: 'Find Match', onclick: () => findMatch() }),
         h('div', { className: 'pvp-leaderboard' },
             h('h3', { text: '🏅 Top Players' }),
             h('div', { className: 'pvp-lb-list', id: 'pvp-lb-list' }, h('p', { className: 'muted', text: 'Loading…' })),
@@ -91,124 +99,119 @@ function stat(label, cls, val) {
     return h('div', { className: 'pvp-stat' }, h('span', { className: 'pvp-stat-label', text: label }), h('span', { className: `pvp-stat-val ${cls}`, text: val }));
 }
 
-function buildQueue() {
-    return h('div', { className: 'pvp-queue' },
-        h('div', { className: 'spinner' }),
-        h('p', { text: 'Searching for an opponent…' }),
-        h('button', { className: 'btn btn-ghost', text: 'Cancel', onclick: () => { pvpCancel(); show('idle'); } }),
-    );
-}
-
 function buildFight() {
-    const fighter = (side, name) => h('div', { className: `pvp-fighter pvp-${side}` },
-        h('div', { className: 'pvp-fighter-name', dataset: { side }, text: name }),
-        h('div', { className: 'hpbar' }, h('div', { className: 'hpfill', dataset: { side } }), h('span', { className: 'hptext', dataset: { side } })),
-    );
+    const host = h('div', { className: 'dungeon-host' });
+    dungeon = createDungeon({ onResolve: onReplayDone });
+    dungeon.mount(host);
     return h('div', {},
-        h('div', { className: 'pvp-arena' },
-            fighter('you', 'You'),
-            h('div', { className: 'pvp-vs' }, h('span', { className: 'pvp-timer', text: '15' }), h('small', { text: 'VS' })),
-            fighter('opp', 'Opponent'),
+        h('div', { className: 'pvp-arena-head' },
+            h('span', { className: 'pvp-vs-name', dataset: { side: 'you' }, text: 'You' }),
+            h('small', { text: 'VS' }),
+            h('span', { className: 'pvp-vs-name', dataset: { side: 'opp' }, text: 'Opponent' }),
         ),
-        h('div', { className: 'pvp-actions' },
-            actionBtn('attack', '⚔️ Attack'),
-            actionBtn('defend', '🛡️ Defend'),
-            actionBtn('special', '💥 Special'),
-        ),
-        h('div', { className: 'pvp-log', id: 'pvp-log' }),
+        host,
     );
-}
-
-function actionBtn(type, label) {
-    return h('button', { className: 'pvp-action', dataset: { action: type }, text: label, onclick: () => { pvpAction(type); setActionsEnabled(false); } });
 }
 
 function buildResult() {
     return h('div', { className: 'pvp-result' },
         h('h2', { className: 'pvp-result-title', text: 'Victory!' }),
         h('p', { className: 'pvp-result-rating' }),
-        h('button', { className: 'btn btn-primary', text: 'Back to Lobby', onclick: () => { show('idle'); onShow(); } }),
+        h('button', { className: 'btn btn-primary', text: 'Fight Again', onclick: () => { show('idle'); refresh(); findMatch(); } }),
+        h('button', { className: 'btn btn-ghost', text: 'Back to Lobby', onclick: () => { show('idle'); refresh(); loadLeaderboard(); } }),
     );
 }
 
-function setActionsEnabled(on) {
-    root.querySelectorAll('.pvp-action').forEach((b) => { b.disabled = !on; });
+// ── Flow ──────────────────────────────────────────────────────────────────--
+async function findMatch() {
+    if (busy) return;
+    busy = true;
+    setFindEnabled(false);
+    const target = friendlyTarget; // consume the one-shot friendly challenge, if any
+    friendlyTarget = null;
+    try {
+        const data = await pvpFight(target);
+        lastResult = data;
+        startReplay(data);
+    } catch (err) {
+        busy = false;
+        setFindEnabled(true);
+        toast(err.message || 'Matchmaking failed', 'error');
+    }
 }
 
-function setHp(side, hp, maxHP) {
-    const pct = Math.max(0, Math.min(100, (hp / maxHP) * 100));
-    root.querySelector(`.hpfill[data-side="${side}"]`).style.width = `${pct}%`;
-    root.querySelector(`.hptext[data-side="${side}"]`).textContent = `${fmt(Math.max(0, Math.round(hp)))}/${fmt(maxHP)}`;
+function setFindEnabled(on) {
+    const b = root?.querySelector('.pvp-find');
+    if (!b) return;
+    b.disabled = !on;
+    b.textContent = on ? 'Find Match' : 'Finding…';
 }
 
-function logLine(text, cls = '') {
-    const log = root.querySelector('#pvp-log');
-    log.insertBefore(h('p', { className: cls, text }), log.firstChild);
-    while (log.children.length > 12) log.removeChild(log.lastChild);
-}
-
-function startCountdown(seconds) {
-    clearInterval(countdown);
-    let s = seconds;
-    const el = root.querySelector('.pvp-timer');
-    if (el) el.textContent = String(s);
-    countdown = setInterval(() => {
-        s -= 1;
-        if (el) el.textContent = String(Math.max(0, s));
-        if (s <= 0) clearInterval(countdown);
-    }, 1000);
-}
-
-// ── Socket handlers ─────────────────────────────────────────────────────────
-function bindHandlers() {
-    setPvpHandlers({
-        onQueued: () => show('queue'),
-        onCancelled: () => show('idle'),
-        onError: (d) => { toast(d?.message || 'PvP error', 'error'); if (mode === 'queue') show('idle'); },
-        onMatched: (d) => {
-            friendly = !!d.friendly;
-            myMaxHP = getCombatStats().maxHP;
-            const oppMax = d.opponent.maxHP;
-            clear(root.querySelector('#pvp-log'));
-            root.querySelector('.pvp-fighter-name[data-side="you"]').textContent = `You · ${fmt(d.you.power)}pwr`;
-            root.querySelector('.pvp-fighter-name[data-side="opp"]').textContent = `${d.opponent.username}${friendly ? ' (friendly)' : ''} · ${fmt(d.opponent.power)}pwr`;
-            setHp('you', myMaxHP, myMaxHP);
-            setHp('opp', oppMax, oppMax);
-            root.querySelector('.pvp-fighter-name[data-side="opp"]').dataset.max = String(oppMax);
-            show('fight');
-        },
-        onTurn: (d) => { setActionsEnabled(true); startCountdown(Math.round((d.timeLimit || 15000) / 1000)); },
-        onTurnResult: (d) => {
-            setActionsEnabled(false);
-            const oppMax = Number(root.querySelector('.pvp-fighter-name[data-side="opp"]').dataset.max) || d.opponent.maxHP;
-            setHp('you', d.you.currentHP, d.you.maxHP || myMaxHP);
-            setHp('opp', d.opponent.currentHP, d.opponent.maxHP || oppMax);
-            logLine(`You ${d.you.action} (${fmt(d.you.damage)}${d.you.isCrit ? ' crit!' : ''}) · Opponent ${d.opponent.action} (${fmt(d.opponent.damage)})`);
-        },
-        onEnd: (d) => {
-            clearInterval(countdown);
-            const isFriendly = friendly || !!d.friendly;
-            const won = d.winnerId && d.you && d.winnerId === d.you.userId;
-            const draw = !d.winnerId;
-            const change = d.you?.ratingChange ?? 0;
-            root.querySelector('.pvp-result-title').textContent = draw ? 'Draw' : won ? 'Victory! 🏆' : 'Defeat';
-            root.querySelector('.pvp-result-rating').textContent = isFriendly
-                ? 'Friendly duel — ELO unaffected'
-                : `ELO ${change >= 0 ? '+' : ''}${change}`;
-            // Update local user record so the lobby reflects the result immediately.
-            // Friendly duels are unranked, so leave the record untouched.
-            if (!isFriendly) {
-                const u = getCurrentUser();
-                if (u) { u.pvpRating = (u.pvpRating ?? 1000) + change; if (!draw) { if (won) u.pvpWins = (u.pvpWins ?? 0) + 1; else u.pvpLosses = (u.pvpLosses ?? 0) + 1; } }
-            }
-            show('result');
-        },
-        onLeaderboard: (list) => renderLeaderboard(list),
+// Hand the server's deterministic fight to the dungeon to animate.
+function startReplay(data) {
+    const you = data.you;
+    const opp = data.opponent;
+    root.querySelector('.pvp-vs-name[data-side="you"]').textContent = `You · ${fmt(you.power)}`;
+    root.querySelector('.pvp-vs-name[data-side="opp"]').textContent = `${opp.username}${data.friendly ? ' 🤝' : ''} · ${fmt(opp.power)}`;
+    show('fight');
+    dungeon.start();
+    dungeon.setMatchup({
+        seed: data.seed,
+        win: data.win,
+        events: data.events,
+        player: fighterSpec('player', avatarEmoji(getAvatar()), you),
+        enemies: [fighterSpec('opp', avatarEmoji(opp.avatar), opp)],
     });
 }
 
+// Map a server stat block to the dungeon's matchup spec.
+function fighterSpec(id, emoji, s) {
+    return {
+        id, emoji, role: 'normal',
+        maxHP: s.maxHP, damage: s.damage,
+        critChance: s.critChance, critMultiplier: s.critMultiplier,
+        attackSpeed: s.attackSpeed, lifeSteal: s.lifeSteal, healthRegen: s.healthRegen,
+        ranged: !!s.ranged,
+    };
+}
+
+// The dungeon finished playing the fight back — reveal the authoritative result.
+function onReplayDone() {
+    busy = false;
+    setFindEnabled(true);
+    const data = lastResult;
+    if (!data) { show('idle'); return; }
+
+    const won = data.winner === 'you';
+    root.querySelector('.pvp-result-title').textContent = won ? 'Victory! 🏆' : 'Defeat';
+    const change = data.ratingChange || 0;
+    const ratingEl = root.querySelector('.pvp-result-rating');
+    ratingEl.textContent = data.friendly
+        ? 'Friendly duel — no rating change'
+        : data.opponent.isBot
+            ? 'Sparring match — no rating change'
+            : `ELO ${change >= 0 ? '+' : ''}${change}`;
+
+    // Reflect the result locally so the lobby updates instantly. Friendly duels and
+    // sparring bots are unranked, so leave the record untouched.
+    const u = getCurrentUser();
+    if (u && !data.opponent.isBot && !data.friendly) {
+        u.pvpRating = data.newRating ?? ((u.pvpRating ?? 1000) + change);
+        if (won) u.pvpWins = (u.pvpWins ?? 0) + 1;
+        else u.pvpLosses = (u.pvpLosses ?? 0) + 1;
+    }
+
+    if (visible) show('result');
+    loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+    const list = await pvpLeaderboard();
+    renderLeaderboard(list);
+}
+
 function renderLeaderboard(list) {
-    const box = root.querySelector('#pvp-lb-list');
+    const box = root?.querySelector('#pvp-lb-list');
     if (!box) return;
     clear(box);
     if (!list || list.length === 0) { box.appendChild(h('p', { className: 'muted', text: 'No ranked players yet — be the first!' })); return; }
