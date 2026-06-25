@@ -14,7 +14,7 @@ export { seededRng } from '../../shared/combat.js';
 export {
     EQUIPMENT_TYPES, HEALTH_ITEMS, DAMAGE_ITEMS,
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
-    MAX_PLAYER_LEVEL, playerBaseHealth, playerBaseDamage, playerPowerScore,
+    MAX_PLAYER_LEVEL, playerBaseHealth, playerBaseDamage, playerPowerScore, powerBreakdown,
     calculateItemStats, calculateStats, calculatePowerScore, computeStatsFromEquipment,
     BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, ATTACK_STYLES, RANGED_OPENING_FRACTION,
     weaponStyle,

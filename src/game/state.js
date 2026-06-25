@@ -3,7 +3,7 @@
 import {
     EQUIPMENT_TYPES, HEALTH_ITEMS, MAX_TIER, MAX_ITEM_LEVEL, SAVE_KEY, STARTING_GOLD,
     FORGE_LEVELS, MAX_FORGE_LEVEL, MAX_PLAYER_LEVEL, AVATARS, calculateItemStats,
-    computeStatsFromEquipment, playerPowerScore,
+    computeStatsFromEquipment, playerPowerScore, powerBreakdown,
     forgeXpForLevel, playerXpForLevel,
 } from './config.js';
 import { getCosmetic, isFreeCosmetic } from '../../shared/cosmetics.js';
@@ -123,6 +123,11 @@ export function getCombatStats() {
 
 export function getPowerScore() {
     return playerPowerScore(state.equipment, state.playerLevel, getStatBonusPct());
+}
+
+/** Itemized power breakdown (base + gear per stat, formula steps) for the Power page. */
+export function getPowerBreakdown() {
+    return powerBreakdown(state.equipment, state.playerLevel, getStatBonusPct());
 }
 
 export function getBestLevelForSlot(type, tier) {

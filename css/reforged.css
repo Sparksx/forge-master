@@ -144,15 +144,29 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 /* ── Battle Home ─────────────────────────────────────────── */
 .home-screen { display: flex; flex-direction: column; gap: 14px; }
 
-/* Stage track header */
-.stage-head { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.stage-title { font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.35rem; color: var(--text); text-shadow: 0 2px 10px rgba(0,0,0,.5); }
+/* Fight zone — full width, flush to the top of the screen-stage (just under the
+   top bar). Negative margins cancel the screen-stage padding so the dungeon runs
+   edge-to-edge. */
+.battle-zone {
+    position: relative;
+    margin: -16px -14px 0;
+}
+/* Current stage label floats small over the top of the fight zone */
+.stage-title {
+    position: absolute; top: 8px; left: 8px; z-index: 2;
+    font-family: 'Cinzel', serif; font-weight: 900; font-size: .9rem;
+    color: var(--text); text-shadow: 0 1px 4px rgba(0,0,0,.8);
+    padding: 3px 10px; border-radius: 12px;
+    background: rgba(0,0,0,.45); backdrop-filter: blur(4px);
+    pointer-events: none;
+}
 
 /* Battle stage — a 2D top-down dungeon the hero & mobs move around in */
 .dungeon-host {
     position: relative;
     border: 1px solid var(--accent);
-    border-radius: var(--radius);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
     box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,.4);
     overflow: hidden;
     background: #14102a;
@@ -226,9 +240,26 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .forge-btn-main .forge-btn-anvil { font-size: 1.9rem; line-height: 1; position: relative; z-index: 1; }
 .forge-btn-main .forge-btn-label { font-family: 'Cinzel', serif; font-weight: 900; letter-spacing: 2px; font-size: 1.05rem; position: relative; z-index: 1; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
 .forge-btn-main.forging { animation: hammer .7s ease; pointer-events: none; }
+/* Forge-XP progress baked into the FORGE button as a slim bottom border. */
+.forge-btn-xp { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border-radius: 0 0 16px 16px; overflow: hidden; background: rgba(0,0,0,.3); z-index: 1; }
+.forge-btn-xp-fill { height: 100%; width: 0; background: var(--accent-2); transition: width .35s ease; }
+.forge-btn-xp-fill.maxed { background: var(--gold); }
 .forge-floaters { position: absolute; left: 50%; top: -6px; }
 .forge-floater { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-weight: 900; font-size: .85rem; animation: rise .9s ease forwards; }
 .forge-bar .auto-forge { flex-shrink: 0; flex-direction: column; gap: 2px; width: 60px; height: 64px; }
+
+/* World-chat strip — last few messages, pinned to the bottom of the screen on a
+   translucent black backdrop. Hidden until there's something to show. */
+.home-chat {
+    display: flex; flex-direction: column; gap: 2px;
+    margin: 4px -14px -90px; padding: 8px 14px calc(90px + 8px);
+    background: rgba(0,0,0,.5);
+    font-size: .78rem; line-height: 1.35;
+}
+.home-chat.empty { display: none; }
+.home-chat-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-chat-sender { font-weight: 800; color: var(--accent-2); }
+.home-chat-text { color: var(--text); }
 
 /* ── Forge screen ────────────────────────────────────────── */
 .anvil-zone { text-align: center; padding: 12px 0 8px; position: relative; }
@@ -255,7 +286,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .anvil-hint { color: var(--muted); font-size: .82rem; margin-top: 6px; }
 
 .gear-section { margin-top: 18px; }
-.gear-header { font-family: 'Cinzel', serif; font-weight: 700; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
 .gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .gear-slot {
     position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden;
@@ -308,8 +338,6 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .odds-bar { min-width: 2px; }
 .maxed { text-align: center; color: var(--gold); font-weight: 700; padding: 10px; }
 .forge-xp { margin: 10px 0; }
-.forge-xp-home { margin: 8px 2px 0; }
-.forge-xp-home .forge-xp-label { text-align: center; }
 .forge-xp-bar { height: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .forge-xp-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .35s ease; }
 .forge-xp-label { margin-top: 4px; font-size: .72rem; }
@@ -472,6 +500,36 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .confirm-actions { display: flex; gap: 10px; margin-top: 18px; }
 .confirm-actions .btn { flex: 1; }
 .confirm p { color: var(--muted); font-size: .88rem; }
+
+/* ── Power pill (tappable) & breakdown modal ─────────────── */
+.hdr-power { cursor: pointer; font-family: inherit; color: var(--text); }
+.hdr-power:active { transform: scale(.96); }
+
+.pwr-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 4px 0 14px; }
+.pwr-hero-num { font-family: 'Cinzel', serif; font-weight: 900; font-size: 2.2rem; color: var(--accent-2); line-height: 1; }
+.pwr-hero-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.pwr-intro { font-size: .8rem; line-height: 1.5; margin-bottom: 16px; }
+.pwr-section-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; margin: 0 0 8px 2px; }
+
+.pwr-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: .84rem; }
+.pwr-table th { text-align: left; font-size: .66rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 0 0 6px; border-bottom: 1px solid var(--line); }
+.pwr-table td { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pwr-table .pwr-num { text-align: right; font-variant-numeric: tabular-nums; }
+.pwr-stat { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.pwr-stat-icon { font-size: 1rem; width: 1.2em; text-align: center; }
+.pwr-row .pwr-muted { color: var(--muted); }
+.pwr-row .pwr-gear { color: var(--accent); font-weight: 700; }
+.pwr-row .pwr-total { font-weight: 900; }
+
+.pwr-calc { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 6px 14px; }
+.pwr-calc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.pwr-calc-row:last-child { border-bottom: none; }
+.pwr-calc-label { display: flex; flex-direction: column; gap: 2px; font-size: .82rem; font-weight: 700; }
+.pwr-calc-note { font-size: .66rem; color: var(--muted); font-weight: 600; }
+.pwr-calc-val { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pwr-calc-row.strong { padding: 12px 0; }
+.pwr-calc-row.strong .pwr-calc-label { font-size: .95rem; font-weight: 900; }
+.pwr-calc-row.strong .pwr-calc-val { font-size: 1.05rem; color: var(--accent-2); }
 
 /* ── Shop ────────────────────────────────────────────────── */
 .shop-screen { padding-bottom: 12px; }

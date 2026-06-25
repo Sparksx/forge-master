@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
     BASE_HEALTH, BASE_DAMAGE, HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, MAX_PLAYER_LEVEL,
     BASE_ATTACK_PERIOD, playerBaseHealth, playerBaseDamage, computeStatsFromEquipment,
-    playerPowerScore, weaponStyle, gearPowerFromEquipment, calculateItemStats,
-    MAX_ITEM_LEVEL, MAX_TIER, BONUS_STATS,
+    playerPowerScore, powerBreakdown, weaponStyle, gearPowerFromEquipment, calculateItemStats,
+    MAX_ITEM_LEVEL, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
 } from '../stats.js';
 
 describe('player level base stats', () => {
@@ -66,6 +66,42 @@ describe('playerPowerScore', () => {
         const equipment = {};
         const base = playerPowerScore(equipment, 10);
         expect(playerPowerScore(equipment, 10, 25)).toBe(Math.round(base * 1.25));
+    });
+});
+
+describe('powerBreakdown', () => {
+    const equipment = {
+        weapon: { type: 'weapon', level: 20, tier: 4, stats: calculateItemStats(20, 4, false), statType: 'damage',
+            bonuses: [{ type: 'damageMulti', value: 8 }, { type: 'critChance', value: 5 }] },
+        armor: { type: 'armor', level: 18, tier: 3, stats: calculateItemStats(18, 3, true), statType: 'health',
+            bonuses: [{ type: 'healthMulti', value: 6 }] },
+    };
+
+    it('total exactly matches playerPowerScore for the same args', () => {
+        for (const [level, pct] of [[1, 0], [25, 0], [40, 30], [100, 12]]) {
+            expect(powerBreakdown(equipment, level, pct).total).toBe(playerPowerScore(equipment, level, pct));
+        }
+    });
+
+    it('rows cover base HP/Damage plus every bonus stat, with base+gear=total', () => {
+        const b = powerBreakdown(equipment, 30, 0);
+        expect(b.rows).toHaveLength(2 + BONUS_STAT_KEYS.length);
+        const health = b.rows.find((r) => r.key === 'health');
+        expect(health.base).toBe(playerBaseHealth(30));
+        expect(b.rows.every((r) => r.total === r.base + r.gear)).toBe(true);
+    });
+
+    it('aggregates a bonus stat from gear into its row', () => {
+        const dmgMulti = powerBreakdown(equipment, 1, 0).rows.find((r) => r.key === 'damageMulti');
+        expect(dmgMulti.base).toBe(0);
+        expect(dmgMulti.gear).toBe(8);
+        expect(dmgMulti.unit).toBe('%');
+    });
+
+    it('reflects the clan stat perk multiplier', () => {
+        expect(powerBreakdown(equipment, 10, 0).clanMult).toBe(1);
+        expect(powerBreakdown(equipment, 10, 25).clanMult).toBe(1.25);
+        expect(powerBreakdown(equipment, 10, -5).statBonusPct).toBe(0);
     });
 });
 

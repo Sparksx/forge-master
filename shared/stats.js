@@ -196,6 +196,64 @@ export function playerPowerScore(equipment, playerLevel = 1, statBonusPct = 0) {
     return Math.round(base * (1 + Math.max(0, statBonusPct) / 100));
 }
 
+/**
+ * Itemized power breakdown for the UI's "how is my Power calculated" page.
+ *
+ * Recomputes the exact same numbers as `playerPowerScore` but keeps every
+ * intermediate value so the screen can show a per-stat table and the formula
+ * steps. By construction `powerBreakdown(...).total === playerPowerScore(...)`
+ * for the same arguments (asserted in tests).
+ */
+export function powerBreakdown(equipment, playerLevel = 1, statBonusPct = 0) {
+    const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
+    const b = bonuses || {};
+
+    const baseHealth = playerBaseHealth(playerLevel);
+    const baseDamage = playerBaseDamage(playerLevel);
+
+    // Gear pools multiplied by their relevant bonus stats (mirrors calculatePowerScore).
+    const healthMult = (1 + (b.healthMulti || 0) / 100)
+        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
+    const damageMult = (1 + (b.damageMulti || 0) / 100)
+        * (1 + (b.attackSpeed || 0) / 100)
+        * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
+    const effectiveHealth = totalHealth * healthMult;
+    const effectiveDamage = totalDamage * damageMult;
+
+    const gearPower = Math.round(effectiveHealth + effectiveDamage);
+    const subtotal = gearPower + baseHealth + baseDamage;
+    const pct = Math.max(0, statBonusPct);
+    const clanMult = 1 + pct / 100;
+    const total = Math.round(subtotal * clanMult);
+
+    // Per-stat rows: flat HP/Damage (base from level + gear), then % bonuses (gear only).
+    const rows = [
+        { key: 'health', label: 'Health', icon: '❤️', unit: '', base: baseHealth, gear: totalHealth },
+        { key: 'damage', label: 'Damage', icon: '⚔️', unit: '', base: baseDamage, gear: totalDamage },
+        ...BONUS_STAT_KEYS.map((key) => ({
+            key,
+            label: BONUS_STATS[key].label,
+            icon: BONUS_STATS[key].icon,
+            unit: BONUS_STATS[key].unit,
+            base: 0,
+            gear: b[key] || 0,
+        })),
+    ].map((r) => ({ ...r, total: r.base + r.gear }));
+
+    return {
+        playerLevel: Math.max(1, playerLevel),
+        statBonusPct: pct,
+        clanMult,
+        baseHealth, baseDamage,
+        gearHealth: totalHealth, gearDamage: totalDamage,
+        healthMult, damageMult,
+        effectiveHealth, effectiveDamage,
+        bonuses: b,
+        gearPower, subtotal, total,
+        rows,
+    };
+}
+
 /** Clamp a value to an integer within [min, max], treating junk as min. */
 function clampInt(value, min, max) {
     const n = Math.floor(Number(value));
