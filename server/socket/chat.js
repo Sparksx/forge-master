@@ -36,17 +36,118 @@ export function getCombatLog(combatId) {
     return log;
 }
 
-const ALLOWED_CHANNELS = ['general', 'trading', 'clans'];
 const CHAT_COOLDOWN_MS = 1500;
+const HISTORY_LIMIT = 100;
+
+// Resolve a logical channel requested by a client into a concrete stored channel
+// + socket room, enforcing authorization. Logical channels:
+//   'general'     → world chat (everyone)
+//   'clan'        → the requester's own clan (resolved server-side, anti-spoof)
+//   'conv:<id>'   → a private DM / custom group the requester belongs to
+// Returns null when the requester isn't allowed to use the channel.
+async function resolveChannel(userId, channel) {
+    if (channel === 'general') {
+        return { stored: 'general', room: 'chat:general' };
+    }
+    if (channel === 'clan') {
+        const member = await prisma.clanMember.findUnique({
+            where: { userId }, select: { clanId: true },
+        });
+        if (!member) return null;
+        return { stored: `clan:${member.clanId}`, room: `chat:clan:${member.clanId}` };
+    }
+    if (typeof channel === 'string' && channel.startsWith('conv:')) {
+        const convId = Number(channel.slice(5));
+        if (!Number.isInteger(convId) || convId <= 0) return null;
+        const member = await prisma.conversationMember.findUnique({
+            where: { conversationId_userId: { conversationId: convId, userId } },
+            select: { id: true },
+        });
+        if (!member) return null;
+        return { stored: `conv:${convId}`, room: `chat:conv:${convId}` };
+    }
+    return null;
+}
+
+// Shape a conversation for a given viewer: derive a display title (group name, or
+// the other party's username for a DM) and a flat member list.
+function serializeConversation(conv, viewerId) {
+    const members = conv.members.map((m) => ({
+        id: m.userId,
+        username: m.user?.username,
+        avatar: m.user?.profilePicture,
+    }));
+    const others = members.filter((m) => m.id !== viewerId);
+    const title = conv.type === 'group'
+        ? (conv.name || 'Group')
+        : (others[0]?.username || 'Direct message');
+    return {
+        id: conv.id,
+        type: conv.type,
+        name: conv.name,
+        title,
+        members,
+        channel: `conv:${conv.id}`,
+        updatedAt: conv.updatedAt,
+    };
+}
+
+function loadConversation(id) {
+    return prisma.conversation.findUnique({
+        where: { id },
+        include: { members: { include: { user: { select: { id: true, username: true, profilePicture: true } } } } },
+    });
+}
+
+// Push a conversation to every currently-connected member, joining their socket
+// to the room so they receive live messages. This only adds it to their list —
+// it does not force their view to switch (that's `chat:conversation-opened`,
+// sent to the initiator alone).
+function broadcastConversation(io, conv) {
+    const memberIds = new Set(conv.members.map((m) => m.userId));
+    for (const [, s] of io.of('/').sockets) {
+        if (s.user && memberIds.has(s.user.userId)) {
+            s.join(`chat:conv:${conv.id}`);
+            s.emit('chat:conversation', serializeConversation(conv, s.user.userId));
+        }
+    }
+}
+
+async function sendConversations(socket) {
+    const userId = socket.user.userId;
+    const memberships = await prisma.conversationMember.findMany({
+        where: { userId }, select: { conversationId: true },
+    });
+    const ids = memberships.map((m) => m.conversationId);
+    if (!ids.length) { socket.emit('chat:conversations', []); return; }
+    const convs = await prisma.conversation.findMany({
+        where: { id: { in: ids } },
+        orderBy: { updatedAt: 'desc' },
+        include: { members: { include: { user: { select: { id: true, username: true, profilePicture: true } } } } },
+    });
+    socket.emit('chat:conversations', convs.map((c) => serializeConversation(c, userId)));
+}
 
 export function registerChatHandlers(io, socket) {
     let lastMessageAt = 0;
+    const userId = socket.user.userId;
 
-    // Join the general channel by default
+    // Join the general channel by default and send its recent history.
     socket.join('chat:general');
-
-    // Send chat history on connect
     sendHistory(socket, 'general');
+
+    // Join the clan room (if any) and all private-conversation rooms so the player
+    // receives live clan + private messages without an explicit subscribe.
+    (async () => {
+        try {
+            const member = await prisma.clanMember.findUnique({ where: { userId }, select: { clanId: true } });
+            if (member) socket.join(`chat:clan:${member.clanId}`);
+            const convs = await prisma.conversationMember.findMany({ where: { userId }, select: { conversationId: true } });
+            convs.forEach((c) => socket.join(`chat:conv:${c.conversationId}`));
+        } catch (err) {
+            console.error('Chat room join error:', err);
+        }
+    })();
 
     // Handle new message
     socket.on('chat:message', async (data) => {
@@ -55,18 +156,22 @@ export function registerChatHandlers(io, socket) {
             socket.emit('chat:error', { message: 'Please wait before sending another message' });
             return;
         }
-        lastMessageAt = now;
 
         const { content, channel = 'general' } = data || {};
-        if (!ALLOWED_CHANNELS.includes(channel)) return;
-
         if (!content || typeof content !== 'string') return;
         const trimmed = content.trim().slice(0, 500);
         if (!trimmed) return;
 
+        const target = await resolveChannel(userId, channel);
+        if (!target) {
+            socket.emit('chat:error', { message: 'You can\'t post in that channel' });
+            return;
+        }
+        lastMessageAt = now;
+
         // Check if user is muted
         try {
-            const mute = await getActiveMute(socket.user.userId);
+            const mute = await getActiveMute(userId);
             if (mute) {
                 const remaining = Math.ceil((mute.expiresAt.getTime() - Date.now()) / 60000);
                 socket.emit('chat:error', {
@@ -81,8 +186,8 @@ export function registerChatHandlers(io, socket) {
         try {
             const message = await prisma.chatMessage.create({
                 data: {
-                    senderId: socket.user.userId,
-                    channel,
+                    senderId: userId,
+                    channel: target.stored,
                     content: trimmed,
                 },
                 select: {
@@ -94,7 +199,13 @@ export function registerChatHandlers(io, socket) {
                 }
             });
 
-            io.to(`chat:${channel}`).emit('chat:message', {
+            // Bump a private conversation's recency so it sorts to the top.
+            if (target.stored.startsWith('conv:')) {
+                const convId = Number(target.stored.slice(5));
+                prisma.conversation.update({ where: { id: convId }, data: {} }).catch(() => {});
+            }
+
+            io.to(target.room).emit('chat:message', {
                 id: message.id,
                 sender: message.sender.username,
                 senderId: message.sender.id,
@@ -109,11 +220,94 @@ export function registerChatHandlers(io, socket) {
         }
     });
 
+    // Send the recent history for a specific channel on demand (tab switches).
+    socket.on('chat:request-history', async (data) => {
+        const { channel } = data || {};
+        const target = await resolveChannel(userId, channel);
+        if (!target) { socket.emit('chat:history', { channel, messages: [] }); return; }
+        sendHistory(socket, target.stored);
+    });
+
+    // List the player's private conversations (DMs + custom groups).
+    socket.on('chat:conversations', async () => {
+        try {
+            await sendConversations(socket);
+        } catch (err) {
+            console.error('Conversations list error:', err);
+        }
+    });
+
+    // Open (or create) a 1:1 DM with another player by username.
+    socket.on('chat:start-dm', async (data) => {
+        const username = (data?.username || '').trim();
+        if (!username) return;
+        try {
+            const targetUser = await prisma.user.findUnique({
+                where: { username }, select: { id: true },
+            });
+            if (!targetUser) { socket.emit('chat:error', { message: 'No player with that name' }); return; }
+            if (targetUser.id === userId) { socket.emit('chat:error', { message: 'You can\'t message yourself' }); return; }
+
+            let conv = await prisma.conversation.findFirst({
+                where: {
+                    type: 'dm',
+                    members: { every: { userId: { in: [userId, targetUser.id] } } },
+                    AND: [
+                        { members: { some: { userId } } },
+                        { members: { some: { userId: targetUser.id } } },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (!conv) {
+                conv = await prisma.conversation.create({
+                    data: { type: 'dm', createdBy: userId, members: { create: [{ userId }, { userId: targetUser.id }] } },
+                    select: { id: true },
+                });
+            }
+            const full = await loadConversation(conv.id);
+            broadcastConversation(io, full);
+            socket.emit('chat:conversation-opened', serializeConversation(full, userId));
+        } catch (err) {
+            console.error('Start DM error:', err);
+            socket.emit('chat:error', { message: 'Could not open conversation' });
+        }
+    });
+
+    // Create a named custom group with several players.
+    socket.on('chat:create-group', async (data) => {
+        const name = (data?.name || '').trim().slice(0, 40);
+        const usernames = Array.isArray(data?.usernames) ? data.usernames : [];
+        if (!name) { socket.emit('chat:error', { message: 'Group needs a name' }); return; }
+        try {
+            const clean = [...new Set(usernames.map((u) => String(u).trim()).filter(Boolean))].slice(0, 20);
+            const users = clean.length
+                ? await prisma.user.findMany({ where: { username: { in: clean } }, select: { id: true } })
+                : [];
+            const memberIds = [...new Set([userId, ...users.map((u) => u.id)])];
+            if (memberIds.length < 2) { socket.emit('chat:error', { message: 'Add at least one other player' }); return; }
+            const conv = await prisma.conversation.create({
+                data: {
+                    type: 'group', name, createdBy: userId,
+                    members: { create: memberIds.map((id) => ({ userId: id })) },
+                },
+                select: { id: true },
+            });
+            const full = await loadConversation(conv.id);
+            broadcastConversation(io, full);
+            socket.emit('chat:conversation-opened', serializeConversation(full, userId));
+        } catch (err) {
+            console.error('Create group error:', err);
+            socket.emit('chat:error', { message: 'Could not create group' });
+        }
+    });
+
     // Share a PVP combat in chat
     socket.on('chat:share-combat', async (data) => {
         const { combatId, channel = 'general' } = data || {};
-        if (!ALLOWED_CHANNELS.includes(channel)) return;
         if (!combatId || typeof combatId !== 'string') return;
+        const target = await resolveChannel(userId, channel);
+        if (!target) return;
 
         const log = getCombatLog(combatId);
         if (!log) {
@@ -122,9 +316,9 @@ export function registerChatHandlers(io, socket) {
         }
 
         // Broadcast combat message to channel
-        io.to(`chat:${channel}`).emit('chat:combat', {
+        io.to(target.room).emit('chat:combat', {
             combatId,
-            channel,
+            channel: target.stored,
             createdAt: new Date().toISOString(),
             sharedBy: socket.user.username,
             player1: {
@@ -288,13 +482,13 @@ export function registerChatHandlers(io, socket) {
         }
     });
 
-    // Join a specific channel
-    socket.on('chat:join', (data) => {
+    // Join a specific channel and replay its history.
+    socket.on('chat:join', async (data) => {
         const { channel } = data || {};
-        if (channel && typeof channel === 'string' && ALLOWED_CHANNELS.includes(channel)) {
-            socket.join(`chat:${channel}`);
-            sendHistory(socket, channel);
-        }
+        const target = await resolveChannel(userId, channel);
+        if (!target) return;
+        socket.join(target.room);
+        sendHistory(socket, target.stored);
     });
 }
 
@@ -312,7 +506,7 @@ async function sendHistory(socket, channel) {
         const messages = await prisma.chatMessage.findMany({
             where: { channel },
             orderBy: { createdAt: 'desc' },
-            take: 50,
+            take: HISTORY_LIMIT,
             select: {
                 id: true,
                 content: true,
@@ -322,16 +516,19 @@ async function sendHistory(socket, channel) {
             }
         });
 
-        socket.emit('chat:history', messages.reverse().map(m => ({
-            id: m.id,
-            sender: m.sender.username,
-            senderId: m.sender.id,
-            senderAvatar: m.sender.profilePicture,
-            senderRole: m.sender.role,
-            content: m.content,
-            channel: m.channel,
-            createdAt: m.createdAt,
-        })));
+        socket.emit('chat:history', {
+            channel,
+            messages: messages.reverse().map(m => ({
+                id: m.id,
+                sender: m.sender.username,
+                senderId: m.sender.id,
+                senderAvatar: m.sender.profilePicture,
+                senderRole: m.sender.role,
+                content: m.content,
+                channel: m.channel,
+                createdAt: m.createdAt,
+            })),
+        });
     } catch (err) {
         console.error('Chat history error:', err);
     }
