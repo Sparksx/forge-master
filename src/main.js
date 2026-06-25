@@ -10,6 +10,7 @@ import { reconcileCheckoutReturn } from './game/shop.js';
 import { loadMyClan } from './game/clan.js';
 import { initClanMissions } from './game/clan-missions.js';
 import { initPvp } from './game/pvp.js';
+import { initChat } from './game/chat.js';
 import { initApp } from './screens/app.js';
 import { toast } from './screens/components.js';
 
@@ -35,7 +36,8 @@ async function startGame() {
     const checkout = await reconcileCheckoutReturn();
 
     // Live services (chat/PvP) over the authenticated socket.
-    connectSocket({ onReconnect: () => initPvp() });
+    connectSocket({ onReconnect: () => { initPvp(); initChat(); } });
+    initChat();
 
     // Load the player's clan so perks apply before the UI renders.
     await loadMyClan();

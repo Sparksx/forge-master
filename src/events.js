@@ -71,4 +71,5 @@ export const EVENTS = {
     // Reforged
     CLAN_CHANGED: 'clan:changed',
     ARENA_RESULT: 'arena:result',
+    CHAT_UPDATED: 'chat:updated',
 };

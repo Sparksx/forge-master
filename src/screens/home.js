@@ -14,6 +14,7 @@ import {
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
+import { getRecentMessages } from '../game/chat.js';
 import { createDungeon } from './dungeon.js';
 import { gameEvents, EVENTS } from '../events.js';
 
@@ -41,7 +42,8 @@ export const label = 'Forge';
 export function render(container) {
     root = container;
     clear(root);
-    root.appendChild(h('div', { className: 'home-screen' }, buildBattle(), buildForge()));
+    root.appendChild(h('div', { className: 'home-screen' }, buildBattle(), buildForge(), buildChat()));
+    gameEvents.on(EVENTS.CHAT_UPDATED, () => syncChat());
     refresh();
 }
 
@@ -79,11 +81,11 @@ function buildBattle() {
     dungeon = createDungeon({ onResolve: (r) => onFightResolved(r) });
     dungeon.mount(dungeonHost);
 
+    // The stage label floats over the top-left of the fight zone (kept small) so
+    // the dungeon itself fills the full width edge-to-edge under the top bar.
     return h('div', { className: 'battle-zone' },
-        h('div', { className: 'stage-head' },
-            h('div', { className: 'stage-title', text: 'Hard 1-1' }),
-        ),
         dungeonHost,
+        h('div', { className: 'stage-title', text: 'Hard 1-1' }),
     );
 }
 
@@ -161,7 +163,6 @@ function buildForge() {
         h('button', { className: 'gear-slot', dataset: { type }, onclick: () => showSlotDetail(type) })));
 
     return h('div', { className: 'forge-zone' },
-        h('div', { className: 'gear-header' }, h('span', { text: 'Equipped Gear' })),
         grid,
         h('div', { className: 'forge-bar' },
             h('button', { className: 'forge-level-chip', onclick: showForgeUpgrade, text: `Forge Lv ${getForgeLevel()}` }),
@@ -169,33 +170,43 @@ function buildForge() {
                 h('span', { className: 'forge-btn-anvil', text: '⚒️' }),
                 h('span', { className: 'forge-btn-label', text: 'FORGE' }),
                 h('div', { className: 'forge-floaters' }),
+                // Forge-XP progress lives as a slim fill along the button's bottom
+                // edge — forging levels the forge up for free.
+                h('div', { className: 'forge-btn-xp' }, h('div', { className: 'forge-btn-xp-fill' })),
             ),
             h('button', { className: 'ctrl-btn auto-forge', onclick: toggleAutoForge },
                 h('span', { className: 'ctrl-icon', text: '♻️' }), h('span', { text: 'Auto' })),
         ),
-        buildForgeXp(),
     );
 }
 
-// Compact forge-XP bar shown under the forge buttons. Forging fills it to level
-// the forge for free; the full breakdown lives in the upgrade modal.
-function buildForgeXp() {
-    const wrap = h('div', { className: 'forge-xp forge-xp-home' });
-    syncForgeXp(wrap);
+// Sync the forge-XP fill baked into the FORGE button's bottom edge. At max level
+// it simply reads full.
+function syncForgeXp() {
+    const fill = root?.querySelector('.forge-btn-xp-fill');
+    if (!fill) return;
+    const prog = getForgeLevelProgress();
+    fill.style.width = prog.maxed ? '100%' : `${Math.round(prog.pct * 100)}%`;
+    fill.classList.toggle('maxed', !!prog.maxed);
+}
+
+// Recent world chat, shown as a faint strip pinned at the bottom of the screen.
+function buildChat() {
+    const wrap = h('div', { className: 'home-chat' });
+    syncChat(wrap);
     return wrap;
 }
 
-function syncForgeXp(wrap = root?.querySelector('.forge-xp-home')) {
+function syncChat(wrap = root?.querySelector('.home-chat')) {
     if (!wrap) return;
-    const prog = getForgeLevelProgress();
+    const msgs = getRecentMessages(3);
     clear(wrap);
-    if (prog.maxed) {
-        wrap.appendChild(h('div', { className: 'forge-xp-label muted', text: 'Forge at max level' }));
-        return;
-    }
-    wrap.appendChild(h('div', { className: 'forge-xp-bar' },
-        h('div', { className: 'forge-xp-fill', style: { width: `${Math.round(prog.pct * 100)}%` } })));
-    wrap.appendChild(h('div', { className: 'forge-xp-label muted', text: `Forge XP ${fmt(prog.xp)} / ${fmt(prog.need)}` }));
+    wrap.classList.toggle('empty', msgs.length === 0);
+    msgs.forEach((m) => wrap.appendChild(
+        h('div', { className: 'home-chat-line' },
+            h('span', { className: 'home-chat-sender', text: `${m.sender}: ` }),
+            h('span', { className: 'home-chat-text', text: m.content }),
+        )));
 }
 
 function doForge() {
