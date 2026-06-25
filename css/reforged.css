@@ -532,3 +532,8 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
     0%, 100% { box-shadow: 0 0 8px 1px #b46bff, 0 0 14px 2px #6bb8ff; }
     50% { box-shadow: 0 0 14px 2px #ff6bd6, 0 0 22px 3px #6bffd0; }
 }
+.frame-emerald { border: 2px solid transparent; box-shadow: 0 0 10px 1px #34d399, 0 0 16px 2px #10b981; animation: emerald-glow 2.6s ease-in-out infinite; }
+@keyframes emerald-glow {
+    0%, 100% { box-shadow: 0 0 8px 1px #34d399, 0 0 14px 2px #10b981; }
+    50% { box-shadow: 0 0 14px 2px #6ee7b7, 0 0 22px 3px #059669; }
+}

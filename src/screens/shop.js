@@ -231,3 +231,16 @@ function formatPrice(cents) {
 
 // Keep the header gold balance / button state fresh after a completed purchase.
 gameEvents.on(EVENTS.GOLD_PURCHASED, () => { buying = false; refresh(); });
+
+// Starting checkout navigates away to Stripe with `buying` left true (so the buy
+// buttons read "…"). If the player cancels or taps Back, the browser often
+// restores this screen from the back/forward cache (iOS Safari especially)
+// without re-running the module — leaving every buy button stuck on "…" and
+// disabled. Clear the flag whenever the page is shown again so the buttons
+// become clickable. (A normal full reload already resets module state, so this
+// is a no-op there.)
+if (typeof window !== 'undefined') {
+    window.addEventListener('pageshow', () => {
+        if (buying) { buying = false; refresh(); }
+    });
+}
