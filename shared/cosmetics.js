@@ -15,6 +15,7 @@ export const PREMIUM_AVATARS = [
     { id: 'unicorn',  emoji: '🦄', name: 'Unicorn',       price: 4000 },
     { id: 'genie',    emoji: '🧞', name: 'Genie',         price: 6000 },
     { id: 'demon',    emoji: '👹', name: 'Demon',         price: 9000 },
+    { id: 'trex',     emoji: '🦖', name: 'T-Rex',         price: 12000 },
     { id: 'alien',    emoji: '👽', name: 'Starborn',      price: 15000 },
 ];
 
@@ -27,6 +28,7 @@ export const FRAMES = [
     { id: 'silver', name: 'Silver Ring',  price: 4000 },
     { id: 'gold',   name: 'Gilded Ring',  price: 9000 },
     { id: 'mythic', name: 'Mythic Halo',  price: 20000 },
+    { id: 'emerald', name: 'Emerald Halo', price: 15000 },
 ];
 
 // All catalog entries, tagged with their kind for unified lookups.
