@@ -16,6 +16,7 @@ import spriteRoutes from './routes/sprites.js';
 import monsterRoutes from './routes/monsters.js';
 import playerRoutes from './routes/players.js';
 import clanRoutes from './routes/clans.js';
+import pvpRoutes from './routes/pvp.js';
 import prisma from './lib/prisma.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
@@ -76,6 +77,7 @@ app.use('/api/sprites', spriteRoutes);
 app.use('/api/monsters', monsterRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
+app.use('/api/pvp', pvpRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -8,6 +8,9 @@ import { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL } from '../../shared/stats.js';
 import { PREMIUM_AVATARS } from '../../shared/cosmetics.js';
 
 export { MAX_FORGE_LEVEL, MAX_ITEM_LEVEL };
+// Deterministic PRNG now lives with the shared combat engine; re-exported here so
+// the long-standing `import { seededRng } from './config.js'` callers still work.
+export { seededRng } from '../../shared/combat.js';
 export {
     EQUIPMENT_TYPES, HEALTH_ITEMS, DAMAGE_ITEMS,
     TIERS, MAX_TIER, BONUS_STATS, BONUS_STAT_KEYS,
@@ -199,17 +202,8 @@ export function rankKind(rank) {
     return 'normal';
 }
 
-// Tiny deterministic PRNG (mulberry32) so encounters are stable per rank without
-// storing them — "pre-generated" purely as a function of the rank seed.
-export function seededRng(seed) {
-    let a = (seed >>> 0) || 1;
-    return function () {
-        a |= 0; a = (a + 0x6D2B79F5) | 0;
-        let t = Math.imul(a ^ (a >>> 15), 1 | a);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
+// seededRng (mulberry32) is re-exported from shared/combat.js at the top of this
+// file — encounters stay stable per rank by seeding it with the rank.
 
 // Stage display: group ranks into "chapters" of substages, so the ladder reads
 // like the inspiration games ("Hard 2-15"). Purely cosmetic over arenaRank.
