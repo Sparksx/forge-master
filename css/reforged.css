@@ -296,7 +296,13 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 
 .chat-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 85%; }
 .chat-msg.mine { align-self: flex-end; flex-direction: row-reverse; }
-.chat-msg-avatar { font-size: 1.2rem; flex: none; }
+.chat-msg-avatar {
+    font-size: 1.1rem; flex: none; width: 34px; height: 34px;
+    display: grid; place-items: center; border-radius: 50%;
+    background: var(--bg-3); box-sizing: border-box; cursor: pointer;
+}
+.chat-msg-sender-link { cursor: pointer; }
+.chat-msg-sender-link:hover { text-decoration: underline; }
 .chat-msg-bubble {
     background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px;
     padding: 7px 11px; display: flex; flex-direction: column; gap: 2px;
@@ -565,6 +571,22 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .member-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
 .member-stat-row { display: flex; justify-content: space-between; gap: 8px; font-size: .82rem; }
 .member-stat-val { font-weight: 800; }
+
+/* Equipped-gear grid inside the public profile modal */
+.profile-gear { display: flex; flex-direction: column; gap: 8px; }
+.profile-gear-title { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.profile-gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.profile-gear-cell {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+    border-radius: 10px; background: var(--bg-2);
+    border: 1px solid var(--rarity, var(--line)); box-shadow: 0 0 6px -2px var(--rarity, transparent);
+}
+.profile-gear-cell.empty { border-style: dashed; border-color: var(--line); box-shadow: none; opacity: .5; }
+.profile-gear-icon { font-size: 1.5rem; }
+.profile-gear-lv {
+    position: absolute; bottom: 2px; right: 4px; font-size: .6rem;
+    font-weight: 800; color: var(--text-dim, #9aa);
+}
 .member-duel-note { margin: -6px 0 2px; text-align: center; }
 
 /* ── Profile ─────────────────────────────────────────────── */

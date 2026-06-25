@@ -1,6 +1,25 @@
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment } from '../../shared/stats.js';
+import { clanLevelFromXp } from '../../shared/clan-config.js';
 import { getActiveMute, logAudit } from '../middleware/auth.js';
+
+// Extract a player's equipped cosmetic frame from their stored game-state JSON,
+// guarding against a missing/non-object `player` blob.
+function frameOf(gameState) {
+    const player = gameState?.player;
+    return player && typeof player === 'object' && typeof player.frame === 'string'
+        ? player.frame
+        : 'none';
+}
+
+// Selector for a message sender, including the game-state needed to surface their
+// equipped profile frame alongside each chat line.
+const SENDER_SELECT = {
+    select: {
+        id: true, username: true, profilePicture: true, role: true,
+        gameState: { select: { player: true } },
+    },
+};
 
 // In-memory combat log store with 24h TTL and size cap
 const combatLogs = new Map();
@@ -195,7 +214,7 @@ export function registerChatHandlers(io, socket) {
                     content: true,
                     channel: true,
                     createdAt: true,
-                    sender: { select: { id: true, username: true, profilePicture: true, role: true } },
+                    sender: SENDER_SELECT,
                 }
             });
 
@@ -210,6 +229,7 @@ export function registerChatHandlers(io, socket) {
                 sender: message.sender.username,
                 senderId: message.sender.id,
                 senderAvatar: message.sender.profilePicture,
+                senderFrame: frameOf(message.sender.gameState),
                 senderRole: message.sender.role,
                 content: message.content,
                 channel: message.channel,
@@ -373,7 +393,13 @@ export function registerChatHandlers(io, socket) {
                             essence: true,
                             player: true,
                         }
-                    }
+                    },
+                    clanMembership: {
+                        select: {
+                            role: true,
+                            clan: { select: { id: true, name: true, tag: true, emblem: true, xp: true } },
+                        },
+                    },
                 }
             });
 
@@ -389,6 +415,23 @@ export function registerChatHandlers(io, socket) {
             // Determine ELO rank
             const rank = getEloRank(user.pvpRating);
 
+            // Player level + equipped frame from the stored game-state blob.
+            const playerJson = (user.gameState?.player && typeof user.gameState.player === 'object')
+                ? user.gameState.player : {};
+            const level = Number.isFinite(playerJson.level) ? playerJson.level : 1;
+
+            // Clan membership (name/tag/level) so the public profile can show it and
+            // the viewer can tell whether a friendly duel is available (clanmates only).
+            const membership = user.clanMembership;
+            const clan = membership?.clan ? {
+                id: membership.clan.id,
+                name: membership.clan.name,
+                tag: membership.clan.tag,
+                emblem: membership.clan.emblem,
+                level: clanLevelFromXp(membership.clan.xp),
+                role: membership.role,
+            } : null;
+
             // Get requesting user's role to decide what to include
             const requestingUser = await prisma.user.findUnique({
                 where: { id: socket.user.userId },
@@ -400,7 +443,10 @@ export function registerChatHandlers(io, socket) {
                 userId: user.id,
                 username: user.username,
                 profilePicture: user.profilePicture,
+                frame: frameOf(user.gameState),
                 role: user.role,
+                level,
+                clan,
                 pvpRating: user.pvpRating,
                 pvpWins: user.pvpWins,
                 pvpLosses: user.pvpLosses,
@@ -512,7 +558,7 @@ async function sendHistory(socket, channel) {
                 content: true,
                 channel: true,
                 createdAt: true,
-                sender: { select: { id: true, username: true, profilePicture: true, role: true } },
+                sender: SENDER_SELECT,
             }
         });
 
@@ -523,6 +569,7 @@ async function sendHistory(socket, channel) {
                 sender: m.sender.username,
                 senderId: m.sender.id,
                 senderAvatar: m.sender.profilePicture,
+                senderFrame: frameOf(m.sender.gameState),
                 senderRole: m.sender.role,
                 content: m.content,
                 channel: m.channel,

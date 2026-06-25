@@ -166,6 +166,33 @@ export function requestConversations() {
     getSocket()?.emit('chat:conversations');
 }
 
+/**
+ * Fetch another player's public profile (power, gear, clan, PvP record …) over
+ * the socket. Resolves with the profile object, or rejects on error/timeout.
+ * Used by the chat screen to pop a profile modal when a message is tapped.
+ */
+export function fetchPlayerProfile(userId) {
+    return new Promise((resolve, reject) => {
+        const socket = getSocket();
+        if (!socket || typeof userId !== 'number') { reject(new Error('Not connected')); return; }
+        let settled = false;
+        const onProfile = (data) => {
+            if (!data || data.userId !== userId) return; // ignore unrelated responses
+            settled = true;
+            socket.off('chat:player-profile', onProfile);
+            if (data.error) reject(new Error(data.error));
+            else resolve(data);
+        };
+        socket.on('chat:player-profile', onProfile);
+        socket.emit('chat:player-profile', { userId });
+        setTimeout(() => {
+            if (settled) return;
+            socket.off('chat:player-profile', onProfile);
+            reject(new Error('Profile request timed out'));
+        }, 8000);
+    });
+}
+
 /** Open (or create) a 1:1 DM with another player by username. */
 export function startDm(username) {
     const name = (username || '').trim();
