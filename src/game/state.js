@@ -2,10 +2,11 @@
 // Persists via the existing /api/game/state endpoint (+ localStorage fallback).
 import {
     EQUIPMENT_TYPES, HEALTH_ITEMS, MAX_TIER, MAX_ITEM_LEVEL, SAVE_KEY, STARTING_GOLD,
-    FORGE_LEVELS, MAX_FORGE_LEVEL, MAX_PLAYER_LEVEL, calculateItemStats,
+    FORGE_LEVELS, MAX_FORGE_LEVEL, MAX_PLAYER_LEVEL, AVATARS, calculateItemStats,
     computeStatsFromEquipment, playerPowerScore,
     forgeXpForLevel, playerXpForLevel,
 } from './config.js';
+import { getCosmetic, isFreeCosmetic } from '../../shared/cosmetics.js';
 import { itemName } from './items.js';
 import { gameEvents, EVENTS } from '../events.js';
 import { apiFetch, getAccessToken } from '../api.js';
@@ -27,6 +28,8 @@ const state = {
     playerLevel: 1,
     playerXp: 0,           // XP toward the next player level (resets each level)
     avatar: 'wizard',
+    ownedCosmetics: [],    // ids of gold-bought cosmetics (premium avatars + frames)
+    frame: 'none',         // equipped profile frame (purely visual)
     // Clan perks, refreshed by clan.js after loading the player's clan.
     perks: { goldBonusPct: 0, forgeLuckPct: 0, forgeSpeedPct: 0, forgeBestOf: 1, statBonusPct: 0 },
 };
@@ -70,7 +73,19 @@ export const getArenaRank = () => state.arenaRank;
 export const getHighestArenaRank = () => state.highestArenaRank;
 export const getPlayerLevel = () => state.playerLevel;
 export const getAvatar = () => state.avatar;
+export const getFrame = () => state.frame || 'none';
+export const getOwnedCosmetics = () => state.ownedCosmetics.slice();
 export const getForgeLuckPct = () => state.perks.forgeLuckPct || 0;
+
+const FREE_AVATAR_IDS = new Set(AVATARS.map((a) => a.id));
+
+/** True if the player can wear this cosmetic (free items + anything bought). */
+export function ownsCosmetic(id) {
+    if (!id) return false;
+    if (FREE_AVATAR_IDS.has(id)) return true; // the base avatar roster is always free
+    if (isFreeCosmetic(id)) return true;      // the `none` frame
+    return state.ownedCosmetics.includes(id);
+}
 export const getGoldBonusPct = () => state.perks.goldBonusPct || 0;
 export const getForgeSpeedPct = () => state.perks.forgeSpeedPct || 0;
 export const getForgeBestOf = () => Math.max(1, state.perks.forgeBestOf || 1);
@@ -198,6 +213,36 @@ export function spendGold(amount) {
     return true;
 }
 
+// ── Cosmetics (gold sink — purely visual, never power) ──────────────────────
+/**
+ * Buy a cosmetic (premium avatar or profile frame) with gold. Gold is
+ * client-authoritative — exactly like the forge upgrade above — so we deduct
+ * locally and the next debounced save persists both the new balance and the
+ * owned item. Returns { ok, error?, cosmetic? }.
+ */
+export function purchaseCosmetic(id) {
+    const cosmetic = getCosmetic(id);
+    if (!cosmetic) return { ok: false, error: 'Unknown item' };
+    if (ownsCosmetic(id)) return { ok: false, error: 'Already owned' };
+    if (state.gold < cosmetic.price) return { ok: false, error: 'Not enough gold' };
+    state.gold -= cosmetic.price;
+    state.ownedCosmetics.push(id);
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return { ok: true, cosmetic };
+}
+
+/** Equip a profile frame the player owns. Returns true if it changed. */
+export function setFrame(id) {
+    const cosmetic = getCosmetic(id);
+    if (!cosmetic || cosmetic.kind !== 'frame') return false;
+    if (!ownsCosmetic(id)) return false;
+    state.frame = id;
+    save();
+    gameEvents.emit(EVENTS.STATE_CHANGED);
+    return true;
+}
+
 /**
  * Add gold that the server already granted out-of-band (e.g. a resolved clan
  * expedition reward). Flat — the server reward is final, so we don't re-apply the
@@ -232,6 +277,9 @@ export function resetProgress() {
     state.highestArenaRank = 1;
     state.playerLevel = 1;
     state.playerXp = 0;
+    state.avatar = 'wizard';
+    state.ownedCosmetics = [];
+    state.frame = 'none';
     save();
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
@@ -262,6 +310,7 @@ export function setArenaRank(rank) {
 
 // ── Avatar ────────────────────────────────────────────────────────────────
 export function setAvatar(id) {
+    if (!ownsCosmetic(id)) return; // can't wear a premium avatar you don't own
     state.avatar = id;
     save();
     gameEvents.emit(EVENTS.STATE_CHANGED);
@@ -296,6 +345,8 @@ function buildSave() {
             xp: state.playerXp,
             forgeXp: state.forgeXp,
             profilePicture: state.avatar,
+            cosmetics: state.ownedCosmetics,
+            frame: state.frame,
             arenaRank: state.arenaRank,
             highestArenaRank: state.highestArenaRank,
         },
@@ -357,6 +408,10 @@ function applyLoaded(data) {
 
     const player = data.player || {};
     if (typeof player.profilePicture === 'string') state.avatar = player.profilePicture;
+    if (Array.isArray(player.cosmetics)) {
+        state.ownedCosmetics = player.cosmetics.filter((c) => typeof c === 'string');
+    }
+    if (typeof player.frame === 'string') state.frame = player.frame;
     if (typeof player.level === 'number' && player.level >= 1) {
         state.playerLevel = Math.min(MAX_PLAYER_LEVEL, Math.floor(player.level));
     }

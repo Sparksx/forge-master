@@ -1,7 +1,7 @@
 // App shell — header, bottom nav, screen routing, toast/modal roots.
 import { h, clear, fmt, setToastRoot, setModalRoot } from './components.js';
 import { avatarEmoji } from '../game/config.js';
-import { getGold, getPowerScore, getAvatar, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
+import { getGold, getPowerScore, getAvatar, getFrame, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 import { initAdminUI } from './admin.js';
@@ -107,6 +107,7 @@ function updateHeader() {
     header.gold.textContent = fmt(getGold());
     header.power.textContent = fmt(getPowerScore());
     header.avatarBtn.textContent = avatarEmoji(getAvatar());
+    header.avatarBtn.className = `hdr-avatar frame-${getFrame()}`;
 }
 
 // ── Bottom nav ───────────────────────────────────────────────────────────────

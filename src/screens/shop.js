@@ -1,11 +1,15 @@
-// Shop screen — buy gold packs via Stripe Checkout.
-//
-// Gold is the game's single currency and deliberately scarce; the shop is the
-// sanctioned way to acquire it in bulk. Packs buy gold only — never gear — so
-// the shop stays out of pay-to-win territory (see CLAUDE.md / REDESIGN.md).
+// Shop screen — two tabs that together close the monetization loop:
+//   • Gold:      buy the scarce currency with real money via Stripe Checkout.
+//   • Cosmetics: spend that gold on premium avatars & profile frames.
+// Packs and cosmetics buy gold and looks only — never gear or power — so the
+// shop stays out of pay-to-win territory (see CLAUDE.md / REDESIGN.md).
 import { h, clear, fmt, toast } from './components.js';
-import { getGold } from '../game/state.js';
+import { avatarEmoji } from '../game/config.js';
+import {
+    getGold, getAvatar, setAvatar, getFrame, setFrame, ownsCosmetic, purchaseCosmetic,
+} from '../game/state.js';
 import { fetchGoldPacks, startCheckout, fetchPurchaseHistory } from '../game/shop.js';
+import { PREMIUM_AVATARS, FRAMES } from '../../shared/cosmetics.js';
 import { gameEvents, EVENTS } from '../events.js';
 
 let root = null;
@@ -14,6 +18,7 @@ let history = [];
 let loaded = false;
 let loading = false;
 let buying = false;
+let tab = 'gold';
 
 export const id = 'shop';
 export const icon = '🛒';
@@ -74,13 +79,32 @@ function rerender() {
     clear(root);
     root.appendChild(h('div', { className: 'shop-screen' },
         h('div', { className: 'shop-head' },
-            h('h2', { className: 'shop-title', text: '🛒 Gold Shop' }),
+            h('h2', { className: 'shop-title', text: '🛒 Shop' }),
             h('div', { className: 'shop-balance' }, h('span', { text: '💰' }), h('span', { text: fmt(getGold()) })),
         ),
-        h('p', { className: 'shop-blurb muted', text: 'Top up your gold to fast-track forge upgrades and found a clan. Gold never buys gear directly — no pay-to-win.' }),
+        h('div', { className: 'shop-tabs' },
+            tabBtn('gold', '💰 Gold'),
+            tabBtn('cosmetics', '✨ Cosmetics'),
+        ),
+        tab === 'gold' ? buildGoldTab() : buildCosmeticsTab(),
+    ));
+}
+
+function tabBtn(name, text) {
+    return h('button', {
+        className: `shop-tab${tab === name ? ' active' : ''}`,
+        text,
+        onclick: () => { if (tab !== name) { tab = name; rerender(); } },
+    });
+}
+
+// ── Gold tab (Stripe) ───────────────────────────────────────────────────────
+function buildGoldTab() {
+    return h('div', {},
+        h('p', { className: 'shop-blurb muted', text: 'Top up your gold to fast-track forge upgrades, found a clan, and unlock cosmetics. Gold never buys gear directly — no pay-to-win.' }),
         buildPacks(),
         buildHistory(),
-    ));
+    );
 }
 
 function buildPacks() {
@@ -96,10 +120,10 @@ function buildPacks() {
 function packCard(pack) {
     const total = pack.total ?? (pack.gold + pack.bonus);
     const owned = pack.oneTime && ownsOneTime(pack.id);
-    const tag = pack.tag ? h('span', { className: `shop-tag shop-tag-${pack.tag}`, text: TAG_LABEL[pack.tag] || pack.tag }) : null;
+    const tagEl = pack.tag ? h('span', { className: `shop-tag shop-tag-${pack.tag}`, text: TAG_LABEL[pack.tag] || pack.tag }) : null;
 
     return h('div', { className: `shop-pack${pack.tag ? ' shop-pack-' + pack.tag : ''}` },
-        tag,
+        tagEl,
         h('div', { className: 'shop-pack-icon', text: '💰' }),
         h('div', { className: 'shop-pack-label', text: pack.label }),
         h('div', { className: 'shop-pack-gold', text: `${fmt(total)} gold` }),
@@ -128,6 +152,77 @@ function buildHistory() {
             )),
         ),
     );
+}
+
+// ── Cosmetics tab (gold sink) ───────────────────────────────────────────────
+function buildCosmeticsTab() {
+    return h('div', {},
+        h('p', { className: 'shop-blurb muted', text: 'Spend gold on looks, not power. Premium avatars and profile frames are purely cosmetic.' }),
+        h('div', { className: 'shop-section' },
+            h('h3', { text: 'Premium Avatars' }),
+            h('div', { className: 'cos-grid' }, ...PREMIUM_AVATARS.map(avatarCard)),
+        ),
+        h('div', { className: 'shop-section' },
+            h('h3', { text: 'Profile Frames' }),
+            h('div', { className: 'cos-grid' }, ...FRAMES.map(frameCard)),
+        ),
+    );
+}
+
+function avatarCard(item) {
+    const owned = ownsCosmetic(item.id);
+    const equipped = owned && getAvatar() === item.id;
+    return h('div', { className: `cos-card${equipped ? ' equipped' : ''}` },
+        h('div', { className: 'cos-preview', text: item.emoji }),
+        h('div', { className: 'cos-name', text: item.name }),
+        cosmeticAction(item, owned, equipped, () => {
+            setAvatar(item.id);
+            if (getAvatar() === item.id) toast(`${item.name} equipped`, 'success');
+            rerender();
+        }),
+    );
+}
+
+function frameCard(item) {
+    const owned = ownsCosmetic(item.id);
+    const equipped = owned && getFrame() === item.id;
+    return h('div', { className: `cos-card${equipped ? ' equipped' : ''}` },
+        h('div', { className: `cos-preview frame-${item.id}`, text: avatarEmoji(getAvatar()) }),
+        h('div', { className: 'cos-name', text: item.name }),
+        cosmeticAction(item, owned, equipped, () => {
+            if (setFrame(item.id)) toast(`${item.name} equipped`, 'success');
+            rerender();
+        }),
+    );
+}
+
+function cosmeticAction(item, owned, equipped, onEquip) {
+    if (equipped) {
+        return h('button', { className: 'btn shop-buy', text: 'Equipped', disabled: 'disabled' });
+    }
+    if (owned) {
+        return h('button', { className: 'btn shop-buy cos-equip', text: 'Equip', onclick: onEquip });
+    }
+    const canAfford = getGold() >= item.price;
+    return h('button', {
+        className: 'btn btn-primary shop-buy',
+        text: `💰 ${fmt(item.price)}`,
+        disabled: canAfford ? null : 'disabled',
+        onclick: canAfford ? () => purchase(item) : null,
+    });
+}
+
+function purchase(item) {
+    const res = purchaseCosmetic(item.id);
+    if (!res.ok) {
+        toast(res.error || 'Could not purchase', 'error');
+        return;
+    }
+    toast(`Unlocked ${item.name}!`, 'success');
+    // Auto-equip the freshly bought cosmetic so the purchase feels immediate.
+    if (FRAMES.some((f) => f.id === item.id)) setFrame(item.id);
+    else setAvatar(item.id);
+    rerender();
 }
 
 function formatPrice(cents) {
