@@ -294,7 +294,7 @@ model Purchase {
   stripeSessionId String   @unique
   stripePaymentId String?
   packId          String   @db.VarChar(30)
-  diamondsGranted Int
+  goldGranted     Int
   amountCents     Int
   currency        String   @default("usd") @db.VarChar(10)
   status          String   @default("pending") @db.VarChar(20) // pending, completed, refunded

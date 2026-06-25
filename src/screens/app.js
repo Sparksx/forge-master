@@ -9,12 +9,13 @@ import { initAdminUI } from './admin.js';
 import * as home from './home.js';
 import * as pvp from './pvp.js';
 import * as clan from './clan.js';
+import * as shop from './shop.js';
 import * as profile from './profile.js';
 
-const screens = [home, pvp, clan, profile];
+const screens = [home, pvp, clan, shop, profile];
 // Bottom-nav order. Profile is omitted (reachable via the header avatar) and
-// Forge is centered between the two side tabs.
-const navScreens = [pvp, home, clan];
+// Forge (home) is centered among the tabs.
+const navScreens = [pvp, home, clan, shop];
 // screen.id -> container element. Kept here rather than on the screen modules,
 // because `import * as` namespace objects are frozen and can't take properties.
 const containers = new Map();

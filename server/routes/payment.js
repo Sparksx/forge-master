@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Stripe from 'stripe';
 import { requireAuth, logAudit } from '../middleware/auth.js';
-import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, DIAMOND_PACKS, CORS_ORIGIN } from '../config.js';
+import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOLD_PACKS, CORS_ORIGIN } from '../config.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
@@ -14,22 +14,62 @@ function getStripe() {
     return new Stripe(STRIPE_SECRET_KEY);
 }
 
+/**
+ * Credit a paid purchase exactly once. The pending→completed flip is an atomic
+ * `updateMany` guarded on `status: 'pending'`, so the webhook and the on-return
+ * /confirm call can both race here without ever double-crediting. Returns the
+ * granted amount and the player's new gold balance.
+ */
+async function creditPurchase(purchase, paymentIntent) {
+    const claim = await prisma.purchase.updateMany({
+        where: { id: purchase.id, status: 'pending' },
+        data: { status: 'completed', stripePaymentId: paymentIntent ?? purchase.stripePaymentId },
+    });
+
+    if (claim.count === 0) {
+        // Already credited by the other path — report the current balance, grant nothing.
+        const gs = await prisma.gameState.findUnique({
+            where: { userId: purchase.userId },
+            select: { gold: true },
+        });
+        return { status: 'completed', granted: 0, gold: gs?.gold ?? 0 };
+    }
+
+    const gs = await prisma.gameState.update({
+        where: { userId: purchase.userId },
+        data: { gold: { increment: purchase.goldGranted } },
+        select: { gold: true },
+    });
+
+    await logAudit(purchase.userId, 'purchase_gold', purchase.userId, {
+        packId: purchase.packId,
+        gold: purchase.goldGranted,
+        amountCents: purchase.amountCents,
+        stripeSessionId: purchase.stripeSessionId,
+    });
+
+    console.log(`Purchase completed: user ${purchase.userId} received ${purchase.goldGranted} gold (${purchase.packId})`);
+    return { status: 'completed', granted: purchase.goldGranted, gold: gs.gold };
+}
+
 // ─── GET /api/payment/packs ─────────────────────────────────────
-// Public: return available diamond packs (frontend needs this to render the shop)
+// Public: return available gold packs (frontend needs this to render the shop)
 router.get('/packs', (req, res) => {
-    const packs = DIAMOND_PACKS.map(p => ({
+    const packs = GOLD_PACKS.map(p => ({
         id: p.id,
-        diamonds: p.diamonds,
+        gold: p.gold,
         bonus: p.bonus,
+        total: p.gold + p.bonus,
         priceCents: p.priceCents,
         label: p.label,
+        tag: p.tag || null,
         oneTime: p.oneTime || false,
     }));
     res.json({ packs });
 });
 
 // ─── POST /api/payment/create-checkout-session ──────────────────
-// Authenticated: create a Stripe Checkout Session for a diamond pack
+// Authenticated: create a Stripe Checkout Session for a gold pack
 router.post('/create-checkout-session', requireAuth, async (req, res) => {
     const { packId } = req.body;
 
@@ -37,7 +77,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'packId is required' });
     }
 
-    const pack = DIAMOND_PACKS.find(p => p.id === packId);
+    const pack = GOLD_PACKS.find(p => p.id === packId);
     if (!pack) {
         return res.status(400).json({ error: 'Invalid pack' });
     }
@@ -58,7 +98,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
 
     try {
         const stripe = getStripe();
-        const totalDiamonds = pack.diamonds + pack.bonus;
+        const totalGold = pack.gold + pack.bonus;
 
         // Build success/cancel URLs from the request origin (works in both dev and prod)
         const origin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
@@ -72,10 +112,10 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: `${totalDiamonds} Diamonds — ${pack.label}`,
+                        name: `${totalGold.toLocaleString('en-US')} Gold — ${pack.label}`,
                         description: pack.bonus > 0
-                            ? `${pack.diamonds} diamonds + ${pack.bonus} bonus diamonds`
-                            : `${pack.diamonds} diamonds`,
+                            ? `${pack.gold.toLocaleString('en-US')} gold + ${pack.bonus.toLocaleString('en-US')} bonus gold`
+                            : `${pack.gold.toLocaleString('en-US')} gold`,
                     },
                     unit_amount: pack.priceCents,
                 },
@@ -84,7 +124,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
             metadata: {
                 userId: String(req.user.userId),
                 packId: pack.id,
-                diamonds: String(totalDiamonds),
+                gold: String(totalGold),
             },
             success_url: successUrl,
             cancel_url: cancelUrl,
@@ -96,7 +136,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
                 userId: req.user.userId,
                 stripeSessionId: session.id,
                 packId: pack.id,
-                diamondsGranted: totalDiamonds,
+                goldGranted: totalGold,
                 amountCents: pack.priceCents,
                 currency: 'usd',
                 status: 'pending',
@@ -110,6 +150,55 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
             return res.status(503).json({ error: 'Payment system is not configured' });
         }
         res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+// ─── POST /api/payment/confirm ──────────────────────────────────
+// Authenticated: called when the player returns from Stripe Checkout. Verifies
+// payment directly with Stripe and credits the gold, so purchases land
+// immediately even if the webhook is delayed or not configured. Idempotent.
+router.post('/confirm', requireAuth, async (req, res) => {
+    const { sessionId } = req.body;
+
+    if (!sessionId || typeof sessionId !== 'string') {
+        return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    try {
+        const purchase = await prisma.purchase.findUnique({
+            where: { stripeSessionId: sessionId },
+        });
+
+        if (!purchase || purchase.userId !== req.user.userId) {
+            return res.status(404).json({ error: 'Purchase not found' });
+        }
+
+        if (purchase.status === 'completed') {
+            const gs = await prisma.gameState.findUnique({
+                where: { userId: req.user.userId },
+                select: { gold: true },
+            });
+            return res.json({ status: 'completed', granted: 0, gold: gs?.gold ?? 0 });
+        }
+        if (purchase.status === 'refunded') {
+            return res.json({ status: 'refunded', granted: 0 });
+        }
+
+        // Still pending — confirm the payment actually went through before crediting.
+        const stripe = getStripe();
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        if (session.payment_status !== 'paid') {
+            return res.json({ status: 'pending', granted: 0 });
+        }
+
+        const result = await creditPurchase(purchase, session.payment_intent);
+        res.json(result);
+    } catch (err) {
+        console.error('Confirm error:', err);
+        if (err.message === 'Stripe is not configured') {
+            return res.status(503).json({ error: 'Payment system is not configured' });
+        }
+        res.status(500).json({ error: 'Failed to confirm purchase' });
     }
 });
 
@@ -135,7 +224,6 @@ router.post('/webhook', async (req, res) => {
         const session = event.data.object;
 
         try {
-            // Idempotence: check if already processed
             const purchase = await prisma.purchase.findUnique({
                 where: { stripeSessionId: session.id },
             });
@@ -145,37 +233,8 @@ router.post('/webhook', async (req, res) => {
                 return res.json({ received: true });
             }
 
-            if (purchase.status === 'completed') {
-                // Already processed — idempotent
-                return res.json({ received: true });
-            }
-
-            // Credit diamonds and mark purchase as completed in a transaction
-            await prisma.$transaction([
-                prisma.purchase.update({
-                    where: { stripeSessionId: session.id },
-                    data: {
-                        status: 'completed',
-                        stripePaymentId: session.payment_intent,
-                    },
-                }),
-                prisma.gameState.update({
-                    where: { userId: purchase.userId },
-                    data: {
-                        diamonds: { increment: purchase.diamondsGranted },
-                    },
-                }),
-            ]);
-
-            // Audit log
-            await logAudit(purchase.userId, 'purchase_diamonds', purchase.userId, {
-                packId: purchase.packId,
-                diamonds: purchase.diamondsGranted,
-                amountCents: purchase.amountCents,
-                stripeSessionId: session.id,
-            });
-
-            console.log(`Purchase completed: user ${purchase.userId} received ${purchase.diamondsGranted} diamonds (${purchase.packId})`);
+            // creditPurchase is idempotent — a no-op if /confirm already credited it.
+            await creditPurchase(purchase, session.payment_intent);
         } catch (err) {
             console.error('Webhook processing error:', err);
             return res.status(500).json({ error: 'Processing failed' });
@@ -191,26 +250,32 @@ router.post('/webhook', async (req, res) => {
             });
 
             if (purchase && purchase.status === 'completed') {
-                await prisma.$transaction([
-                    prisma.purchase.update({
-                        where: { id: purchase.id },
-                        data: { status: 'refunded' },
-                    }),
-                    prisma.gameState.update({
-                        where: { userId: purchase.userId },
-                        data: {
-                            diamonds: { decrement: purchase.diamondsGranted },
-                        },
-                    }),
-                ]);
-
-                await logAudit(purchase.userId, 'refund_diamonds', purchase.userId, {
-                    packId: purchase.packId,
-                    diamonds: purchase.diamondsGranted,
-                    stripePaymentId: charge.payment_intent,
+                // Atomically claim the refund so it can't double-reverse.
+                const claim = await prisma.purchase.updateMany({
+                    where: { id: purchase.id, status: 'completed' },
+                    data: { status: 'refunded' },
                 });
 
-                console.log(`Refund processed: user ${purchase.userId} lost ${purchase.diamondsGranted} diamonds`);
+                if (claim.count > 0) {
+                    // Clawback the gold, clamped so the balance can't go negative.
+                    const gs = await prisma.gameState.findUnique({
+                        where: { userId: purchase.userId },
+                        select: { gold: true },
+                    });
+                    const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
+                    await prisma.gameState.update({
+                        where: { userId: purchase.userId },
+                        data: { gold: newGold },
+                    });
+
+                    await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
+                        packId: purchase.packId,
+                        gold: purchase.goldGranted,
+                        stripePaymentId: charge.payment_intent,
+                    });
+
+                    console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
+                }
             }
         } catch (err) {
             console.error('Refund webhook error:', err);
@@ -231,7 +296,7 @@ router.get('/history', requireAuth, async (req, res) => {
             select: {
                 id: true,
                 packId: true,
-                diamondsGranted: true,
+                goldGranted: true,
                 amountCents: true,
                 currency: true,
                 status: true,

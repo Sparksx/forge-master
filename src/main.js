@@ -6,10 +6,12 @@ import { initAuth, setAuthSuccessCallback, getCurrentUser } from './auth.js';
 import { getAccessToken } from './api.js';
 import { connectSocket } from './socket-client.js';
 import { loadFromServer, loadLocal } from './game/state.js';
+import { reconcileCheckoutReturn } from './game/shop.js';
 import { loadMyClan } from './game/clan.js';
 import { initClanMissions } from './game/clan-missions.js';
 import { initPvp } from './game/pvp.js';
 import { initApp } from './screens/app.js';
+import { toast } from './screens/components.js';
 
 // PWA service worker (best-effort), resolved against the deploy base path.
 if ('serviceWorker' in navigator) {
@@ -28,6 +30,10 @@ async function startGame() {
         loadLocal();
     }
 
+    // Reconcile a return from Stripe Checkout BEFORE the idle loop starts, so a
+    // purchased gold balance is synced and can't be clobbered by the next save.
+    const checkout = await reconcileCheckoutReturn();
+
     // Live services (chat/PvP) over the authenticated socket.
     connectSocket({ onReconnect: () => initPvp() });
 
@@ -38,6 +44,17 @@ async function startGame() {
     initClanMissions();
 
     initApp(document.getElementById('game-container'));
+
+    // Toast the checkout outcome once the toast root exists (after initApp).
+    if (checkout) {
+        if (checkout.status === 'completed' || checkout.granted > 0) {
+            toast(`Purchase complete — +${checkout.granted.toLocaleString('en-US')} gold!`, 'success');
+        } else if (checkout.status === 'cancelled') {
+            toast('Checkout cancelled', 'info');
+        } else if (checkout.status === 'error') {
+            toast('We could not confirm your purchase. Contact support if you were charged.', 'error');
+        }
+    }
 }
 
 function boot() {
