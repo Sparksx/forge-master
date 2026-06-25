@@ -2,7 +2,6 @@ import { Server } from 'socket.io';
 import { CORS_ORIGIN } from '../config.js';
 import { socketAuth, getActiveBan } from '../middleware/auth.js';
 import { registerChatHandlers } from './chat.js';
-import { registerPvpHandlers } from './pvp.js';
 import prisma from '../lib/prisma.js';
 
 export function setupSocket(server) {
@@ -49,7 +48,6 @@ export function setupSocket(server) {
         console.log(`User connected: ${socket.user.username} (${socket.user.userId}) [${socket.user.role || 'user'}]`);
 
         registerChatHandlers(io, socket);
-        registerPvpHandlers(io, socket);
 
         // Admin: force disconnect a user by their userId
         socket.on('admin:kick-user', async (data) => {
