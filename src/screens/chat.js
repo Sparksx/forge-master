@@ -3,7 +3,7 @@
 // groups). Each tab shows the last 100 messages and has its own composer.
 import { h, clear, fmt, openModal, closeModal, toast } from './components.js';
 import { avatarEmoji } from '../game/config.js';
-import { itemName, rarityName, rarityColor, itemIcon, slotLabel } from '../game/items.js';
+import { itemName, rarityName, rarityColor, itemIcon, slotLabel, slotIcon } from '../game/items.js';
 import { EQUIPMENT_TYPES } from '../../shared/stats.js';
 import { FRAMES } from '../../shared/cosmetics.js';
 import { getCurrentUser } from '../auth.js';
@@ -298,27 +298,27 @@ async function showProfileModal(userId) {
     if (loading.parentNode) loading.replaceWith(body);
 }
 
-// Compact equipped-gear grid for the profile modal — one tile per slot, coloured
-// by rarity, with empty slots shown faded.
+// Equipped-gear grid for the profile modal. Uses the SAME vivid rarity gear
+// slots as the home screen (`.gear-grid` / `.gear-slot`) so the gear design is
+// identical everywhere — home is the reference.
 function renderGear(equipment) {
     const eq = equipment && typeof equipment === 'object' ? equipment : {};
     return h('div', { className: 'profile-gear' },
         h('div', { className: 'profile-gear-title muted', text: 'Equipped Gear' }),
-        h('div', { className: 'profile-gear-grid' },
+        h('div', { className: 'gear-grid' },
             ...EQUIPMENT_TYPES.map((slot) => {
                 const item = eq[slot];
                 if (!item || typeof item !== 'object') {
-                    return h('div', { className: 'profile-gear-cell empty', attrs: { title: slotLabel(slot) } },
-                        h('span', { className: 'profile-gear-icon', text: '—' }),
+                    return h('div', { className: 'gear-slot', attrs: { title: slotLabel(slot) } },
+                        h('span', { className: 'gear-slot-icon empty', text: slotIcon(slot) }),
                     );
                 }
-                const color = rarityColor(item.tier);
                 return h('div', {
-                    className: 'profile-gear-cell', style: { '--rarity': color },
+                    className: 'gear-slot filled', style: { '--rarity': rarityColor(item.tier) },
                     attrs: { title: `${itemName(item)} · ${rarityName(item.tier)} · ${slotLabel(slot)} · Lv ${item.level || 1}` },
                 },
-                    h('span', { className: 'profile-gear-icon', text: itemIcon(item) }),
-                    h('span', { className: 'profile-gear-lv', text: `L${fmt(item.level || 1)}` }),
+                    h('span', { className: 'gear-slot-icon', text: itemIcon(item) }),
+                    h('span', { className: 'gear-slot-lvl', text: `Lv ${fmt(item.level || 1)}` }),
                 );
             }),
         ),

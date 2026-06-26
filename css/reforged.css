@@ -624,21 +624,13 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .member-stat-label { font-size: .72rem; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .member-stat-val { font-weight: 800; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Equipped-gear grid inside the public profile modal */
+/* Equipped-gear grid inside the public profile modal. The slots reuse the
+   home-screen `.gear-grid` / `.gear-slot` design so gear looks identical
+   everywhere; here they're read-only, so suppress the interactive cursor. */
 .profile-gear { display: flex; flex-direction: column; gap: 8px; }
 .profile-gear-title { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.profile-gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.profile-gear-cell {
-    position: relative; aspect-ratio: 1; display: grid; place-items: center;
-    border-radius: 10px; background: var(--bg-2);
-    border: 1px solid var(--rarity, var(--line)); box-shadow: 0 0 6px -2px var(--rarity, transparent);
-}
-.profile-gear-cell.empty { border-style: dashed; border-color: var(--line); box-shadow: none; opacity: .5; }
-.profile-gear-icon { font-size: 1.5rem; }
-.profile-gear-lv {
-    position: absolute; bottom: 2px; right: 4px; font-size: .6rem;
-    font-weight: 800; color: var(--text-dim, #9aa);
-}
+.profile-gear .gear-slot { cursor: default; }
+.profile-gear .gear-slot:active { transform: none; }
 .member-duel-note { margin: -6px 0 2px; text-align: center; }
 
 /* ── Profile ─────────────────────────────────────────────── */
