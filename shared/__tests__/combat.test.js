@@ -109,6 +109,45 @@ describe('double hit mechanic', () => {
     });
 });
 
+describe('defensive & finisher stats', () => {
+    it('damage reduction swings a mirror match toward the tankier fighter', () => {
+        let wins = 0;
+        for (let seed = 0; seed < 40; seed++) {
+            const tank = fighter({ id: 'player', critChance: 0, damageReduction: 8 });
+            const plain = fighter({ id: 'opp', critChance: 0, damageReduction: 0 });
+            if (simulateBattle([tank], [plain], seed).win) wins++;
+        }
+        expect(wins).toBeGreaterThan(30);
+    });
+
+    it('reflect bounces a share of incoming damage back at the attacker', () => {
+        const { events } = simulateBattle(
+            [fighter({ id: 'player', critChance: 0, reflect: 50 })],
+            [fighter({ id: 'opp', critChance: 0, damage: 100 })],
+            5,
+        );
+        const bounced = events.filter((e) => e.by === 'opp' && e.reflected > 0);
+        expect(bounced.length).toBeGreaterThan(0);
+    });
+
+    it('execute never slows the kill and sometimes speeds it up', () => {
+        const hitsToKill = (execute, seed) => simulateBattle(
+            [fighter({ id: 'player', critChance: 0, damage: 30, execute })],
+            [fighter({ id: 'opp', critChance: 0, damage: 1, maxHP: 400 })],
+            seed,
+        ).events.filter((e) => e.by === 'player').length;
+        let everFewer = false, everMore = false;
+        for (let seed = 0; seed < 30; seed++) {
+            const withEx = hitsToKill(100, seed);
+            const without = hitsToKill(0, seed);
+            if (withEx < without) everFewer = true;
+            if (withEx > without) everMore = true;
+        }
+        expect(everFewer).toBe(true);
+        expect(everMore).toBe(false);
+    });
+});
+
 describe('computeHit seeded stream', () => {
     it('is reproducible from a seed', () => {
         const att = { damage: 100, critChance: 40, critMultiplier: 75 };

@@ -8,7 +8,10 @@
 //
 // Lives in shared/ (not src/game/) so the Node server can import the same engine
 // it uses for stat math (shared/stats.js) without reaching into client code.
-import { BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION } from './stats.js';
+import {
+    BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION,
+    EXECUTE_HP_THRESHOLD, MAX_DAMAGE_REDUCTION,
+} from './stats.js';
 
 // Tiny deterministic PRNG (mulberry32). A given seed yields a fixed stream, so a
 // fight seeded with it is exactly replayable. Re-exported by src/game/config.js
@@ -103,18 +106,37 @@ export function simulateBattle(allies, enemies, seed) {
             const foes = actor.side === 'ally' ? aliveOf(E) : aliveOf(A);
             if (!foes.length) return false;
             const target = foes[0];
-            const { dmg, crit } = computeHit(actor, rnd);
+            const hit = computeHit(actor, rnd);
+            const crit = hit.crit;
+            let dmg = hit.dmg;
+            // Execute: extra damage once the foe is badly wounded (checked on the
+            // target's HP *before* this shot lands).
+            if (actor.execute > 0 && target.hp < target.maxHP * EXECUTE_HP_THRESHOLD) {
+                dmg = Math.floor(dmg * (1 + actor.execute / 100));
+            }
+            // Damage Reduction: the target mitigates a capped % of the incoming hit.
+            if (target.damageReduction > 0) {
+                const dr = Math.min(MAX_DAMAGE_REDUCTION, target.damageReduction) / 100;
+                dmg = Math.max(1, Math.floor(dmg * (1 - dr)));
+            }
             target.hp = Math.max(0, target.hp - dmg);
             let heal = 0;
             if (actor.lifeSteal > 0) {
                 heal = Math.floor(dmg * actor.lifeSteal / 100);
                 actor.hp = Math.min(actor.maxHP, actor.hp + heal);
             }
+            // Reflect (thorns): the target bounces a % of the damage it took back
+            // at the attacker — this can finish off a low-HP attacker.
+            let reflected = 0;
+            if (target.reflect > 0) {
+                reflected = Math.floor(dmg * target.reflect / 100);
+                if (reflected > 0) actor.hp = Math.max(0, actor.hp - reflected);
+            }
             events.push({
                 t: now,
                 by: actor.id, bySide: actor.side,
                 target: target.id, targetSide: target.side,
-                dmg, crit, heal, ranged: !!actor.ranged, double,
+                dmg, crit, heal, ranged: !!actor.ranged, double, reflected,
                 attackerHp: actor.hp, targetHp: target.hp,
             });
             return true;

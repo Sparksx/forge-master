@@ -11,7 +11,7 @@
 // and rendering. It reports the outcome back to the owning screen via
 // onResolve({ win }) once a fight ends.
 import { computeHit } from '../game/arena.js';
-import { BASE_ATTACK_PERIOD, seededRng } from '../game/config.js';
+import { BASE_ATTACK_PERIOD, seededRng, EXECUTE_HP_THRESHOLD, MAX_DAMAGE_REDUCTION } from '../game/config.js';
 import { getArena, pickArenaId } from '../game/arenas.js';
 
 // Fixed simulation step (seconds). The fight is stepped in fixed increments,
@@ -203,6 +203,10 @@ export function createDungeon({ onResolve } = {}) {
         e.attackSpeed = spec.attackSpeed || 0;
         e.lifeSteal = spec.lifeSteal || 0;
         e.healthRegen = spec.healthRegen || 0;
+        e.doubleHit = spec.doubleHit || 0;
+        e.damageReduction = spec.damageReduction || 0;
+        e.reflect = spec.reflect || 0;
+        e.execute = spec.execute || 0;
         e.ranged = !!spec.ranged;
         e.role = spec.role || 'normal';
     }
@@ -290,6 +294,13 @@ export function createDungeon({ onResolve } = {}) {
                     player.facing = (target.x - player.x) < 0 ? -1 : 1;
                     if (player.cooldown <= 0) {
                         doAttack(player, target);
+                        // Double Hit: a chance at an independent second shot, which
+                        // re-acquires the nearest living foe (so it spills onto the
+                        // next enemy if the first dropped).
+                        if (player.alive && player.doubleHit > 0 && rng() * 100 < player.doubleHit) {
+                            const t2 = nearestEnemy();
+                            if (t2) doAttack(player, t2);
+                        }
                         player.cooldown += attackPeriod(player);
                     }
                 }
@@ -341,6 +352,9 @@ export function createDungeon({ onResolve } = {}) {
                 e.facing = (player.x - e.x) < 0 ? -1 : 1;
                 if (e.cooldown <= 0) {
                     doAttack(e, player);
+                    if (e.alive && player.alive && e.doubleHit > 0 && rng() * 100 < e.doubleHit) {
+                        doAttack(e, player);
+                    }
                     e.cooldown += attackPeriod(e);
                 }
             }
@@ -424,7 +438,18 @@ export function createDungeon({ onResolve } = {}) {
     // Resolve one attack: roll damage, apply it, animate, handle lifesteal/death.
     function doAttack(attacker, target) {
         if (!target.alive) return;
-        const { dmg, crit } = computeHit(attacker, rng);
+        const hit = computeHit(attacker, rng);
+        const crit = hit.crit;
+        let dmg = hit.dmg;
+        // Execute: extra damage to a badly-wounded foe (HP checked before the hit).
+        if (attacker.execute > 0 && target.hp < target.maxHP * EXECUTE_HP_THRESHOLD) {
+            dmg = Math.floor(dmg * (1 + attacker.execute / 100));
+        }
+        // Damage Reduction: target mitigates a capped % of the incoming hit.
+        if (target.damageReduction > 0) {
+            const dr = Math.min(MAX_DAMAGE_REDUCTION, target.damageReduction) / 100;
+            dmg = Math.max(1, Math.floor(dmg * (1 - dr)));
+        }
         target.hp = Math.max(0, target.hp - dmg);
 
         const dx = target.x - attacker.x, dy = target.y - attacker.y;
@@ -450,6 +475,20 @@ export function createDungeon({ onResolve } = {}) {
             if (heal > 0) {
                 attacker.hp = Math.min(attacker.maxHP, attacker.hp + heal);
                 spawnFloater(attacker, `+${fmt(heal)}`, 'heal', attacker.id === 'player');
+            }
+        }
+
+        // Reflect (thorns): the target bounces a % of the damage it took back at
+        // the attacker — which can finish off a low-HP attacker.
+        if (target.reflect > 0) {
+            const back = Math.floor(dmg * target.reflect / 100);
+            if (back > 0) {
+                attacker.hp = Math.max(0, attacker.hp - back);
+                spawnFloater(attacker, `-${fmt(back)}`, '', attacker.id === 'player');
+                if (attacker.hp <= 0) {
+                    attacker.alive = false;
+                    attacker.deathAt = now();
+                }
             }
         }
 

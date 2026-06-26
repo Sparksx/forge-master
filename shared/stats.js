@@ -24,6 +24,12 @@ export const MAX_BATTLE_SECONDS = 22;           // hard cap; resolve by HP% past
 export const ATTACK_STYLES = ['melee', 'ranged'];
 export const RANGED_OPENING_FRACTION = 0.35;    // melee approach delay (ranged open at t=0)
 
+// --- Defensive / finisher stat tuning ---
+// Execute grants its bonus damage only once the foe is badly wounded; Damage
+// Reduction is hard-capped so stacked mitigation can never reach full immunity.
+export const EXECUTE_HP_THRESHOLD = 0.30;       // foe HP fraction below which Execute fires
+export const MAX_DAMAGE_REDUCTION = 75;         // hard cap on stacked Damage Reduction (%)
+
 /** Resolve a weapon's attack style, defaulting to melee. */
 export function weaponStyle(weapon) {
     return weapon && weapon.attackStyle === 'ranged' ? 'ranged' : 'melee';
@@ -65,6 +71,15 @@ export const BONUS_STATS = {
     healthRegen:    { label: 'Health Regen',    icon: '\uD83E\uDE79', max: 8,  unit: '%' },
     lifeSteal:      { label: 'Life Steal',      icon: '\uD83E\uDDDB', max: 20, unit: '%' },
     doubleHit:      { label: 'Double Hit',      icon: '\uD83D\uDD01', max: 15, unit: '%' },
+    // Style-conditional damage: only the bonus matching the equipped weapon's
+    // style applies (Melee on melee weapons, Ranged on ranged). Melee is the
+    // deliberately-dominant glass-cannon path; Ranged is the safer, weaker option.
+    meleeDamage:    { label: 'Melee Damage',    icon: '\u2694\uFE0F', max: 100, unit: '%' },
+    rangedDamage:   { label: 'Ranged Damage',   icon: '\uD83C\uDFF9', max: 25, unit: '%' },
+    // Defensive / finisher stats (resolved in the combat engine, not the flat pools).
+    damageReduction:{ label: 'Damage Reduction',icon: '\uD83D\uDEE1\uFE0F', max: 8,  unit: '%' },
+    reflect:        { label: 'Reflect',         icon: '\uD83E\uDE9E', max: 12, unit: '%' },
+    execute:        { label: 'Execute',         icon: '\uD83E\uDE93', max: 30, unit: '%' },
 };
 
 export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
@@ -132,15 +147,20 @@ export function calculateStats(equipment) {
  * Calculate a composite power score from total health, damage and bonuses.
  * Used by client UI and server matchmaking / ELO.
  */
-export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
+export function calculatePowerScore(totalHealth, totalDamage, bonuses, style = 'melee') {
     const b = bonuses || {};
+    // Only the style-matched conditional damage bonus counts toward power.
+    const styleDmg = style === 'ranged' ? (b.rangedDamage || 0) : (b.meleeDamage || 0);
     const effectiveHealth = totalHealth
         * (1 + (b.healthMulti || 0) / 100)
-        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
+        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100)
+        * (1 + (b.damageReduction || 0) / 100); // mitigation ≈ effective-HP gain
     const effectiveDamage = totalDamage
-        * (1 + (b.damageMulti || 0) / 100)
+        * (1 + ((b.damageMulti || 0) + styleDmg) / 100)
         * (1 + (b.attackSpeed || 0) / 100)
         * (1 + (b.doubleHit || 0) / 100)
+        * (1 + (b.reflect || 0) / 100 * 0.5)   // situational: half-weighted
+        * (1 + (b.execute || 0) / 100 * 0.3)   // only fires on wounded foes: light weight
         * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
     return Math.round(effectiveHealth + effectiveDamage);
 }
@@ -169,10 +189,15 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusP
         }
     }
 
+    // Only the conditional damage bonus matching the equipped weapon's style
+    // applies, stacking additively with Damage Multi on the gear damage pool.
+    const style = weaponStyle(equipment.weapon);
+    const styleDmgPct = style === 'ranged' ? (bonuses.rangedDamage || 0) : (bonuses.meleeDamage || 0);
+
     // Clan stat perk scales the final HP & damage (applies in PvE and PvP).
     const clanMult = 1 + Math.max(0, statBonusPct) / 100;
     const maxHP = Math.floor((playerBaseHealth(playerLevel) + Math.floor(totalHealth * (1 + (bonuses.healthMulti || 0) / 100))) * clanMult);
-    const damage = Math.floor((playerBaseDamage(playerLevel) + Math.floor(totalDamage * (1 + (bonuses.damageMulti || 0) / 100))) * clanMult);
+    const damage = Math.floor((playerBaseDamage(playerLevel) + Math.floor(totalDamage * (1 + ((bonuses.damageMulti || 0) + styleDmgPct) / 100))) * clanMult);
 
     return {
         maxHP,
@@ -183,8 +208,11 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusP
         lifeSteal: bonuses.lifeSteal || 0,
         attackSpeed: bonuses.attackSpeed || 0,
         doubleHit: bonuses.doubleHit || 0,
+        damageReduction: bonuses.damageReduction || 0,
+        reflect: bonuses.reflect || 0,
+        execute: bonuses.execute || 0,
         // Combat style comes from the equipped weapon (melee by default).
-        ranged: weaponStyle(equipment.weapon) === 'ranged',
+        ranged: style === 'ranged',
     };
 }
 
@@ -194,7 +222,7 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusP
  */
 export function playerPowerScore(equipment, playerLevel = 1, statBonusPct = 0) {
     const { totalHealth, totalDamage, bonuses } = calculateStats(equipment);
-    const gearPower = calculatePowerScore(totalHealth, totalDamage, bonuses);
+    const gearPower = calculatePowerScore(totalHealth, totalDamage, bonuses, weaponStyle(equipment.weapon));
     const base = gearPower + playerBaseHealth(playerLevel) + playerBaseDamage(playerLevel);
     return Math.round(base * (1 + Math.max(0, statBonusPct) / 100));
 }
@@ -215,11 +243,15 @@ export function powerBreakdown(equipment, playerLevel = 1, statBonusPct = 0) {
     const baseDamage = playerBaseDamage(playerLevel);
 
     // Gear pools multiplied by their relevant bonus stats (mirrors calculatePowerScore).
+    const styleDmg = weaponStyle(equipment.weapon) === 'ranged' ? (b.rangedDamage || 0) : (b.meleeDamage || 0);
     const healthMult = (1 + (b.healthMulti || 0) / 100)
-        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
-    const damageMult = (1 + (b.damageMulti || 0) / 100)
+        * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100)
+        * (1 + (b.damageReduction || 0) / 100);
+    const damageMult = (1 + ((b.damageMulti || 0) + styleDmg) / 100)
         * (1 + (b.attackSpeed || 0) / 100)
         * (1 + (b.doubleHit || 0) / 100)
+        * (1 + (b.reflect || 0) / 100 * 0.5)
+        * (1 + (b.execute || 0) / 100 * 0.3)
         * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
     const effectiveHealth = totalHealth * healthMult;
     const effectiveDamage = totalDamage * damageMult;
@@ -298,5 +330,6 @@ export function gearPowerFromEquipment(equipment) {
         }
     }
 
-    return calculatePowerScore(totalHealth, totalDamage, bonuses);
+    const style = equipment && typeof equipment === 'object' ? weaponStyle(equipment.weapon) : 'melee';
+    return calculatePowerScore(totalHealth, totalDamage, bonuses, style);
 }
