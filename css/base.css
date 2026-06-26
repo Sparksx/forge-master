@@ -454,14 +454,6 @@ h1 {
     border-color: rgba(63, 81, 181, 0.15);
 }
 
-[data-theme="light"] .auto-forge-slot-row {
-    background: rgba(63, 81, 181, 0.06);
-}
-
-[data-theme="light"] .auto-forge-slot-row:hover {
-    background: rgba(63, 81, 181, 0.12);
-}
-
 /* ── PvP ── */
 [data-theme="light"] .pvp-find-btn {
     color: var(--text-on-gold);

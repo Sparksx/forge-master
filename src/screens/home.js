@@ -14,8 +14,8 @@ import {
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import {
-    loadAutoForgeSettings, getAutoForgeSettings, isSlotKept, setSlotKept,
-    setTrashLowerPower, autoForgeAction,
+    loadAutoForgeSettings, isSlotKept, setSlotKept,
+    isRarityTrashed, setRarityTrashed, autoForgeAction,
 } from '../game/auto-forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
 import { randomArenaId } from '../game/arenas.js';
@@ -192,7 +192,7 @@ function buildForge() {
                 // edge — forging levels the forge up for free.
                 h('div', { className: 'forge-btn-xp' }, h('div', { className: 'forge-btn-xp-fill' })),
             ),
-            h('button', { className: 'ctrl-btn auto-forge', onclick: showAutoForgeSettings },
+            h('button', { className: 'ctrl-btn auto-forge', onclick: toggleAutoForge },
                 h('span', { className: 'ctrl-icon', text: '♻️' }), h('span', { text: 'Auto' })),
         ),
     );
@@ -278,8 +278,7 @@ function scheduleAutoForge() {
         // Auto-forge never equips on its own: it only trashes clearly-unwanted
         // rolls and PRESENTS anything that could raise your power, so your power
         // can only ever change when you choose to equip.
-        const { delta } = powerDelta(item);
-        if (autoForgeAction(item, getEquippedItem(item.type), delta) === 'trash') {
+        if (autoForgeAction(item, getEquippedItem(item.type)) === 'trash') {
             trashItem(item);
             forgeFloater('🗑️', '');
             scheduleAutoForge();
@@ -295,63 +294,74 @@ function scheduleAutoForge() {
     }, delay);
 }
 
-// Clicking "Auto" opens the control panel: start/stop the loop, pick which
-// slots to keep (auto-trash new rolls for them), and optionally auto-trash
-// same/higher-rarity rolls that aren't a power gain.
+// Clicking "Auto" starts the loop AND opens the filter panel. Clicking it again
+// while it's running simply stops it — no modal needed.
+function toggleAutoForge() {
+    if (autoForge) {
+        setAutoForge(false);
+        toast('Auto-forge stopped', 'info');
+        return;
+    }
+    setAutoForge(true);
+    toast('Auto-forge started', 'info');
+    showAutoForgeSettings();
+}
+
+// The filter panel: tap a gear slot to stop auto-forging for it (greyed out),
+// and tap a rarity to trash every roll of that tier (outline only). Both are
+// laid out compactly like the home gear grid / item box.
 function showAutoForgeSettings() {
-    const settings = getAutoForgeSettings();
-
-    const switchEl = (on, label, onToggle) => {
-        const el = h('button', {
-            className: `toggle-switch${on ? ' on' : ''}`,
-            attrs: { type: 'button', role: 'switch', 'aria-checked': String(on), 'aria-label': label },
-        }, h('span', { className: 'toggle-knob' }));
-        el.addEventListener('click', () => {
-            const next = !el.classList.contains('on');
-            el.classList.toggle('on', next);
-            el.setAttribute('aria-checked', String(next));
-            onToggle(next);
-        });
-        return el;
-    };
-
-    const slotRow = (type) => {
+    // A gear slot rendered like the home grid: colour = "keep forging for me",
+    // black-and-white = "I'm done with this slot, trash new rolls". Tapping
+    // toggles between the two.
+    const slotCell = (type) => {
         const equipped = getEquippedItem(type);
-        return h('div', { className: 'auto-forge-slot-row' },
-            h('span', {
-                className: 'auto-slot-icon',
-                text: equipped ? itemIcon(equipped) : slotIcon(type),
-                style: equipped ? { '--rarity': rarityColor(equipped.tier) } : null,
-            }),
-            h('div', { className: 'auto-slot-meta' },
-                h('span', { className: 'auto-slot-name', text: slotLabel(type) }),
-                h('span', { className: 'auto-slot-sub muted', text: equipped ? `${rarityName(equipped.tier)} · Lv ${equipped.level}` : 'Empty' }),
-            ),
-            switchEl(isSlotKept(type), `Keep ${slotLabel(type)}`, (on) => setSlotKept(type, on)),
-        );
+        const cell = h('button', { className: 'auto-gear-slot', dataset: { type } });
+        const paint = () => {
+            const kept = isSlotKept(type); // true → trash new rolls → show greyed
+            clear(cell);
+            cell.classList.toggle('off', kept);
+            if (equipped) {
+                cell.classList.add('filled');
+                cell.style.setProperty('--rarity', rarityColor(equipped.tier));
+                cell.appendChild(h('span', { className: 'gear-slot-icon', text: itemIcon(equipped) }));
+                cell.appendChild(h('span', { className: 'gear-slot-lvl', text: `Lv ${equipped.level}` }));
+            } else {
+                cell.classList.remove('filled');
+                cell.style.removeProperty('--rarity');
+                cell.appendChild(h('span', { className: 'gear-slot-icon empty', text: slotIcon(type) }));
+            }
+        };
+        cell.addEventListener('click', () => { setSlotKept(type, !isSlotKept(type)); paint(); });
+        paint();
+        return cell;
     };
 
-    const startBtn = h('button', {
-        className: 'btn btn-primary btn-block',
-        text: autoForge ? '⏸ Stop auto-forge' : '▶ Start auto-forge',
-        onclick: () => { setAutoForge(!autoForge); closeModal(); toast(autoForge ? 'Auto-forge started' : 'Auto-forge stopped', 'info'); },
-    });
+    // The rarities the current forge can actually roll (chance > 0). Each is a
+    // box like an item in the inventory: filled background = keep, border-only
+    // outline = trash every roll of that tier. The rarity name sits in the middle.
+    const chances = getForgeChances();
+    const forgeable = TIERS.filter((t, i) => chances[i] > 0);
+    const rarityCell = (tier) => {
+        const cell = h('button', { className: 'auto-rarity-cell', style: { '--rarity': rarityColor(tier) } },
+            h('span', { className: 'auto-rarity-name', text: rarityName(tier) }));
+        const paint = () => cell.classList.toggle('off', isRarityTrashed(tier));
+        cell.addEventListener('click', () => { setRarityTrashed(tier, !isRarityTrashed(tier)); paint(); });
+        paint();
+        return cell;
+    };
 
     const body = h('div', { className: 'auto-forge-settings' },
         h('h3', { text: '♻️ Auto-Forge' }),
         h('p', { className: 'muted', text: 'Keeps forging for you. Lower-rarity rolls are trashed automatically — same-or-better gear is shown to you, so your power only changes when you choose to equip.' }),
         h('div', { className: 'auto-forge-filter-section' },
-            h('div', { className: 'auto-section-label', text: 'Keep slots — auto-trash new rolls for these' }),
-            h('div', { className: 'auto-slot-list' }, ...EQUIPMENT_TYPES.map(slotRow)),
+            h('div', { className: 'auto-section-label', text: 'Slots — tap to stop forging one' }),
+            h('div', { className: 'auto-gear-grid' }, ...EQUIPMENT_TYPES.map(slotCell)),
         ),
-        h('div', { className: 'auto-forge-filter-section auto-forge-toggle-row' },
-            h('div', { className: 'auto-slot-meta' },
-                h('span', { className: 'auto-slot-name', text: 'Auto-trash lower-power gear' }),
-                h('span', { className: 'auto-slot-sub muted', text: "Also trash same/higher-rarity rolls that aren't a power gain" }),
-            ),
-            switchEl(settings.trashLowerPower, 'Auto-trash lower-power gear', (on) => setTrashLowerPower(on)),
+        h('div', { className: 'auto-forge-filter-section' },
+            h('div', { className: 'auto-section-label', text: 'Rarities — tap to trash a whole tier' }),
+            h('div', { className: 'auto-rarity-row' }, ...forgeable.map((t) => rarityCell(t.id))),
         ),
-        startBtn,
         h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
     );
     openModal(body);
