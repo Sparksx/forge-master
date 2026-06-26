@@ -12,6 +12,7 @@
 // onResolve({ win }) once a fight ends.
 import { computeHit } from '../game/arena.js';
 import { BASE_ATTACK_PERIOD, seededRng } from '../game/config.js';
+import { getArena, pickArenaId } from '../game/arenas.js';
 
 // Fixed simulation step (seconds). The fight is stepped in fixed increments,
 // decoupled from the render framerate, so a given (input, seed) always yields
@@ -21,10 +22,6 @@ const SIM_DT = 1 / 60;
 // Logical room grid (tiles). The canvas scales to fit; tile size is derived.
 const COLS = 15;
 const ROWS = 9;
-// Interior pillars (col,row) — fixed so the room reads like a real chamber.
-const PILLARS = [
-    [4, 3], [4, 5], [10, 3], [10, 5], [7, 4],
-];
 // How close (in tiles) the hero must get before a passive enemy aggros.
 const AGGRO_TILES = 3;
 // Ranged fighters attack from (and hold) roughly this distance, in tiles.
@@ -50,7 +47,11 @@ export function createDungeon({ onResolve } = {}) {
 
     // ── World state ──────────────────────────────────────────────────────────
     let tile = 24;          // px per tile (recomputed on resize)
-    const walls = buildWalls();
+    // Scenery (pillar layout + colour theme) is chosen per fight in setMatchup;
+    // start on the default arena so the room is valid before the first matchup.
+    let arena = getArena();
+    let walls = buildWalls(arena.pillars);
+    let theme = arena.theme;
     const player = newEntity({ id: 'player', emoji: '🧙', facing: 1 });
     let enemies = [];       // array of enemy entities
     const floaters = [];    // { x, y, vy, text, color, bornAt }
@@ -144,8 +145,16 @@ export function createDungeon({ onResolve } = {}) {
         outcome = null;
         simClock = 0;
         accumulator = 0;
-        rng = seededRng(payload.seed != null ? payload.seed : seedFromPayload(payload));
+        const seed = payload.seed != null ? payload.seed : seedFromPayload(payload);
+        rng = seededRng(seed);
         floaters.length = 0; slashes.length = 0; shots.length = 0;
+
+        // Stage the fight in an arena. An explicit `payload.arena` wins (PvE picks
+        // one per fight); otherwise derive it from the seed so seed-shared fights
+        // (PvP replays on every client) render the identical room.
+        arena = getArena(payload.arena != null ? payload.arena : pickArenaId(seed));
+        walls = buildWalls(arena.pillars);
+        theme = arena.theme;
 
         // PvP replay: animate a precomputed authoritative timeline instead of
         // rolling combat live. `payload.win` is the result from the hero's side.
@@ -666,14 +675,14 @@ export function createDungeon({ onResolve } = {}) {
             for (let c = 0; c < COLS; c++) {
                 const x = c * tile, y = r * tile;
                 if (walls[r][c]) {
-                    ctx.fillStyle = '#0c0a18';
+                    ctx.fillStyle = theme.wallBase;
                     ctx.fillRect(x, y, tile, tile);
-                    ctx.fillStyle = 'rgba(46,38,80,.9)';
+                    ctx.fillStyle = theme.wallInset;
                     ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-                    ctx.fillStyle = 'rgba(0,0,0,.35)';
+                    ctx.fillStyle = theme.wallShade;
                     ctx.fillRect(x + 1, y + tile - 5, tile - 2, 4);
                 } else {
-                    ctx.fillStyle = (c + r) % 2 ? '#181230' : '#1d1638';
+                    ctx.fillStyle = (c + r) % 2 ? theme.floorB : theme.floorA;
                     ctx.fillRect(x, y, tile, tile);
                     ctx.strokeStyle = 'rgba(0,0,0,.18)';
                     ctx.lineWidth = 1;
@@ -824,8 +833,8 @@ export function createDungeon({ onResolve } = {}) {
     return { el, mount, start, stop, setFast, setMatchup, floater };
 }
 
-// Room layout: solid perimeter + interior pillars.
-function buildWalls() {
+// Room layout: solid perimeter + the chosen arena's interior pillars.
+function buildWalls(pillars = []) {
     const grid = [];
     for (let r = 0; r < ROWS; r++) {
         const row = [];
@@ -834,6 +843,8 @@ function buildWalls() {
         }
         grid.push(row);
     }
-    for (const [c, r] of PILLARS) grid[r][c] = true;
+    for (const [c, r] of pillars) {
+        if (r > 0 && c > 0 && r < ROWS - 1 && c < COLS - 1) grid[r][c] = true;
+    }
     return grid;
 }

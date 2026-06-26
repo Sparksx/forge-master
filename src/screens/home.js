@@ -14,6 +14,7 @@ import {
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
+import { randomArenaId } from '../game/arenas.js';
 import { getRecentMessages } from '../game/chat.js';
 import { openChat } from './chat.js';
 import { createDungeon } from './dungeon.js';
@@ -110,6 +111,9 @@ function encounterPayload(encounter) {
             attackSpeed: p.attackSpeed, lifeSteal: p.lifeSteal, healthRegen: p.healthRegen,
             ranged: !!p.ranged,
         },
+        // Stage this fight in the arena rolled for the encounter (stored on it so
+        // the same encounter always restages in the same room).
+        arena: encounter.arenaId,
         enemies: encounter.enemies.map((e) => ({
             id: e.id, emoji: e.emoji, label: `${e.name} · ${fmt(e.power)}`,
             maxHP: e.maxHP, damage: e.damage,
@@ -124,6 +128,9 @@ function encounterPayload(encounter) {
 function startEncounter() {
     if (!dungeon || !visible) return;
     currentEncounter = makeEncounter(getArenaRank());
+    // Roll a random arena for this fight so back-to-back battles aren't staged in
+    // the same room; it's stored on the encounter so the matchup can be restaged.
+    currentEncounter.arenaId = randomArenaId();
     dungeon.setMatchup(encounterPayload(currentEncounter));
 }
 
