@@ -11,6 +11,7 @@ router.get('/', async (req, res) => {
         const sprites = await prisma.sprite.findMany({
             include: { spriteSheet: true },
             orderBy: [{ spriteSheet: { type: 'asc' } }, { name: 'asc' }],
+            take: 500,
         });
         res.json({ sprites });
     } catch (err) {

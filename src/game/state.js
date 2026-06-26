@@ -371,7 +371,7 @@ export function save() {
     saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE);
 }
 
-async function saveToServer() {
+async function saveToServer(retries = 0) {
     saveTimer = null;
     saveInFlight = true;
     dirtyWhileSaving = false;
@@ -379,10 +379,15 @@ async function saveToServer() {
         await apiFetch('/api/game/state', { method: 'PUT', body: buildSave() });
     } catch (err) {
         console.error('Save failed:', err);
-    } finally {
-        saveInFlight = false;
-        if (dirtyWhileSaving) { dirtyWhileSaving = false; saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE); }
+        if (retries < 3) {
+            const delay = 1000 * 2 ** retries;
+            saveInFlight = false;
+            saveTimer = setTimeout(() => saveToServer(retries + 1), delay);
+            return;
+        }
     }
+    saveInFlight = false;
+    if (dirtyWhileSaving) { dirtyWhileSaving = false; saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE); }
 }
 
 function applyLoaded(data) {
@@ -414,7 +419,7 @@ function applyLoaded(data) {
     const player = data.player || {};
     if (typeof player.profilePicture === 'string') state.avatar = player.profilePicture;
     if (Array.isArray(player.cosmetics)) {
-        state.ownedCosmetics = player.cosmetics.filter((c) => typeof c === 'string');
+        state.ownedCosmetics = [...new Set(player.cosmetics.filter((c) => typeof c === 'string'))];
     }
     if (typeof player.frame === 'string') state.frame = player.frame;
     if (typeof player.level === 'number' && player.level >= 1) {
@@ -445,6 +450,7 @@ export async function loadFromServer() {
         const res = await apiFetch('/api/game/state');
         if (!res.ok) { loadLocal(); return; }
         applyLoaded(await res.json());
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); } catch { /* ignore */ }
     } catch (err) {
         console.error('Server load failed:', err);
         loadLocal();

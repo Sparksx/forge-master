@@ -14,6 +14,7 @@ router.get('/templates', async (req, res) => {
             prisma.itemTemplate.findMany({
                 include: { sprite: true },
                 orderBy: [{ type: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
+                take: 1000,
             }),
         ]);
 
