@@ -1,10 +1,41 @@
 import { describe, it, expect } from 'vitest';
 import {
-    calculateItemStats, calculateStats, calculatePowerScore,
+    calculateItemStats, calculateStats, calculatePowerScore, computeStatsFromEquipment,
     HEALTH_PER_LEVEL, DAMAGE_PER_LEVEL, GROWTH_EXPONENT,
     BONUS_STAT_KEYS,
     TIERS, MAX_TIER, EQUIPMENT_TYPES,
 } from '../stats.js';
+
+// ── melee/ranged conditional damage (depends on equipped weapon style) ─────────
+
+describe('computeStatsFromEquipment style-conditional damage', () => {
+    const weapon = (attackStyle, bonuses) => ({ weapon: { type: 'weapon', tier: 5, level: 60, attackStyle, bonuses } });
+
+    it('applies Melee Damage on a melee weapon and ignores it on a ranged one', () => {
+        const plain = computeStatsFromEquipment(weapon('melee', []), 1, 0).damage;
+        const melee = computeStatsFromEquipment(weapon('melee', [{ type: 'meleeDamage', value: 80 }]), 1, 0).damage;
+        const ranged = computeStatsFromEquipment(weapon('ranged', [{ type: 'meleeDamage', value: 80 }]), 1, 0).damage;
+        expect(melee).toBeGreaterThan(plain);
+        expect(ranged).toBe(plain); // wrong style → no effect
+    });
+
+    it('applies Ranged Damage only on a ranged weapon', () => {
+        const plain = computeStatsFromEquipment(weapon('ranged', []), 1, 0).damage;
+        const ranged = computeStatsFromEquipment(weapon('ranged', [{ type: 'rangedDamage', value: 25 }]), 1, 0).damage;
+        const melee = computeStatsFromEquipment(weapon('melee', [{ type: 'rangedDamage', value: 25 }]), 1, 0).damage;
+        expect(ranged).toBeGreaterThan(plain);
+        expect(melee).toBe(plain);
+    });
+
+    it('surfaces the new defensive stats', () => {
+        const s = computeStatsFromEquipment(weapon('melee', [
+            { type: 'damageReduction', value: 5 }, { type: 'reflect', value: 10 }, { type: 'execute', value: 20 },
+        ]), 1, 0);
+        expect(s.damageReduction).toBe(5);
+        expect(s.reflect).toBe(10);
+        expect(s.execute).toBe(20);
+    });
+});
 
 // ── calculateItemStats ───────────────────────────────────────────────────────
 
@@ -137,6 +168,32 @@ describe('calculatePowerScore', () => {
         const base = calculatePowerScore(100, 50, {});
         const boosted = calculatePowerScore(100, 50, { attackSpeed: 10 });
         expect(boosted).toBeGreaterThan(base);
+    });
+
+    it('double hit scales the damage pool like a multiplier', () => {
+        const base = calculatePowerScore(100, 50, {});
+        const boosted = calculatePowerScore(100, 50, { doubleHit: 10 });
+        expect(boosted).toBeGreaterThan(base);
+        expect(boosted).toBe(Math.round(100 + 50 * 1.1));
+    });
+
+    it('melee/ranged damage only counts for the matching weapon style', () => {
+        const base = calculatePowerScore(100, 50, {});
+        expect(calculatePowerScore(100, 50, { meleeDamage: 50 }, 'melee')).toBeGreaterThan(base);
+        expect(calculatePowerScore(100, 50, { meleeDamage: 50 }, 'ranged')).toBe(base);
+        expect(calculatePowerScore(100, 50, { rangedDamage: 25 }, 'ranged')).toBeGreaterThan(base);
+        expect(calculatePowerScore(100, 50, { rangedDamage: 25 }, 'melee')).toBe(base);
+    });
+
+    it('damage reduction raises the score (effective HP)', () => {
+        const base = calculatePowerScore(1000, 50, {});
+        expect(calculatePowerScore(1000, 50, { damageReduction: 8 })).toBeGreaterThan(base);
+    });
+
+    it('reflect and execute add a little score', () => {
+        const base = calculatePowerScore(100, 50, {});
+        expect(calculatePowerScore(100, 50, { reflect: 12 })).toBeGreaterThan(base);
+        expect(calculatePowerScore(100, 50, { execute: 30 })).toBeGreaterThan(base);
     });
 
     it('crit chance alone does not increase score (needs crit multiplier)', () => {

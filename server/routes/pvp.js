@@ -45,6 +45,10 @@ function fighterFromUser(user) {
         healthRegen: stats.healthRegen,
         lifeSteal: stats.lifeSteal,
         attackSpeed: stats.attackSpeed,
+        doubleHit: stats.doubleHit,
+        damageReduction: stats.damageReduction,
+        reflect: stats.reflect,
+        execute: stats.execute,
         ranged: stats.ranged,
         power: Math.max(1, power),
     };
@@ -65,6 +69,10 @@ function publicFighter(f) {
         healthRegen: f.healthRegen,
         lifeSteal: f.lifeSteal,
         attackSpeed: f.attackSpeed,
+        doubleHit: f.doubleHit,
+        damageReduction: f.damageReduction,
+        reflect: f.reflect,
+        execute: f.execute,
         ranged: f.ranged,
         isBot: !!f.isBot,
     };

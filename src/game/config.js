@@ -17,6 +17,7 @@ export {
     MAX_PLAYER_LEVEL, playerBaseHealth, playerBaseDamage, playerPowerScore, powerBreakdown,
     calculateItemStats, calculateStats, calculatePowerScore, computeStatsFromEquipment,
     BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, ATTACK_STYLES, RANGED_OPENING_FRACTION,
+    EXECUTE_HP_THRESHOLD, MAX_DAMAGE_REDUCTION,
     weaponStyle,
 } from '../../shared/stats.js';
 

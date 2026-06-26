@@ -119,6 +119,8 @@ function encounterPayload(encounter) {
             maxHP: p.maxHP, damage: p.damage,
             critChance: p.critChance, critMultiplier: p.critMultiplier,
             attackSpeed: p.attackSpeed, lifeSteal: p.lifeSteal, healthRegen: p.healthRegen,
+            doubleHit: p.doubleHit,
+            damageReduction: p.damageReduction, reflect: p.reflect, execute: p.execute,
             ranged: !!p.ranged,
         },
         // Stage this fight in the arena rolled for the encounter (stored on it so
@@ -129,6 +131,7 @@ function encounterPayload(encounter) {
             maxHP: e.maxHP, damage: e.damage,
             critChance: e.critChance, critMultiplier: e.critMultiplier,
             attackSpeed: e.attackSpeed, lifeSteal: e.lifeSteal, healthRegen: e.healthRegen,
+            doubleHit: e.doubleHit, damageReduction: e.damageReduction, reflect: e.reflect, execute: e.execute,
             ranged: e.ranged, role: e.role,
         })),
     };

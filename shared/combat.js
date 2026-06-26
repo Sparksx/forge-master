@@ -8,7 +8,10 @@
 //
 // Lives in shared/ (not src/game/) so the Node server can import the same engine
 // it uses for stat math (shared/stats.js) without reaching into client code.
-import { BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION } from './stats.js';
+import {
+    BASE_ATTACK_PERIOD, MAX_BATTLE_SECONDS, RANGED_OPENING_FRACTION,
+    EXECUTE_HP_THRESHOLD, MAX_DAMAGE_REDUCTION,
+} from './stats.js';
 
 // Tiny deterministic PRNG (mulberry32). A given seed yields a fixed stream, so a
 // fight seeded with it is exactly replayable. Re-exported by src/game/config.js
@@ -97,24 +100,57 @@ export function simulateBattle(allies, enemies, seed) {
         regenAll(now);
         last = now;
 
-        const foes = actor.side === 'ally' ? aliveOf(E) : aliveOf(A);
-        if (!foes.length) break;
-        const target = foes[0];
+        // Resolve one shot against the current first living foe. Returns false
+        // when there is nothing left to hit. `double` flags the extra shot.
+        const strike = (double) => {
+            const foes = actor.side === 'ally' ? aliveOf(E) : aliveOf(A);
+            if (!foes.length) return false;
+            const target = foes[0];
+            const hit = computeHit(actor, rnd);
+            const crit = hit.crit;
+            let dmg = hit.dmg;
+            // Execute: extra damage once the foe is badly wounded (checked on the
+            // target's HP *before* this shot lands).
+            if (actor.execute > 0 && target.hp < target.maxHP * EXECUTE_HP_THRESHOLD) {
+                dmg = Math.floor(dmg * (1 + actor.execute / 100));
+            }
+            // Damage Reduction: the target mitigates a capped % of the incoming hit.
+            if (target.damageReduction > 0) {
+                const dr = Math.min(MAX_DAMAGE_REDUCTION, target.damageReduction) / 100;
+                dmg = Math.max(1, Math.floor(dmg * (1 - dr)));
+            }
+            target.hp = Math.max(0, target.hp - dmg);
+            let heal = 0;
+            if (actor.lifeSteal > 0) {
+                heal = Math.floor(dmg * actor.lifeSteal / 100);
+                actor.hp = Math.min(actor.maxHP, actor.hp + heal);
+            }
+            // Reflect (thorns): the target bounces a % of the damage it took back
+            // at the attacker — this can finish off a low-HP attacker.
+            let reflected = 0;
+            if (target.reflect > 0) {
+                reflected = Math.floor(dmg * target.reflect / 100);
+                if (reflected > 0) actor.hp = Math.max(0, actor.hp - reflected);
+            }
+            events.push({
+                t: now,
+                by: actor.id, bySide: actor.side,
+                target: target.id, targetSide: target.side,
+                dmg, crit, heal, ranged: !!actor.ranged, double, reflected,
+                attackerHp: actor.hp, targetHp: target.hp,
+            });
+            return true;
+        };
 
-        const { dmg, crit } = computeHit(actor, rnd);
-        target.hp = Math.max(0, target.hp - dmg);
-        let heal = 0;
-        if (actor.lifeSteal > 0) {
-            heal = Math.floor(dmg * actor.lifeSteal / 100);
-            actor.hp = Math.min(actor.maxHP, actor.hp + heal);
+        if (!strike(false)) break;
+        // Double Hit: a chance to fire a second, fully independent shot in the
+        // same instant — its own crit roll and its own target (it re-acquires the
+        // first living foe, so it spills onto the next enemy if the first dropped).
+        // Only fighters that carry the stat ever roll, so seeded fights without it
+        // are byte-identical to before.
+        if (actor.doubleHit > 0 && rnd() * 100 < actor.doubleHit) {
+            strike(true);
         }
-        events.push({
-            t: now,
-            by: actor.id, bySide: actor.side,
-            target: target.id, targetSide: target.side,
-            dmg, crit, heal, ranged: !!actor.ranged,
-            attackerHp: actor.hp, targetHp: target.hp,
-        });
         actor.next += attackPeriod(actor);
     }
 
@@ -141,7 +177,7 @@ export function simulateDuel(player, enemy, seed) {
         seed,
     );
     const events = r.events.map((ev) => ev.bySide === 'ally'
-        ? { by: 'player', dmg: ev.dmg, crit: ev.crit, heal: ev.heal, pHp: ev.attackerHp, eHp: ev.targetHp }
-        : { by: 'enemy', dmg: ev.dmg, crit: ev.crit, heal: 0, pHp: ev.targetHp, eHp: ev.attackerHp });
+        ? { by: 'player', dmg: ev.dmg, crit: ev.crit, heal: ev.heal, double: ev.double, pHp: ev.attackerHp, eHp: ev.targetHp }
+        : { by: 'enemy', dmg: ev.dmg, crit: ev.crit, heal: 0, double: ev.double, pHp: ev.targetHp, eHp: ev.attackerHp });
     return { win: r.win, events, player, enemy };
 }
