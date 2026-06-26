@@ -13,6 +13,10 @@ import {
     grantPlayerXp, getForgeLevelProgress, getForgeSpeedPct, getForgeBestOf,
 } from '../game/state.js';
 import { forge } from '../game/forge.js';
+import {
+    loadAutoForgeSettings, getAutoForgeSettings, isSlotKept, setSlotKept,
+    setTrashLowerPower, autoForgeAction,
+} from '../game/auto-forge.js';
 import { makeEncounter, encounterReward } from '../game/arena.js';
 import { getRecentMessages } from '../game/chat.js';
 import { openChat } from './chat.js';
@@ -34,6 +38,12 @@ const fast = false;
 let forging = false;
 let autoForge = false;
 let autoForgeTimer = null;
+// Set while auto-forge is paused waiting on a player decision (the reveal modal
+// is open). The loop resumes once that decision is made.
+let autoForgePaused = false;
+
+// Restore the player's saved auto-forge filters (kept slots, trash-lower-power).
+loadAutoForgeSettings();
 
 export const id = 'home';
 export const icon = '🔨';
@@ -175,7 +185,7 @@ function buildForge() {
                 // edge — forging levels the forge up for free.
                 h('div', { className: 'forge-btn-xp' }, h('div', { className: 'forge-btn-xp-fill' })),
             ),
-            h('button', { className: 'ctrl-btn auto-forge', onclick: toggleAutoForge },
+            h('button', { className: 'ctrl-btn auto-forge', onclick: showAutoForgeSettings },
                 h('span', { className: 'ctrl-icon', text: '♻️' }), h('span', { text: 'Auto' })),
         ),
     );
@@ -236,36 +246,108 @@ function doForge() {
     }, 700);
 }
 
-function toggleAutoForge() {
-    autoForge = !autoForge;
-    root.querySelector('.auto-forge').classList.toggle('on', autoForge);
-    if (autoForge) { toast('Auto-forge on — keeps upgrades, trashes the rest', 'info'); scheduleAutoForge(); }
-    else clearTimeout(autoForgeTimer);
+function setAutoForge(on) {
+    autoForge = on;
+    autoForgePaused = false;
+    root.querySelector('.auto-forge')?.classList.toggle('on', autoForge);
+    if (autoForge) scheduleAutoForge();
+    else { clearTimeout(autoForgeTimer); autoForgeTimer = null; }
 }
 
 function scheduleAutoForge() {
     clearTimeout(autoForgeTimer);
+    if (autoForgePaused) return; // waiting on a player decision — don't roll over it
     // Clan forge-speed perk shortens the interval (capped so it never gets silly).
     const base = fast ? 900 : 1600;
     const delay = Math.max(400, Math.round(base / (1 + getForgeSpeedPct() / 100)));
     autoForgeTimer = setTimeout(() => {
-        if (!visible || !autoForge) return;
-        const { item, gold } = forge(getForgeBestOf());
+        if (!visible || !autoForge || autoForgePaused) return;
+        const { item, gold, rolls } = forge(getForgeBestOf());
         gameEvents.emit(EVENTS.ITEM_FORGED, item);
         if (gold > 0) {
             const granted = grantGold(gold);
             forgeFloater(`+${fmt(granted)}💰`, '#ffcf4d');
         }
+        // Auto-forge never equips on its own: it only trashes clearly-unwanted
+        // rolls and PRESENTS anything that could raise your power, so your power
+        // can only ever change when you choose to equip.
         const { delta } = powerDelta(item);
-        if (delta > 0) {
-            equipItem(item);
-            forgeFloater(`▲ ${rarityName(item.tier)}`, rarityColor(item.tier));
-        } else {
+        if (autoForgeAction(item, getEquippedItem(item.type), delta) === 'trash') {
             trashItem(item);
             forgeFloater('🗑️', '');
+            scheduleAutoForge();
+        } else {
+            // Pause and hand the decision to the player; resume when they're done.
+            autoForgePaused = true;
+            forgeFloater(`❔ ${rarityName(item.tier)}`, rarityColor(item.tier));
+            showReveal(item, rolls, { onResolved: () => {
+                autoForgePaused = false;
+                if (autoForge && visible) scheduleAutoForge();
+            } });
         }
-        scheduleAutoForge();
     }, delay);
+}
+
+// Clicking "Auto" opens the control panel: start/stop the loop, pick which
+// slots to keep (auto-trash new rolls for them), and optionally auto-trash
+// same/higher-rarity rolls that aren't a power gain.
+function showAutoForgeSettings() {
+    const settings = getAutoForgeSettings();
+
+    const switchEl = (on, label, onToggle) => {
+        const el = h('button', {
+            className: `toggle-switch${on ? ' on' : ''}`,
+            attrs: { type: 'button', role: 'switch', 'aria-checked': String(on), 'aria-label': label },
+        }, h('span', { className: 'toggle-knob' }));
+        el.addEventListener('click', () => {
+            const next = !el.classList.contains('on');
+            el.classList.toggle('on', next);
+            el.setAttribute('aria-checked', String(next));
+            onToggle(next);
+        });
+        return el;
+    };
+
+    const slotRow = (type) => {
+        const equipped = getEquippedItem(type);
+        return h('div', { className: 'auto-forge-slot-row' },
+            h('span', {
+                className: 'auto-slot-icon',
+                text: equipped ? itemIcon(equipped) : slotIcon(type),
+                style: equipped ? { '--rarity': rarityColor(equipped.tier) } : null,
+            }),
+            h('div', { className: 'auto-slot-meta' },
+                h('span', { className: 'auto-slot-name', text: slotLabel(type) }),
+                h('span', { className: 'auto-slot-sub muted', text: equipped ? `${rarityName(equipped.tier)} · Lv ${equipped.level}` : 'Empty' }),
+            ),
+            switchEl(isSlotKept(type), `Keep ${slotLabel(type)}`, (on) => setSlotKept(type, on)),
+        );
+    };
+
+    const startBtn = h('button', {
+        className: 'btn btn-primary btn-block',
+        text: autoForge ? '⏸ Stop auto-forge' : '▶ Start auto-forge',
+        onclick: () => { setAutoForge(!autoForge); closeModal(); toast(autoForge ? 'Auto-forge started' : 'Auto-forge stopped', 'info'); },
+    });
+
+    const body = h('div', { className: 'auto-forge-settings' },
+        h('h3', { text: '♻️ Auto-Forge' }),
+        h('p', { className: 'muted', text: 'Keeps forging for you. Lower-rarity rolls are trashed automatically — same-or-better gear is shown to you, so your power only changes when you choose to equip.' }),
+        h('div', { className: 'auto-forge-filter-section' },
+            h('div', { className: 'auto-section-label', text: 'Keep slots — auto-trash new rolls for these' }),
+            h('div', { className: 'auto-slot-list' }, ...EQUIPMENT_TYPES.map(slotRow)),
+        ),
+        h('div', { className: 'auto-forge-filter-section auto-forge-toggle-row' },
+            h('div', { className: 'auto-slot-meta' },
+                h('span', { className: 'auto-slot-name', text: 'Auto-trash lower-power gear' }),
+                h('span', { className: 'auto-slot-sub muted', text: "Also trash same/higher-rarity rolls that aren't a power gain" }),
+            ),
+            switchEl(settings.trashLowerPower, 'Auto-trash lower-power gear', (on) => setTrashLowerPower(on)),
+        ),
+        startBtn,
+        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
+    );
+    openModal(body);
 }
 
 function forgeFloater(text, color) {
@@ -278,13 +360,21 @@ function forgeFloater(text, color) {
 }
 
 // ── Reveal / slot detail / forge upgrade (kept from the old Forge screen) ─────
-function showReveal(item, rolls = 1) {
-    let decided = false;
+function showReveal(item, rolls = 1, { onResolved } = {}) {
+    let resolved = false;
     const { delta } = powerDelta(item);
     const equipped = getEquippedItem(item.type);
 
-    const trash = () => { decided = true; trashItem(item); closeModal(); toast(`Trashed ${itemName(item)}`, 'info'); };
-    const equip = () => { decided = true; equipItem(item); closeModal(); toast(`Equipped ${itemName(item)}`, 'success'); };
+    // Run the chosen action once, then notify the caller (used by auto-forge to
+    // resume its loop) — whether the player equipped, trashed, or dismissed.
+    const finish = (action) => {
+        if (resolved) return;
+        resolved = true;
+        action();
+        onResolved?.();
+    };
+    const trash = () => finish(() => { trashItem(item); closeModal(); toast(`Trashed ${itemName(item)}`, 'info'); });
+    const equip = () => finish(() => { equipItem(item); closeModal(); toast(`Equipped ${itemName(item)}`, 'success'); });
 
     const body = h('div', { className: 'reveal', style: { '--rarity': rarityColor(item.tier) } },
         h('div', { className: 'reveal-flash', text: rarityName(item.tier) }),
@@ -297,7 +387,8 @@ function showReveal(item, rolls = 1) {
             h('button', { className: 'btn btn-primary', text: delta >= 0 ? 'Equip ✓' : 'Equip anyway', onclick: equip }),
         ),
     );
-    openModal(body, { onClose: () => { if (!decided) trash(); } });
+    // Backdrop dismiss = trash (the modal is already closing, so don't re-close).
+    openModal(body, { onClose: () => finish(() => { trashItem(item); toast(`Trashed ${itemName(item)}`, 'info'); }) });
 }
 
 function updateGearGrid() {
