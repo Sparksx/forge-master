@@ -606,14 +606,24 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    // Only allow known setting keys to prevent prototype pollution / arbitrary data injection
     const VALID_THEMES = ['dark', 'light'];
-    if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
-        return res.status(400).json({ error: 'Invalid theme value' });
+    const ALLOWED_KEYS = { theme: (v) => VALID_THEMES.includes(v) };
+
+    const sanitized = {};
+    for (const [key, value] of Object.entries(settings)) {
+        if (!(key in ALLOWED_KEYS)) continue;
+        if (!ALLOWED_KEYS[key](value)) {
+            return res.status(400).json({ error: `Invalid value for ${key}` });
+        }
+        sanitized[key] = value;
+    }
+
+    if (Object.keys(sanitized).length === 0) {
+        return res.status(400).json({ error: 'No valid settings provided' });
     }
 
     try {
-        // Use a transaction to atomically read-merge-write settings
         const updated = await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { id: req.user.userId },
@@ -621,7 +631,7 @@ router.put('/settings', requireAuth, async (req, res) => {
             });
 
             const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-            const merged = { ...current, ...settings };
+            const merged = { ...current, ...sanitized };
 
             return tx.user.update({
                 where: { id: req.user.userId },

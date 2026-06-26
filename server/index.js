@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'https://api.stripe.com', 'wss:', 'ws:'],
+            frameSrc: ["'self'", 'https://checkout.stripe.com'],
+            fontSrc: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
