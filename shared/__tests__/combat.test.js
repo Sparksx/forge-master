@@ -61,6 +61,52 @@ describe('gear stats actually affect the fight', () => {
         }
         expect(stealWins).toBeGreaterThan(30);
     });
+
+    it('double hit swings a mirror match in the double-hitter favour', () => {
+        let wins = 0;
+        for (let seed = 0; seed < 40; seed++) {
+            const twin = fighter({ id: 'player', critChance: 0, doubleHit: 20 });
+            const plain = fighter({ id: 'opp', critChance: 0, doubleHit: 0 });
+            if (simulateBattle([twin], [plain], seed).win) wins++;
+        }
+        expect(wins).toBeGreaterThan(30);
+    });
+});
+
+describe('double hit mechanic', () => {
+    it('leaves a fight without the stat byte-identical (no extra rolls)', () => {
+        const withZero = simulateBattle([fighter({ id: 'player', doubleHit: 0 })], [fighter({ id: 'opp', damage: 55 })], 12345);
+        const without = simulateBattle([fighter({ id: 'player' })], [fighter({ id: 'opp', damage: 55 })], 12345);
+        expect(withZero.events).toEqual(without.events);
+    });
+
+    it('fires a flagged extra shot at the same instant as the base shot', () => {
+        const { events } = simulateBattle(
+            [fighter({ id: 'player', critChance: 0, doubleHit: 100 })],
+            [fighter({ id: 'opp', critChance: 0, damage: 1, maxHP: 100000 })],
+            7,
+        );
+        const playerHits = events.filter((e) => e.by === 'player');
+        const doubles = playerHits.filter((e) => e.double);
+        expect(doubles.length).toBeGreaterThan(0);
+        // Each extra shot shares its timestamp with a base shot fired the same instant.
+        for (const d of doubles) {
+            expect(playerHits.some((e) => !e.double && e.t === d.t)).toBe(true);
+        }
+    });
+
+    it('retargets the extra shot onto the next living foe (independent target)', () => {
+        // Two frail enemies; a guaranteed double hit with enough damage to one-shot
+        // each should spill the second strike onto the second enemy.
+        const { events } = simulateBattle(
+            [fighter({ id: 'player', critChance: 0, damage: 5000, doubleHit: 100 })],
+            [fighter({ id: 'a', maxHP: 100, damage: 1 }), fighter({ id: 'b', maxHP: 100, damage: 1 })],
+            3,
+        );
+        const targets = new Set(events.filter((e) => e.by === 'player').map((e) => e.target));
+        expect(targets.has('a')).toBe(true);
+        expect(targets.has('b')).toBe(true);
+    });
 });
 
 describe('computeHit seeded stream', () => {

@@ -139,6 +139,13 @@ describe('calculatePowerScore', () => {
         expect(boosted).toBeGreaterThan(base);
     });
 
+    it('double hit scales the damage pool like a multiplier', () => {
+        const base = calculatePowerScore(100, 50, {});
+        const boosted = calculatePowerScore(100, 50, { doubleHit: 10 });
+        expect(boosted).toBeGreaterThan(base);
+        expect(boosted).toBe(Math.round(100 + 50 * 1.1));
+    });
+
     it('crit chance alone does not increase score (needs crit multiplier)', () => {
         const base = calculatePowerScore(100, 50, {});
         const critOnly = calculatePowerScore(100, 50, { critChance: 10 });

@@ -53,6 +53,7 @@ function buildEnemy({ rank, power, role, ranged, index, name, emoji }) {
         critMultiplier: 50,
         attackSpeed: 0,
         lifeSteal: 0,
+        doubleHit: 0,
         healthRegen: role === 'bigboss' ? 2 : 0,
     };
 }

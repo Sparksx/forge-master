@@ -64,6 +64,7 @@ export const BONUS_STATS = {
     damageMulti:    { label: 'Damage Multi',    icon: '\uD83D\uDDE1\uFE0F', max: 12, unit: '%' },
     healthRegen:    { label: 'Health Regen',    icon: '\uD83E\uDE79', max: 5,  unit: '%' },
     lifeSteal:      { label: 'Life Steal',      icon: '\uD83E\uDDDB', max: 8,  unit: '%' },
+    doubleHit:      { label: 'Double Hit',      icon: '\uD83D\uDD01', max: 10, unit: '%' },
 };
 
 export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
@@ -139,6 +140,7 @@ export function calculatePowerScore(totalHealth, totalDamage, bonuses) {
     const effectiveDamage = totalDamage
         * (1 + (b.damageMulti || 0) / 100)
         * (1 + (b.attackSpeed || 0) / 100)
+        * (1 + (b.doubleHit || 0) / 100)
         * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
     return Math.round(effectiveHealth + effectiveDamage);
 }
@@ -180,6 +182,7 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusP
         healthRegen: bonuses.healthRegen || 0,
         lifeSteal: bonuses.lifeSteal || 0,
         attackSpeed: bonuses.attackSpeed || 0,
+        doubleHit: bonuses.doubleHit || 0,
         // Combat style comes from the equipped weapon (melee by default).
         ranged: weaponStyle(equipment.weapon) === 'ranged',
     };
@@ -216,6 +219,7 @@ export function powerBreakdown(equipment, playerLevel = 1, statBonusPct = 0) {
         * (1 + ((b.healthRegen || 0) + (b.lifeSteal || 0)) / 100);
     const damageMult = (1 + (b.damageMulti || 0) / 100)
         * (1 + (b.attackSpeed || 0) / 100)
+        * (1 + (b.doubleHit || 0) / 100)
         * (1 + (b.critChance || 0) / 100 * (b.critMultiplier || 0) / 100);
     const effectiveHealth = totalHealth * healthMult;
     const effectiveDamage = totalDamage * damageMult;
