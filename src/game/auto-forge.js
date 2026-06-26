@@ -7,17 +7,18 @@
 // whether or not they raise power, so your power can never climb on its own.
 //
 // Players can tune the policy with two filters (persisted locally):
-//   • keepSlots[type]   — "I'm happy with this slot, stop bothering me": every
+//   • keepSlots[type]    — "I'm done with this slot, stop bothering me": every
 //                          new roll for it is trashed automatically.
-//   • trashLowerPower   — also auto-trash same/higher-rarity rolls that aren't
-//                          actually a power gain (instead of presenting them).
+//   • trashRarities[tier] — "I don't care about this rarity any more": every new
+//                          roll of that rarity is trashed automatically.
 import { EQUIPMENT_TYPES } from './config.js';
+import { MAX_TIER } from '../../shared/stats.js';
 
 const SETTINGS_KEY = 'gm.autoForge.settings';
 
 const settings = {
-    trashLowerPower: false,
     keepSlots: {}, // { [type]: true }
+    trashRarities: {}, // { [tier]: true }
 };
 
 export function getAutoForgeSettings() {
@@ -34,8 +35,13 @@ export function setSlotKept(type, kept) {
     saveAutoForgeSettings();
 }
 
-export function setTrashLowerPower(on) {
-    settings.trashLowerPower = !!on;
+export function isRarityTrashed(tier) {
+    return !!settings.trashRarities[tier];
+}
+
+export function setRarityTrashed(tier, trashed) {
+    if (trashed) settings.trashRarities[tier] = true;
+    else delete settings.trashRarities[tier];
     saveAutoForgeSettings();
 }
 
@@ -44,10 +50,15 @@ export function loadAutoForgeSettings() {
         const raw = localStorage.getItem(SETTINGS_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw);
-        settings.trashLowerPower = !!parsed.trashLowerPower;
         settings.keepSlots = {};
         if (parsed.keepSlots && typeof parsed.keepSlots === 'object') {
             EQUIPMENT_TYPES.forEach((t) => { if (parsed.keepSlots[t]) settings.keepSlots[t] = true; });
+        }
+        settings.trashRarities = {};
+        if (parsed.trashRarities && typeof parsed.trashRarities === 'object') {
+            for (let tier = 1; tier <= MAX_TIER; tier += 1) {
+                if (parsed.trashRarities[tier]) settings.trashRarities[tier] = true;
+            }
         }
     } catch { /* ignore corrupt prefs */ }
 }
@@ -58,19 +69,19 @@ export function saveAutoForgeSettings() {
 
 /**
  * Decide auto-forge's action for a freshly rolled `item`, given the currently
- * `equipped` item in that slot (or null) and the item's power `delta`. Returns
- * `'trash'` or `'present'` — never `'equip'`.
+ * `equipped` item in that slot (or null). Returns `'trash'` or `'present'` —
+ * never `'equip'`.
  *
- * - A slot marked "keep" → trash (don't touch my gear there).
+ * - A slot marked "keep" → trash (don't bother me about this slot any more).
+ * - A rarity marked "trash" → trash (I don't want this tier any more).
  * - An empty slot → present (filling it changes your power, so it's your call).
  * - Strictly lower rarity than equipped → trash.
- * - Same or higher rarity → present, UNLESS trashLowerPower is on and the roll
- *   isn't a power gain (delta <= 0) → trash.
+ * - Same or higher rarity → present (so power only changes when you choose).
  */
-export function autoForgeAction(item, equipped, delta, opts = settings) {
+export function autoForgeAction(item, equipped, opts = settings) {
     if (opts.keepSlots && opts.keepSlots[item.type]) return 'trash';
+    if (opts.trashRarities && opts.trashRarities[item.tier]) return 'trash';
     if (!equipped) return 'present';
     if (item.tier < equipped.tier) return 'trash';
-    if (opts.trashLowerPower && delta <= 0) return 'trash';
     return 'present';
 }
