@@ -1,15 +1,25 @@
 // Full-screen chat overlay, opened by tapping the home-screen chat preview.
 // Three tabs: General (world), Clan (your clan), and Private (1:1 DMs + custom
 // groups). Each tab shows the last 100 messages and has its own composer.
-import { h, clear, openModal, closeModal, toast } from './components.js';
+import { h, clear, fmt, openModal, closeModal, toast } from './components.js';
 import { avatarEmoji } from '../game/config.js';
+import { itemName, rarityName, rarityColor, itemIcon, slotLabel } from '../game/items.js';
+import { EQUIPMENT_TYPES } from '../../shared/stats.js';
+import { FRAMES } from '../../shared/cosmetics.js';
 import { getCurrentUser } from '../auth.js';
 import { getMyClanCached } from '../game/clan.js';
+import { switchTab as navigateToScreen } from './app.js';
+import { startFriendly } from './pvp.js';
 import {
     getMessages, getConversations, requestHistory, requestConversations,
-    sendChat, startDm, createGroup,
+    sendChat, startDm, createGroup, fetchPlayerProfile,
 } from '../game/chat.js';
 import { gameEvents, EVENTS } from '../events.js';
+
+// Only render frame classes we actually ship — guards against a tampered save
+// injecting an arbitrary class name onto the avatar.
+const VALID_FRAMES = new Set(FRAMES.map((f) => f.id));
+const safeFrame = (id) => (VALID_FRAMES.has(id) ? id : 'none');
 
 let panel = null;
 let activeTab = 'general';
@@ -198,10 +208,15 @@ function syncMessages() {
     const me = getCurrentUser();
     msgs.forEach((m) => {
         const mine = me && m.senderId === me.id;
+        // Tap the avatar (or sender name) to open the sender's public profile.
+        const openProfile = (e) => { e.stopPropagation(); if (m.senderId) showProfileModal(m.senderId); };
         list.appendChild(h('div', { className: `chat-msg${mine ? ' mine' : ''}` },
-            h('span', { className: 'chat-msg-avatar', text: avatarEmoji(m.senderAvatar) }),
+            h('span', {
+                className: `chat-msg-avatar frame-${safeFrame(m.senderFrame)}`,
+                text: avatarEmoji(m.senderAvatar), onclick: openProfile,
+            }),
             h('div', { className: 'chat-msg-bubble' },
-                mine ? null : h('span', { className: 'chat-msg-sender', text: m.sender }),
+                mine ? null : h('span', { className: 'chat-msg-sender chat-msg-sender-link', text: m.sender, onclick: openProfile }),
                 h('span', { className: 'chat-msg-text', text: m.content }),
             ),
         ));
@@ -213,6 +228,101 @@ function switchTab(id) {
     activeTab = id;
     if (id !== 'private') activeConvId = null;
     render();
+}
+
+// ── Public profile modal ──────────────────────────────────────────────────────
+// Tap a chat message to see the sender's public profile (gear, clan, power, PvP
+// record) and — for clanmates — start a friendly, unranked duel against them.
+async function showProfileModal(userId) {
+    const me = getCurrentUser();
+    const loading = h('div', { className: 'member-modal' },
+        h('p', { className: 'muted', text: 'Loading profile…' }),
+        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
+    );
+    openModal(loading);
+
+    let p;
+    try {
+        p = await fetchPlayerProfile(userId);
+    } catch {
+        clear(loading);
+        loading.appendChild(h('p', { className: 'muted', text: 'Could not load this profile.' }));
+        loading.appendChild(h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }));
+        return;
+    }
+
+    const isMe = me?.id === p.userId;
+    const myClan = getMyClanCached();
+    const sameClan = !!(myClan && p.clan && p.clan.id === myClan.id);
+
+    const statRow = (label, value) => h('div', { className: 'member-stat-row' },
+        h('span', { className: 'muted', text: label }),
+        h('span', { className: 'member-stat-val', text: value }),
+    );
+
+    const clanLine = p.clan
+        ? `${p.clan.emblem || '🛡️'} ${p.clan.name}${p.clan.tag ? ` [${p.clan.tag}]` : ''} · Lv ${fmt(p.clan.level || 1)}`
+        : 'No clan';
+
+    const body = h('div', { className: 'member-modal' },
+        h('div', { className: 'member-modal-head' },
+            h('span', { className: `member-modal-avatar frame-${safeFrame(p.frame)}`, text: avatarEmoji(p.profilePicture) }),
+            h('div', { className: 'member-modal-id' },
+                h('div', { className: 'member-modal-name' },
+                    h('span', { text: p.username }),
+                    p.rank ? h('span', { className: 'member-badge', text: ` ${p.rank.icon}` }) : null,
+                ),
+                h('div', { className: 'muted', text: clanLine }),
+            ),
+        ),
+        h('div', { className: 'member-stats' },
+            statRow('⭐ Level', fmt(p.level || 1)),
+            statRow('💪 Power', fmt(p.power || 0)),
+            statRow('🏆 PvP ELO', `${fmt(p.pvpRating ?? 1000)}${p.rank ? ` ${p.rank.name}` : ''}`),
+            statRow('📊 PvP Record', `${fmt(p.pvpWins || 0)}W / ${fmt(p.pvpLosses || 0)}L`),
+            statRow('❤️ Max HP', fmt(p.maxHP || 0)),
+            statRow('🔨 Forge Lv', fmt(p.forgeLevel || 1)),
+        ),
+        renderGear(p.equipment),
+        sameClan && !isMe ? h('button', {
+            className: 'btn btn-primary btn-block', text: '⚔️ Friendly Duel',
+            onclick: () => { closeModal(); closeChat(); navigateToScreen('pvp'); startFriendly(p.userId); },
+        }) : null,
+        sameClan && !isMe
+            ? h('p', { className: 'muted small member-duel-note', text: 'A practice fight against their gear — your ELO and record stay unchanged.' })
+            : (!isMe ? h('p', { className: 'muted small member-duel-note', text: 'Join their clan to challenge them to a friendly duel.' }) : null),
+        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
+    );
+    // Swap the loading body for the full profile in the same modal shell — unless
+    // the user already dismissed it while the request was in flight.
+    if (loading.parentNode) loading.replaceWith(body);
+}
+
+// Compact equipped-gear grid for the profile modal — one tile per slot, coloured
+// by rarity, with empty slots shown faded.
+function renderGear(equipment) {
+    const eq = equipment && typeof equipment === 'object' ? equipment : {};
+    return h('div', { className: 'profile-gear' },
+        h('div', { className: 'profile-gear-title muted', text: 'Equipped Gear' }),
+        h('div', { className: 'profile-gear-grid' },
+            ...EQUIPMENT_TYPES.map((slot) => {
+                const item = eq[slot];
+                if (!item || typeof item !== 'object') {
+                    return h('div', { className: 'profile-gear-cell empty', attrs: { title: slotLabel(slot) } },
+                        h('span', { className: 'profile-gear-icon', text: '—' }),
+                    );
+                }
+                const color = rarityColor(item.tier);
+                return h('div', {
+                    className: 'profile-gear-cell', style: { '--rarity': color },
+                    attrs: { title: `${itemName(item)} · ${rarityName(item.tier)} · ${slotLabel(slot)} · Lv ${item.level || 1}` },
+                },
+                    h('span', { className: 'profile-gear-icon', text: itemIcon(item) }),
+                    h('span', { className: 'profile-gear-lv', text: `L${fmt(item.level || 1)}` }),
+                );
+            }),
+        ),
+    );
 }
 
 // ── New DM / group modals ─────────────────────────────────────────────────────
