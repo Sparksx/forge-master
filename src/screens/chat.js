@@ -256,7 +256,7 @@ async function showProfileModal(userId) {
     const sameClan = !!(myClan && p.clan && p.clan.id === myClan.id);
 
     const statRow = (label, value) => h('div', { className: 'member-stat-row' },
-        h('span', { className: 'muted', text: label }),
+        h('span', { className: 'member-stat-label muted', text: label }),
         h('span', { className: 'member-stat-val', text: value }),
     );
 

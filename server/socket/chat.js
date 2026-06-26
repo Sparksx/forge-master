@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma.js';
-import { computeStatsFromEquipment } from '../../shared/stats.js';
-import { clanLevelFromXp } from '../../shared/clan-config.js';
+import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
+import { clanLevelFromXp, clanPerks } from '../../shared/clan-config.js';
 import { getActiveMute, logAudit } from '../middleware/auth.js';
 
 // Extract a player's equipped cosmetic frame from their stored game-state JSON,
@@ -409,8 +409,6 @@ export function registerChatHandlers(io, socket) {
             }
 
             const equipment = user.gameState?.equipment || {};
-            const stats = computeStatsFromEquipment(equipment);
-            const power = stats.maxHP + stats.damage;
 
             // Determine ELO rank
             const rank = getEloRank(user.pvpRating);
@@ -423,6 +421,17 @@ export function registerChatHandlers(io, socket) {
             // Clan membership (name/tag/level) so the public profile can show it and
             // the viewer can tell whether a friendly duel is available (clanmates only).
             const membership = user.clanMembership;
+
+            // Power & stats must mirror the client (top nav) and PvP exactly:
+            // include the player's level and clan stat perk, and use the same
+            // weighted power formula — not a raw maxHP+damage sum — or the number
+            // shown here won't match the owner's own Power readout.
+            const statBonusPct = typeof membership?.clan?.xp === 'number'
+                ? (clanPerks(clanLevelFromXp(membership.clan.xp)).statBonusPct || 0)
+                : 0;
+            const stats = computeStatsFromEquipment(equipment, level, statBonusPct);
+            const power = playerPowerScore(equipment, level, statBonusPct);
+
             const clan = membership?.clan ? {
                 id: membership.clan.id,
                 name: membership.clan.name,
