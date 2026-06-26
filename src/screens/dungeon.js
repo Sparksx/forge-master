@@ -1,17 +1,18 @@
-// Dungeon — a 2D top-down combat zone rendered on a canvas, driven in REAL TIME.
-// There is NO player control. The lone hero pathfinds toward the nearest living
-// enemy and attacks it; each enemy independently patrols until the hero enters
-// its aggro range, then closes in (melee) or holds a standoff (ranged) and
-// fires. Everyone moves and attacks on their own cadence — fighters are fully
-// independent, and a far-off enemy keeps doing its own thing while the hero
-// trades blows with the one beside it.
+// Dungeon — a 2D top-down combat zone rendered on a canvas. There is NO player
+// control: the lone hero pathfinds toward the nearest living enemy while the
+// pack closes in (melee) or holds a standoff (ranged).
 //
-// Combat math (damage rolls, ~1 hit/sec cadence) comes from the model
-// (src/game/arena.js + shared/stats.js); this module owns positions, timing,
-// and rendering. It reports the outcome back to the owning screen via
-// onResolve({ win }) once a fight ends.
-import { computeHit } from '../game/arena.js';
-import { BASE_ATTACK_PERIOD, seededRng, EXECUTE_HP_THRESHOLD, MAX_DAMAGE_REDUCTION } from '../game/config.js';
+// This module is a PURE RENDERER. It does not roll combat — every fight is
+// resolved up-front by the single shared engine (`simulateBattle` in
+// shared/combat.js, the same one the server runs for PvP) into an event
+// timeline, and the dungeon animates that timeline: HP, crits, lifesteal,
+// reflect and deaths all come straight from the log, so the on-screen fight can
+// never disagree with the authoritative verdict. Movement stays procedural,
+// purely for flavour. PvE layers a cosmetic walk-in/aggro intro on top (enemies
+// patrol until alerted) before the timeline plays; PvP engages instantly.
+//
+// It reports the outcome back to the owning screen via onResolve({ win }).
+import { seededRng } from '../game/config.js';
 import { getArena, pickArenaId } from '../game/arenas.js';
 
 // Fixed simulation step (seconds). The fight is stepped in fixed increments,
@@ -77,6 +78,11 @@ export function createDungeon({ onResolve } = {}) {
     let replayEvents = [];
     let replayIdx = 0;
     let replayWin = false;
+    // PvE plays the resolved timeline behind a patrol/aggro intro: the hero walks
+    // in, enemies patrol until alerted, and only then does the fight begin.
+    // `combatJoined` gates the event timeline; PvP skips the intro entirely.
+    let patrolIntro = false;
+    let combatJoined = false;
 
     function newEntity(over = {}) {
         return {
@@ -101,7 +107,6 @@ export function createDungeon({ onResolve } = {}) {
         }
         return best;
     };
-    const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0) / 100);
     // How close a fighter must be to its target to land a blow.
     const reachOf = (atk, target) => (atk.ranged ? RANGED_STANDOFF * tile : atk.r + target.r + 4);
 
@@ -156,12 +161,15 @@ export function createDungeon({ onResolve } = {}) {
         walls = buildWalls(arena.pillars);
         theme = arena.theme;
 
-        // PvP replay: animate a precomputed authoritative timeline instead of
-        // rolling combat live. `payload.win` is the result from the hero's side.
+        // Animate a precomputed authoritative timeline instead of rolling combat
+        // live. `payload.win` is the result from the hero's side. PvE passes
+        // `patrol: true` to keep its walk-in/aggro intro; PvP engages instantly.
         replayMode = Array.isArray(payload.events);
         replayEvents = replayMode ? payload.events : [];
         replayIdx = 0;
         replayWin = !!payload.win;
+        patrolIntro = replayMode && !!payload.patrol;
+        combatJoined = !patrolIntro;
 
         // Hero on the left, full HP, ready to strike the instant focus is acquired.
         applyStats(player, payload.player);
@@ -182,8 +190,8 @@ export function createDungeon({ onResolve } = {}) {
             e.r = player.r;
             e.hp = e.maxHP;
             e.alive = true;
-            // In a replay both duellists are already engaged (no patrol/aggro).
-            e.aggro = replayMode;
+            // PvP engages instantly; PvE enemies patrol until the hero alerts them.
+            e.aggro = replayMode && !patrolIntro;
             e.facing = -1;
             e.cooldown = 0;            // fires the instant it reaches firing range
             const sp = rightSpawn(i, payload.enemies.length);
@@ -275,49 +283,10 @@ export function createDungeon({ onResolve } = {}) {
 
         if (active && replayMode) {
             simClock += dt;
-            stepReplay(dt);
-        } else if (active) {
-            simClock += dt;
-            // Hero acts independently: walk to the nearest living enemy and, once
-            // in reach, strike IT (never a far-off mob).
-            const target = nearestEnemy();
-            if (player.alive && target) {
-                // The cooldown ticks down while closing in too, so the "wait a
-                // period" happens during the approach — once in reach (focus
-                // acquired) the hit lands immediately, then a full period apart.
-                // Clamped at 0 so time spent walking can't bank up extra shots.
-                player.cooldown = Math.max(0, player.cooldown - dt);
-                const reach = reachOf(player, target);
-                if (dist(player, target) > reach) {
-                    seek(player, target, 3.4 * tile, dt, reach);
-                } else {
-                    player.facing = (target.x - player.x) < 0 ? -1 : 1;
-                    if (player.cooldown <= 0) {
-                        doAttack(player, target);
-                        // Double Hit: a chance at an independent second shot, which
-                        // re-acquires the nearest living foe (so it spills onto the
-                        // next enemy if the first dropped).
-                        if (player.alive && player.doubleHit > 0 && rng() * 100 < player.doubleHit) {
-                            const t2 = nearestEnemy();
-                            if (t2) doAttack(player, t2);
-                        }
-                        player.cooldown += attackPeriod(player);
-                    }
-                }
-            }
-
-            // Each enemy acts on its own — independent aggro, movement, cadence.
-            for (const e of aliveEnemies()) updateEnemy(e, dt);
-
-            // Health regen ticks for everyone still standing.
-            applyRegen(player, dt);
-            for (const e of aliveEnemies()) applyRegen(e, dt);
-
-            // Resolve once a side is wiped out.
-            if (!resolved) {
-                if (aliveEnemies().length === 0) finish(true);
-                else if (!player.alive) finish(false);
-            }
+            // PvE: hold the resolved timeline behind the walk-in/aggro intro until
+            // the hero alerts the pack; afterwards (and always for PvP) replay it.
+            if (patrolIntro && !combatJoined) stepIntro(dt);
+            else stepReplay(dt);
         }
 
         // Age floaters, slashes, projectiles.
@@ -334,39 +303,37 @@ export function createDungeon({ onResolve } = {}) {
         }
     }
 
-    // Enemy AI: passive patrol until the hero enters its aggro area, then close
-    // to attack reach (melee) / standoff (ranged) and fire on its own cadence.
-    function updateEnemy(e, dt) {
-        if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
-            e.aggro = true;
-            spawnFloater(e, '!', 'alert', false);
+    // PvE pre-combat intro: the hero advances on the pack while the enemies
+    // patrol their aggro zones. The instant the hero alerts one, the fight is
+    // joined — `simClock` resets so the resolved timeline plays from t=0.
+    function stepIntro(dt) {
+        const target = nearestEnemy();
+        if (player.alive && target) {
+            const reach = reachOf(player, target);
+            if (dist(player, target) > reach) seek(player, target, 3.4 * tile, dt, reach);
+            else player.facing = (target.x - player.x) < 0 ? -1 : 1;
         }
-        if (e.aggro && player.alive) {
-            // Same as the hero: the period elapses while closing in, so the shot
-            // fires the instant it reaches range. Clamped at 0 to avoid banking.
-            e.cooldown = Math.max(0, e.cooldown - dt);
-            const reach = reachOf(e, player);
-            if (dist(e, player) > reach) {
-                seek(e, player, 2.3 * tile, dt, reach);
-            } else {
-                e.facing = (player.x - e.x) < 0 ? -1 : 1;
-                if (e.cooldown <= 0) {
-                    doAttack(e, player);
-                    if (e.alive && player.alive && e.doubleHit > 0 && rng() * 100 < e.doubleHit) {
-                        doAttack(e, player);
-                    }
-                    e.cooldown += attackPeriod(e);
-                }
+        for (const e of aliveEnemies()) {
+            if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
+                e.aggro = true;
+                spawnFloater(e, '!', 'alert', false);
             }
-        } else if (!e.aggro) {
-            idleEnemy(e, dt);
+            if (!e.aggro) idleEnemy(e, dt);
+            else if (dist(e, player) > reachOf(e, player)) seek(e, player, 2.3 * tile, dt, reachOf(e, player));
+        }
+        // Join on first contact, or force it after a few seconds so a hero that
+        // can't path to the pack can never soft-hang the fight.
+        if (aliveEnemies().some((e) => e.aggro) || simClock > 4) {
+            combatJoined = true;
+            simClock = 0;        // play the resolved timeline from the engagement
+            replayIdx = 0;
         }
     }
 
-    // ── Replay stepping (PvP) ──────────────────────────────────────────────────
+    // ── Replay stepping (PvE & PvP) ─────────────────────────────────────────────
     // Animate the precomputed event timeline. Fighters close in for flavour, but
     // every hit's damage / crit / resulting HP comes straight from the log, so the
-    // animation is a faithful replay of the server's authoritative fight.
+    // animation is a faithful replay of the resolved fight.
     function stepReplay(dt) {
         const entById = (id) => (id === player.id ? player : enemies.find((e) => e.id === id));
 
@@ -379,6 +346,17 @@ export function createDungeon({ onResolve } = {}) {
         }
         for (const e of aliveEnemies()) {
             if (!player.alive) break;
+            // PvE stragglers keep patrolling until the hero (or the fight) alerts
+            // them; PvP enemies are always aggro'd, so this just seeks.
+            if (patrolIntro && !e.aggro) {
+                if (dist(player, e) <= AGGRO_TILES * tile) {
+                    e.aggro = true;
+                    spawnFloater(e, '!', 'alert', false);
+                } else {
+                    idleEnemy(e, dt);
+                    continue;
+                }
+            }
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) seek(e, player, 2.3 * tile, dt, reach);
             else e.facing = (player.x - e.x) < 0 ? -1 : 1;
@@ -392,6 +370,11 @@ export function createDungeon({ onResolve } = {}) {
             if (simClock < ev.t) break;
             const attacker = entById(ev.by);
             const target = entById(ev.target);
+            // Trading blows alerts any still-patrolling participant (PvE).
+            if (patrolIntro) {
+                if (attacker && attacker.id !== 'player') attacker.aggro = true;
+                if (target && target.id !== 'player') target.aggro = true;
+            }
             if (attacker && target && attacker.alive) {
                 const inReach = dist(attacker, target) <= reachOf(attacker, target) + 2;
                 if (!inReach && simClock < ev.t + 2) break;
@@ -428,79 +411,13 @@ export function createDungeon({ onResolve } = {}) {
         slashes.push({ x: target.x, y: target.y, bornAt: now(), hostile });
         spawnFloater(target, `-${fmt(ev.dmg)}`, ev.crit ? 'crit' : '', target.id === 'player');
         if (ev.heal > 0) spawnFloater(attacker, `+${fmt(ev.heal)}`, 'heal', attacker.id === 'player');
+        // Reflect (thorns): the attacker took bounced damage this exchange.
+        if (ev.reflected > 0) spawnFloater(attacker, `-${fmt(ev.reflected)}`, '', attacker.id === 'player');
 
         if (target.hp <= 0) {
             target.alive = false;
             target.deathAt = now();
         }
-    }
-
-    // Resolve one attack: roll damage, apply it, animate, handle lifesteal/death.
-    function doAttack(attacker, target) {
-        if (!target.alive) return;
-        const hit = computeHit(attacker, rng);
-        const crit = hit.crit;
-        let dmg = hit.dmg;
-        // Execute: extra damage to a badly-wounded foe (HP checked before the hit).
-        if (attacker.execute > 0 && target.hp < target.maxHP * EXECUTE_HP_THRESHOLD) {
-            dmg = Math.floor(dmg * (1 + attacker.execute / 100));
-        }
-        // Damage Reduction: target mitigates a capped % of the incoming hit.
-        if (target.damageReduction > 0) {
-            const dr = Math.min(MAX_DAMAGE_REDUCTION, target.damageReduction) / 100;
-            dmg = Math.max(1, Math.floor(dmg * (1 - dr)));
-        }
-        target.hp = Math.max(0, target.hp - dmg);
-
-        const dx = target.x - attacker.x, dy = target.y - attacker.y;
-        const len = Math.hypot(dx, dy) || 1;
-        attacker.facing = dx < 0 ? -1 : 1;
-        const hostile = attacker.id !== 'player';
-        if (attacker.ranged) {
-            attacker.lungeAt = now();
-            attacker.lungeDir = { x: dx / len * 0.4, y: dy / len * 0.4 };
-            shots.push({
-                x: attacker.x, y: attacker.y - attacker.r * 0.4,
-                tx: target.x, ty: target.y, bornAt: now(), dur: fast ? 150 : 240, hostile,
-            });
-        } else {
-            attacker.lungeAt = now();
-            attacker.lungeDir = { x: dx / len, y: dy / len };
-        }
-        slashes.push({ x: target.x, y: target.y, bornAt: now(), hostile });
-        spawnFloater(target, `-${fmt(dmg)}`, crit ? 'crit' : '', target.id === 'player');
-
-        if (attacker.lifeSteal > 0) {
-            const heal = Math.floor(dmg * attacker.lifeSteal / 100);
-            if (heal > 0) {
-                attacker.hp = Math.min(attacker.maxHP, attacker.hp + heal);
-                spawnFloater(attacker, `+${fmt(heal)}`, 'heal', attacker.id === 'player');
-            }
-        }
-
-        // Reflect (thorns): the target bounces a % of the damage it took back at
-        // the attacker — which can finish off a low-HP attacker.
-        if (target.reflect > 0) {
-            const back = Math.floor(dmg * target.reflect / 100);
-            if (back > 0) {
-                attacker.hp = Math.max(0, attacker.hp - back);
-                spawnFloater(attacker, `-${fmt(back)}`, '', attacker.id === 'player');
-                if (attacker.hp <= 0) {
-                    attacker.alive = false;
-                    attacker.deathAt = now();
-                }
-            }
-        }
-
-        if (target.hp <= 0) {
-            target.alive = false;
-            target.deathAt = now();
-        }
-    }
-
-    function applyRegen(e, dt) {
-        const pct = (e.healthRegen || 0) / 100;
-        if (pct > 0 && e.hp > 0) e.hp = Math.min(e.maxHP, e.hp + e.maxHP * pct * dt * 0.1);
     }
 
     // End the fight: raise the win/lose banner, stop acting, and report the

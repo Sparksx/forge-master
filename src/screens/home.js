@@ -17,7 +17,7 @@ import {
     loadAutoForgeSettings, isSlotKept, setSlotKept,
     isRarityTrashed, setRarityTrashed, autoForgeAction,
 } from '../game/auto-forge.js';
-import { makeEncounter, encounterReward } from '../game/arena.js';
+import { makeEncounter, encounterReward, simulateBattle } from '../game/arena.js';
 import { randomArenaId } from '../game/arenas.js';
 import { getRecentMessages } from '../game/chat.js';
 import { openChat } from './chat.js';
@@ -28,7 +28,8 @@ let root = null;
 let visible = false;
 let dungeon = null;
 
-// Battle loop — the dungeon runs a live, real-time fight and reports the result.
+// Battle loop — each encounter is resolved up-front by the shared engine, then
+// the dungeon plays it back and reports the result.
 let currentEncounter = null;
 let nextTimer = null;
 // Combat is always automatic at normal speed — the hero walks to mobs and
@@ -144,11 +145,25 @@ function startEncounter() {
     // Roll a random arena for this fight so back-to-back battles aren't staged in
     // the same room; it's stored on the encounter so the matchup can be restaged.
     currentEncounter.arenaId = randomArenaId();
-    dungeon.setMatchup(encounterPayload(currentEncounter));
+
+    // Resolve the fight up-front with the shared deterministic engine — the same
+    // one the server runs for PvP — then hand the timeline to the dungeon to play
+    // back. PvE keeps its walk-in/aggro intro via `patrol: true`. A rank-derived
+    // seed keeps a refought rank replaying identically.
+    const payload = encounterPayload(currentEncounter);
+    // Distinct mix from makeEncounter's seed so the fight RNG (crits/variance) is
+    // an independent stream from the enemy-composition RNG.
+    const seed = ((getArenaRank() + 1) * 1103515245) >>> 0;
+    const sim = simulateBattle([payload.player], payload.enemies, seed);
+    payload.seed = seed;
+    payload.events = sim.events;
+    payload.win = sim.win;
+    payload.patrol = true;
+    dungeon.setMatchup(payload);
 }
 
-// The dungeon finished a live fight — grant rewards, advance on a win, and queue
-// the next encounter.
+// The dungeon finished playing back the resolved fight — grant rewards, advance
+// on a win, and queue the next encounter.
 function onFightResolved({ win }) {
     const enc = currentEncounter;
     if (!enc) return;
