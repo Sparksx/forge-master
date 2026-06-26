@@ -57,14 +57,14 @@ export function playerBaseDamage(level = 1) {
 }
 
 export const BONUS_STATS = {
-    attackSpeed:    { label: 'Attack Speed',    icon: '\u26A1', max: 15, unit: '%' },
-    critChance:     { label: 'Crit Chance',     icon: '\uD83C\uDFAF', max: 10, unit: '%' },
-    critMultiplier: { label: 'Crit Multiplier', icon: '\uD83D\uDCA5', max: 20, unit: '%' },
-    healthMulti:    { label: 'Health Multi',    icon: '\uD83D\uDC97', max: 12, unit: '%' },
-    damageMulti:    { label: 'Damage Multi',    icon: '\uD83D\uDDE1\uFE0F', max: 12, unit: '%' },
-    healthRegen:    { label: 'Health Regen',    icon: '\uD83E\uDE79', max: 5,  unit: '%' },
-    lifeSteal:      { label: 'Life Steal',      icon: '\uD83E\uDDDB', max: 8,  unit: '%' },
-    doubleHit:      { label: 'Double Hit',      icon: '\uD83D\uDD01', max: 10, unit: '%' },
+    attackSpeed:    { label: 'Attack Speed',    icon: '\u26A1', max: 30, unit: '%' },
+    critChance:     { label: 'Crit Chance',     icon: '\uD83C\uDFAF', max: 12, unit: '%' },
+    critMultiplier: { label: 'Crit Multiplier', icon: '\uD83D\uDCA5', max: 60, unit: '%' },
+    healthMulti:    { label: 'Health Multi',    icon: '\uD83D\uDC97', max: 25, unit: '%' },
+    damageMulti:    { label: 'Damage Multi',    icon: '\uD83D\uDDE1\uFE0F', max: 20, unit: '%' },
+    healthRegen:    { label: 'Health Regen',    icon: '\uD83E\uDE79', max: 8,  unit: '%' },
+    lifeSteal:      { label: 'Life Steal',      icon: '\uD83E\uDDDB', max: 20, unit: '%' },
+    doubleHit:      { label: 'Double Hit',      icon: '\uD83D\uDD01', max: 15, unit: '%' },
 };
 
 export const BONUS_STAT_KEYS = Object.keys(BONUS_STATS);
