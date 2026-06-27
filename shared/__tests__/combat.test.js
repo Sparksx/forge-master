@@ -148,29 +148,6 @@ describe('defensive & finisher stats', () => {
     });
 });
 
-describe('engageAt (staggered pack entry)', () => {
-    it('delays a fighter\'s first attack until its wave', () => {
-        // Long, survivable fight so the late enemy gets to act before the time cap.
-        const tanky = (over) => fighter({ critChance: 0, damage: 5, maxHP: 100000, ...over });
-        const { events } = simulateBattle(
-            [tanky({ id: 'player' })],
-            [tanky({ id: 'lead' }), tanky({ id: 'late', engageAt: 5 })],
-            7,
-        );
-        const leadFirst = events.find((e) => e.by === 'lead');
-        const lateFirst = events.find((e) => e.by === 'late');
-        expect(leadFirst.t).toBeLessThan(1);            // lead opens immediately
-        expect(lateFirst).toBeTruthy();
-        expect(lateFirst.t).toBeGreaterThanOrEqual(5);  // late waits for its wave
-    });
-
-    it('leaves a fight without engageAt unchanged', () => {
-        const a = simulateBattle([fighter({ id: 'player' })], [fighter({ id: 'opp', engageAt: 0 })], 3);
-        const b = simulateBattle([fighter({ id: 'player' })], [fighter({ id: 'opp' })], 3);
-        expect(a.events).toEqual(b.events);
-    });
-});
-
 describe('computeHit seeded stream', () => {
     it('is reproducible from a seed', () => {
         const att = { damage: 100, critChance: 40, critMultiplier: 75 };

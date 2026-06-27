@@ -8,11 +8,9 @@
 // timeline, and the dungeon animates that timeline: HP, crits, lifesteal,
 // reflect and deaths all come straight from the log, so the on-screen fight can
 // never disagree with the authoritative verdict. Movement stays procedural,
-// purely for flavour. PvE layers a cosmetic walk-in/aggro intro on top (enemies
-// patrol until alerted) before the timeline plays; PvP engages instantly.
+// purely for flavour. Both sides engage from t=0 — PvE and PvP share one path.
 //
 // It reports the outcome back to the owning screen via onResolve({ win }).
-import { seededRng } from '../game/config.js';
 import { getArena, pickArenaId } from '../game/arenas.js';
 
 // Fixed simulation step (seconds). The fight is stepped in fixed increments,
@@ -23,8 +21,6 @@ const SIM_DT = 1 / 60;
 // Logical room grid (tiles). The canvas scales to fit; tile size is derived.
 const COLS = 15;
 const ROWS = 9;
-// How close (in tiles) the hero must get before a passive enemy aggros.
-const AGGRO_TILES = 3;
 // Ranged fighters attack from (and hold) roughly this distance, in tiles.
 const RANGED_STANDOFF = 3.0;
 
@@ -66,7 +62,6 @@ export function createDungeon({ onResolve } = {}) {
     let outcome = null;     // 'win' | 'lose' once the fight ends (drives the banner)
     let outcomeAt = 0;      // wall-clock time the outcome was decided
     let simClock = 0;       // deterministic seconds elapsed in the current fight
-    let rng = Math.random;  // seeded per-fight so combat is replayable
     let accumulator = 0;    // leftover real time waiting to be stepped
 
     // ── Replay mode (PvP) ──────────────────────────────────────────────────────
@@ -78,11 +73,6 @@ export function createDungeon({ onResolve } = {}) {
     let replayEvents = [];
     let replayIdx = 0;
     let replayWin = false;
-    // PvE plays the resolved timeline behind a patrol/aggro intro: the hero walks
-    // in, enemies patrol until alerted, and only then does the fight begin.
-    // `combatJoined` gates the event timeline; PvP skips the intro entirely.
-    let patrolIntro = false;
-    let combatJoined = false;
 
     function newEntity(over = {}) {
         return {
@@ -93,7 +83,7 @@ export function createDungeon({ onResolve } = {}) {
             cooldown: 0,            // seconds until this fighter can attack again
             // animation / ai
             lungeAt: 0, lungeDir: { x: -1, y: 0 }, facing: -1, cheerAt: 0,
-            alive: true, deathAt: 0, wanderAt: 0, wander: { x: 0, y: 0 }, aggro: false,
+            alive: true, deathAt: 0,
             ...over,
         };
     }
@@ -166,7 +156,6 @@ export function createDungeon({ onResolve } = {}) {
         simClock = 0;
         accumulator = 0;
         const seed = payload.seed != null ? payload.seed : seedFromPayload(payload);
-        rng = seededRng(seed);
         floaters.length = 0; slashes.length = 0; shots.length = 0;
 
         // Stage the fight in an arena. An explicit `payload.arena` wins (PvE picks
@@ -177,14 +166,12 @@ export function createDungeon({ onResolve } = {}) {
         theme = arena.theme;
 
         // Animate a precomputed authoritative timeline instead of rolling combat
-        // live. `payload.win` is the result from the hero's side. PvE passes
-        // `patrol: true` to keep its walk-in/aggro intro; PvP engages instantly.
+        // live. `payload.win` is the result from the hero's side. Both sides
+        // engage from t=0 (PvE and PvP share this path).
         replayMode = Array.isArray(payload.events);
         replayEvents = replayMode ? payload.events : [];
         replayIdx = 0;
         replayWin = !!payload.win;
-        patrolIntro = replayMode && !!payload.patrol;
-        combatJoined = !patrolIntro;
 
         // Hero on the left, full HP, ready to strike the instant focus is acquired.
         applyStats(player, payload.player);
@@ -205,8 +192,6 @@ export function createDungeon({ onResolve } = {}) {
             e.r = player.r;
             e.hp = e.maxHP;
             e.alive = true;
-            // PvP engages instantly; PvE enemies patrol until the hero alerts them.
-            e.aggro = replayMode && !patrolIntro;
             e.facing = -1;
             e.cooldown = 0;            // fires the instant it reaches firing range
             const sp = rightSpawn(i, payload.enemies.length);
@@ -298,10 +283,7 @@ export function createDungeon({ onResolve } = {}) {
 
         if (active && replayMode) {
             simClock += dt;
-            // PvE: hold the resolved timeline behind the walk-in/aggro intro until
-            // the hero alerts the pack; afterwards (and always for PvP) replay it.
-            if (patrolIntro && !combatJoined) stepIntro(dt);
-            else stepReplay(dt);
+            stepReplay(dt);
         }
 
         // Age floaters, slashes, projectiles.
@@ -315,29 +297,6 @@ export function createDungeon({ onResolve } = {}) {
         }
         for (let i = shots.length - 1; i >= 0; i--) {
             if (t - shots[i].bornAt > shots[i].dur) shots.splice(i, 1);
-        }
-    }
-
-    // PvE pre-combat intro: the hero advances on the pack while every enemy
-    // patrols. Enemies don't engage here — they wake as their wave fires once the
-    // timeline starts (see stepReplay). Joining resets `simClock` so the resolved
-    // timeline plays from t=0.
-    function stepIntro(dt) {
-        const target = heroTarget();
-        if (player.alive && target) {
-            const reach = reachOf(player, target);
-            if (dist(player, target) > reach) seek(player, target, 3.4 * tile, dt, reach);
-            else player.facing = (target.x - player.x) < 0 ? -1 : 1;
-        }
-        for (const e of aliveEnemies()) idleEnemy(e, dt);
-        // Join once the hero has actually closed on its first scripted target (so
-        // the timeline opens with the hero in striking range and the first blow
-        // connects). A safety timeout covers a hero that can't path to the pack.
-        const ready = target && dist(player, target) <= reachOf(player, target);
-        if (ready || simClock > 4) {
-            combatJoined = true;
-            simClock = 0;        // play the resolved timeline from the engagement
-            replayIdx = 0;
         }
     }
 
@@ -357,39 +316,22 @@ export function createDungeon({ onResolve } = {}) {
         }
         for (const e of aliveEnemies()) {
             if (!player.alive) break;
-            // PvE: an enemy keeps patrolling until its wave engages it (its first
-            // event — see below). PvP enemies are always aggro'd, so this seeks.
-            if (patrolIntro && !e.aggro) { idleEnemy(e, dt); continue; }
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) seek(e, player, 2.3 * tile, dt, reach);
             else e.facing = (player.x - e.x) < 0 ? -1 : 1;
         }
 
-        // Fire events in order once they're due — but hold the opening blows until
+        // Fire events in order once they're due — but hold the opening blow until
         // the attacker has actually closed on its target (so the first strike
-        // doesn't fly across the room). A 2s grace prevents any stall.
+        // doesn't fly across the room). A 2s grace prevents any stall. The hero
+        // walks to its *scripted* target (see heroTarget), so it reaches whoever
+        // it's about to hit and the hold releases promptly.
         while (replayIdx < replayEvents.length) {
             const ev = replayEvents[replayIdx];
             if (simClock < ev.t) break;
             const attacker = entById(ev.by);
             const target = entById(ev.target);
-            // A pack member joins the brawl the moment it first acts or is struck:
-            // wake it and pop the "!" alert (PvE — this is what staggers the aggro
-            // across the fight instead of all at once).
-            if (patrolIntro) {
-                for (const c of [attacker, target]) {
-                    if (c && c.id !== 'player' && !c.aggro) {
-                        c.aggro = true;
-                        spawnFloater(c, '!', 'alert', false);
-                    }
-                }
-            }
-            // PvP holds the opening blow until the attacker has closed (so it
-            // doesn't fly across the room). PvE pre-positions the hero in the
-            // walk-in intro and fires on schedule instead — holding here would
-            // stall the whole timeline whenever the hero repositions between pack
-            // targets (events are HP-snapshots, so they can't fire out of order).
-            if (!patrolIntro && attacker && target && attacker.alive) {
+            if (attacker && target && attacker.alive) {
                 const inReach = dist(attacker, target) <= reachOf(attacker, target) + 2;
                 if (!inReach && simClock < ev.t + 2) break;
             }
@@ -447,17 +389,6 @@ export function createDungeon({ onResolve } = {}) {
         }, fast ? 700 : 1050);
     }
 
-    // Passive wandering — small, aimless drift in place; never seeks the hero.
-    // Driven by the seeded RNG + sim clock so patrols replay identically.
-    function idleEnemy(e, dt) {
-        if (simClock >= e.wanderAt) {
-            e.wanderAt = simClock + 0.9 + rng() * 1.2;
-            const ang = rng() * Math.PI * 2;
-            e.wander = { x: Math.cos(ang), y: Math.sin(ang) };
-        }
-        stepEntity(e, e.wander.x, e.wander.y, 1.1 * tile, dt);
-        if (e.wander.x) e.facing = e.wander.x < 0 ? -1 : 1;
-    }
 
     function spawnFloater(target, text, cls, isPlayer) {
         const color = cls === 'crit' ? '#f5c451'
@@ -590,7 +521,6 @@ export function createDungeon({ onResolve } = {}) {
     function draw() {
         ctx.clearRect(0, 0, COLS * tile, ROWS * tile);
         drawFloor();
-        for (const e of enemies) drawAggroArea(e);
 
         const order = [...enemies.filter((e) => e.alive || now() - e.deathAt < 500), player];
         order.sort((a, b) => a.y - b.y);
@@ -624,19 +554,6 @@ export function createDungeon({ onResolve } = {}) {
         ctx.strokeText(text, 0, 0);
         ctx.fillStyle = win ? '#4ade80' : '#ff5468';
         ctx.fillText(text, 0, 0);
-        ctx.restore();
-    }
-
-    function drawAggroArea(e) {
-        if (!e.alive || e.aggro) return;
-        ctx.save();
-        ctx.globalAlpha = 0.5;
-        ctx.strokeStyle = 'rgba(239,84,102,.5)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, AGGRO_TILES * tile, 0, Math.PI * 2);
-        ctx.stroke();
         ctx.restore();
     }
 
