@@ -3,7 +3,7 @@
 // Arena screens into one cohesive view, inspired by idle merge-RPG layouts:
 //   stage label → live battle → gear grid → forge controls + forge-XP bar.
 import { h, clear, fmt, toast, openModal, closeModal, confirmDialog } from './components.js';
-import { renderItemCard, renderDeltaBadge, powerDelta } from './item-view.js';
+import { renderItemCard, renderDeltaBadge, renderItemComparison, powerDelta } from './item-view.js';
 import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp, arenaFallbackRank } from '../game/config.js';
 import { slotIcon, itemIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
@@ -423,7 +423,11 @@ function showReveal(item, rolls = 1, { onResolved } = {}) {
         rolls > 1 ? h('div', { className: 'reveal-bestof muted', text: `🍀 Best of ${rolls} (clan perk)` }) : null,
         renderItemCard(item),
         h('div', { className: 'reveal-delta' }, renderDeltaBadge(delta)),
-        equipped ? h('p', { className: 'reveal-replaces', text: `Replaces ${itemName(equipped)} (Lv ${equipped.level})` }) : null,
+        equipped
+            ? h('p', { className: 'reveal-replaces', text: `Replaces ${itemName(equipped)} (Lv ${equipped.level})` })
+            : h('p', { className: 'reveal-replaces', text: 'Empty slot — nothing equipped yet.' }),
+        // Full stat-by-stat comparison so the choice is more than the level alone.
+        renderItemComparison(item, equipped),
         h('div', { className: 'reveal-actions' },
             h('button', { className: 'btn btn-ghost', text: '🗑️ Trash', onclick: trash }),
             h('button', { className: 'btn btn-primary', text: delta >= 0 ? 'Equip ✓' : 'Equip anyway', onclick: equip }),
