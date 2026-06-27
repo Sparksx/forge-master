@@ -13,8 +13,7 @@ import {
 } from '../game/clan.js';
 import { can, rankInfo, nextRankUp, nextRankDown } from '../../shared/clan-ranks.js';
 import { FRAMES } from '../../shared/cosmetics.js';
-import { switchTab } from './app.js';
-import { startFriendly } from './pvp.js';
+import { showPlayerProfile } from './player-profile.js';
 import {
     maxActiveExpeditions, expeditionSlots, expeditionPlan, clampExpeditionHours,
     EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS,
@@ -470,43 +469,31 @@ function renderMember(m, myRole) {
     );
 }
 
-// Tap a member to see their public profile and (for clanmates) start a friendly duel.
+// Tap a member to see their public profile — equipped gear, stats, and a friendly
+// duel. The shared modal also powers the PvP leaderboard, so duels work for anyone.
 function showMemberModal(m) {
-    const me = getCurrentUser();
-    const isMe = me?.id === m.userId;
     const info = rankInfo(m.role);
-
-    const statRow = (label, value) => h('div', { className: 'member-stat-row' },
-        h('span', { className: 'muted', text: label }),
-        h('span', { className: 'member-stat-val', text: value }),
-    );
-
-    const body = h('div', { className: 'member-modal' },
-        h('div', { className: 'member-modal-head' },
-            h('span', { className: `member-modal-avatar frame-${safeFrame(m.frame)}`, text: avatarEmoji(m.avatar) }),
-            h('div', { className: 'member-modal-id' },
-                h('div', { className: 'member-modal-name' }, h('span', { text: m.username }), h('span', { className: 'member-badge', text: ` ${info.icon}` })),
-                h('div', { className: 'muted', text: info.name }),
-            ),
-        ),
-        h('div', { className: 'member-stats' },
-            statRow('⭐ Level', fmt(m.level || 1)),
-            statRow('💪 Power', fmt(m.power)),
-            statRow('🏆 PvP ELO', fmt(m.rating ?? 1000)),
-            statRow('📊 PvP Record', `${fmt(m.wins || 0)}W / ${fmt(m.losses || 0)}L`),
-            statRow('🤝 Clan XP', fmt(m.xpContributed || 0)),
-            statRow('💰 Donated', `${fmt(m.contributed || 0)}g`),
-            statRow('📅 Member since', fmtJoinDate(m.joinedAt)),
-            statRow('🕓 Last seen', fmtLastSeen(m.lastSeen)),
-        ),
-        isMe ? null : h('button', {
-            className: 'btn btn-primary btn-block', text: '⚔️ Friendly Duel',
-            onclick: () => { closeModal(); switchTab('pvp'); startFriendly(m.userId); },
-        }),
-        isMe ? null : h('p', { className: 'muted small member-duel-note', text: 'A practice fight against their gear — your ELO and record stay unchanged.' }),
-        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
-    );
-    openModal(body);
+    showPlayerProfile({
+        userId: m.userId,
+        username: m.username,
+        avatar: m.avatar,
+        frame: m.frame,
+        level: m.level,
+        power: m.power,
+        rating: m.rating,
+        wins: m.wins,
+        losses: m.losses,
+        equipment: m.equipment,
+    }, {
+        subtitle: info.name,
+        badge: info.icon,
+        extraStats: [
+            ['🤝 Clan XP', fmt(m.xpContributed || 0)],
+            ['💰 Donated', `${fmt(m.contributed || 0)}g`],
+            ['📅 Member since', fmtJoinDate(m.joinedAt)],
+            ['🕓 Last seen', fmtLastSeen(m.lastSeen)],
+        ],
+    });
 }
 
 async function doRank(fn, m, okMsg) {

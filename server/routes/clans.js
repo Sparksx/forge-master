@@ -40,6 +40,8 @@ function serializeClan(clan, { withMembers = false } = {}) {
             contributed: m.contributed,
             xpContributed: m.xpContributed,
             power: memberPower(gs),
+            // Equipped gear, surfaced so the public-profile modal can show & preview it.
+            equipment: (gs && typeof gs.equipment === 'object' && gs.equipment) || {},
             level: Number.isFinite(player.level) ? player.level : 1,
             rating: m.user?.pvpRating ?? 1000,
             wins: m.user?.pvpWins ?? 0,

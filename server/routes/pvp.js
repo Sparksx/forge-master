@@ -94,21 +94,14 @@ router.post('/fight', requireAuth, async (req, res) => {
         if (!me || !me.gameState) return res.status(400).json({ error: 'No game state to fight with' });
         const attacker = fighterFromUser(me);
 
-        // Optional friendly duel: challenge a specific clanmate. Unranked — no Elo
-        // and no win/loss recorded for either side.
+        // Optional friendly duel: challenge a specific player by id. Open to anyone —
+        // not just clanmates. Unranked: no Elo and no win/loss recorded for either side.
         const opponentId = Number(req.body?.opponentId);
         const friendly = Number.isInteger(opponentId);
 
         let opponent;
         if (friendly) {
             if (opponentId === me.id) return res.status(400).json({ error: 'You cannot duel yourself' });
-            const [myMem, theirMem] = await Promise.all([
-                prisma.clanMember.findUnique({ where: { userId: me.id }, select: { clanId: true } }),
-                prisma.clanMember.findUnique({ where: { userId: opponentId }, select: { clanId: true } }),
-            ]);
-            if (!myMem || !theirMem || myMem.clanId !== theirMem.clanId) {
-                return res.status(403).json({ error: 'You can only duel your clanmates' });
-            }
             const target = await prisma.user.findUnique({ where: { id: opponentId }, select: USER_SELECT });
             if (!target || !target.gameState) return res.status(400).json({ error: 'That player has no battle data yet' });
             opponent = fighterFromUser(target);

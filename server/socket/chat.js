@@ -418,8 +418,8 @@ export function registerChatHandlers(io, socket) {
                 ? user.gameState.player : {};
             const level = Number.isFinite(playerJson.level) ? playerJson.level : 1;
 
-            // Clan membership (name/tag/level) so the public profile can show it and
-            // the viewer can tell whether a friendly duel is available (clanmates only).
+            // Clan membership (name/tag/level) so the public profile can show it.
+            // (Friendly duels are open to everyone, not just clanmates.)
             const membership = user.clanMembership;
 
             // Power & stats must mirror the client (top nav) and PvP exactly:
