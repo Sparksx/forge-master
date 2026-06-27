@@ -11,15 +11,10 @@ import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payment.js';
-import equipmentRoutes from './routes/equipment.js';
-import spriteRoutes from './routes/sprites.js';
-import monsterRoutes from './routes/monsters.js';
 import playerRoutes from './routes/players.js';
 import clanRoutes from './routes/clans.js';
 import pvpRoutes from './routes/pvp.js';
 import prisma from './lib/prisma.js';
-import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
-import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
 
 process.on('unhandledRejection', (reason) => {
     console.error('Unhandled promise rejection:', reason);
@@ -72,9 +67,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/sprites', spriteRoutes);
-app.use('/api/monsters', monsterRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
@@ -111,12 +103,6 @@ app.use((err, req, res, _next) => {
 
 server.listen(PORT, async () => {
     console.log(`Gear Master server running on port ${PORT} (${NODE_ENV})`);
-
-    // Migrate existing sprites if upgrading from old schema
-    await migrateSpritesIfNeeded();
-
-    // Seed equipment templates into DB if tables are empty (first run)
-    await seedEquipmentIfEmpty();
 
     // Cleanup expired refresh tokens on startup + every 24h
     async function cleanupExpiredTokens() {
