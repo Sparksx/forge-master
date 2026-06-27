@@ -100,6 +100,7 @@ model Expedition {
   members ExpeditionMember[]
 
   @@index([clanId, status])
+  @@index([status, endsAt])
 }
 
 model ExpeditionMember {

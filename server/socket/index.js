@@ -12,7 +12,7 @@ export function setupSocket(server) {
         },
         pingInterval: 25000,
         pingTimeout: 30000,
-        perMessageDeflate: { threshold: 1024 },
+        perMessageDeflate: { threshold: 4096 },
         maxHttpBufferSize: 1e6,
     });
 

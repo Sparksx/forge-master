@@ -93,8 +93,8 @@ async function resolveChannel(userId, channel) {
 function serializeConversation(conv, viewerId) {
     const members = conv.members.map((m) => ({
         id: m.userId,
-        username: m.user?.username,
-        avatar: m.user?.profilePicture,
+        username: m.user?.username || '[deleted]',
+        avatar: m.user?.profilePicture || 'wizard',
     }));
     const others = members.filter((m) => m.id !== viewerId);
     const title = conv.type === 'group'
