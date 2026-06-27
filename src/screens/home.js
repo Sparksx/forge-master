@@ -312,16 +312,15 @@ function scheduleAutoForge() {
     }, delay);
 }
 
-// Clicking "Auto" starts the loop AND opens the filter panel. Clicking it again
-// while it's running simply stops it — no modal needed.
+// Clicking "Auto" while stopped opens the filter panel but does NOT start the
+// loop — the player launches it from a button inside the modal. Clicking it
+// again while it's running simply stops it — no modal needed.
 function toggleAutoForge() {
     if (autoForge) {
         setAutoForge(false);
         toast('Auto-forge stopped', 'info');
         return;
     }
-    setAutoForge(true);
-    toast('Auto-forge started', 'info');
     showAutoForgeSettings();
 }
 
@@ -369,9 +368,15 @@ function showAutoForgeSettings() {
         return cell;
     };
 
+    const launch = () => {
+        closeModal();
+        setAutoForge(true);
+        toast('Auto-forge started', 'info');
+    };
+
     const body = h('div', { className: 'auto-forge-settings' },
         h('h3', { text: '♻️ Auto-Forge' }),
-        h('p', { className: 'muted', text: 'Keeps forging for you. Lower-rarity rolls are trashed automatically — same-or-better gear is shown to you, so your power only changes when you choose to equip.' }),
+        h('p', { className: 'muted', text: 'Keeps forging for you. Every roll is kept and shown so you can equip it — unless it matches a filter below, in which case it is trashed automatically. Your power only changes when you choose to equip.' }),
         h('div', { className: 'auto-forge-filter-section' },
             h('div', { className: 'auto-section-label', text: 'Slots — tap to stop forging one' }),
             h('div', { className: 'auto-gear-grid' }, ...EQUIPMENT_TYPES.map(slotCell)),
@@ -380,7 +385,10 @@ function showAutoForgeSettings() {
             h('div', { className: 'auto-section-label', text: 'Rarities — tap to trash a whole tier' }),
             h('div', { className: 'auto-rarity-row' }, ...forgeable.map((t) => rarityCell(t.id))),
         ),
-        h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
+        h('div', { className: 'auto-forge-actions' },
+            h('button', { className: 'btn btn-ghost', text: 'Cancel', onclick: closeModal }),
+            h('button', { className: 'btn btn-primary', text: '▶ Launch auto-forge', onclick: launch }),
+        ),
     );
     openModal(body);
 }

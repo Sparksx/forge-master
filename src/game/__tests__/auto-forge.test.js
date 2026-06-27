@@ -4,9 +4,10 @@ import { autoForgeAction } from '../auto-forge.js';
 const item = (tier, type = 'weapon') => ({ type, tier });
 const off = { keepSlots: {}, trashRarities: {} };
 
-describe('autoForgeAction — never auto-equips your gear', () => {
-    it('trashes a strictly lower-rarity roll', () => {
-        expect(autoForgeAction(item(2), item(4), off)).toBe('trash');
+describe('autoForgeAction — keeps everything that no filter rejects', () => {
+    it('presents a strictly lower-rarity roll (the forge never judges your gear)', () => {
+        // Previously this was auto-trashed, which silently ate most rolls.
+        expect(autoForgeAction(item(2), item(4), off)).toBe('present');
     });
 
     it('presents a same-rarity roll even when it RAISES power', () => {
