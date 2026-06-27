@@ -107,24 +107,6 @@ export function isValidEquipment(equipment) {
     return true;
 }
 
-export function isValidCombat(combat) {
-    if (typeof combat !== 'object' || Array.isArray(combat) || combat === null) return false;
-    const { currentWave, currentSubWave, highestWave, highestSubWave } = combat;
-    if (!isFiniteNumber(currentWave) || currentWave < 1) return false;
-    if (!isFiniteNumber(currentSubWave) || currentSubWave < 1) return false;
-    if (!isFiniteNumber(highestWave) || highestWave < 1) return false;
-    if (!isFiniteNumber(highestSubWave) || highestSubWave < 1) return false;
-    return true;
-}
-
-export function isValidForgeUpgrade(forgeUpgrade) {
-    if (forgeUpgrade === null) return true;
-    if (typeof forgeUpgrade !== 'object' || Array.isArray(forgeUpgrade)) return false;
-    if (!isFiniteNumber(forgeUpgrade.targetLevel) || forgeUpgrade.targetLevel < 2) return false;
-    if (typeof forgeUpgrade.startedAt !== 'number' && typeof forgeUpgrade.startedAt !== 'string') return false;
-    return true;
-}
-
 export function isValidPlayer(player) {
     if (typeof player !== 'object' || Array.isArray(player) || player === null) return false;
     if (!isIntInRange(player.level, 1, MAX_PLAYER_LEVEL)) return false;
@@ -144,27 +126,9 @@ export function isValidPlayer(player) {
     return true;
 }
 
-export function isValidResearch(research) {
-    if (typeof research !== 'object' || Array.isArray(research) || research === null) return false;
-    if (research.completed && typeof research.completed !== 'object') return false;
-    if (research.active !== null && research.active !== undefined) {
-        if (typeof research.active !== 'object') return false;
-    }
-    if (research.queue !== undefined && !Array.isArray(research.queue)) return false;
-    return true;
-}
-
 export function isValidForgeHighestLevel(forgeHighestLevel) {
     if (typeof forgeHighestLevel !== 'object' || Array.isArray(forgeHighestLevel) || forgeHighestLevel === null) {
         return false;
     }
-    return true;
-}
-
-export function isValidSkills(skills) {
-    if (typeof skills !== 'object' || Array.isArray(skills) || skills === null) return false;
-    if (skills.unlocked !== undefined && (typeof skills.unlocked !== 'object' || Array.isArray(skills.unlocked))) return false;
-    if (skills.equipped !== undefined && !Array.isArray(skills.equipped)) return false;
-    if (skills.equipped && skills.equipped.length > 3) return false;
     return true;
 }

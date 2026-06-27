@@ -110,14 +110,13 @@ shared/                  SHARED between client AND server — single source of t
   pvp-config.js          PvP matchmaking & combat constants
 server/                  Express + Prisma + Socket.io
   index.js config.js
-  routes/                auth, game, clans, players, equipment, monsters, sprites,
-                         payment, admin
+  routes/                auth, game, clans, players, payment, admin
   socket/                index (connection), pvp (live duels), chat
-  middleware/auth.js     JWT guard          lib/   prisma client + seed data
+  middleware/auth.js     JWT guard          lib/   prisma client
 prisma/schema.prisma     User, GameState, Clan/ClanMember, Expedition/ExpeditionMember,
                          Mission/MissionContribution, ChatMessage, RefreshToken,
-                         Ban/Mute/Warning/AuditLog, Purchase, *Template, Sprite(Sheet)
-public/                  manifest.json, sw.js (PWA), assets/ (sprite sheets)
+                         Ban/Mute/Warning/AuditLog, Purchase
+public/                  manifest.json, sw.js (PWA)
 admin.html index.html    admin page + game shell entry points
 ```
 

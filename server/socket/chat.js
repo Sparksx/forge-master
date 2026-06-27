@@ -390,7 +390,6 @@ export function registerChatHandlers(io, socket) {
                             equipment: true,
                             forgeLevel: true,
                             gold: true,
-                            essence: true,
                             player: true,
                         }
                     },
@@ -495,7 +494,6 @@ export function registerChatHandlers(io, socket) {
                     activeBans,
                     activeMutes,
                     gold: user.gameState?.gold || 0,
-                    essence: user.gameState?.essence || 0,
                     playerLevel: typeof player === 'object' ? player.level : 1,
                 };
             }

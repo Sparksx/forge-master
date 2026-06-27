@@ -10,6 +10,7 @@ import {
 // runs the exact same fight. Re-exported here for back-compat with callers/tests
 // that have always imported these from arena.js.
 export { computeHit, simulateBattle, simulateDuel } from '../../shared/combat.js';
+import { pickBySeed as pick } from '../../shared/utils.js';
 
 // Melee minion flavour.
 const MELEE_NAMES = [
@@ -32,8 +33,6 @@ const BOSS_EMOJI = ['👺', '🗿', '🪨', '🧟', '🐉'];
 // Big-boss flavour (every 50th rank).
 const BIG_BOSS_NAMES = ['Ancient Wyrm', 'World Eater', 'Titan Overlord', 'Eclipse Herald'];
 const BIG_BOSS_EMOJI = ['🐉', '🦖', '👾', '🌑'];
-
-const pick = (arr, n) => arr[Math.abs(Math.floor(n)) % arr.length];
 
 /** Build one combat-ready enemy from a power budget + role. */
 function buildEnemy({ rank, power, role, ranged, index, name, emoji }) {

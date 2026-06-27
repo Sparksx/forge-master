@@ -61,7 +61,7 @@ router.get('/users/:id/profile', requireRole('admin', 'moderator'), async (req, 
                 isGuest: true, createdAt: true,
                 pvpRating: true, pvpWins: true, pvpLosses: true,
                 gameState: {
-                    select: { gold: true, diamonds: true, essence: true, forgeLevel: true, equipment: true, player: true },
+                    select: { gold: true, forgeLevel: true, equipment: true, player: true },
                 },
             },
         });
@@ -321,77 +321,35 @@ router.delete('/messages/:id', requireRole('admin', 'moderator'), async (req, re
 // ADMIN-ONLY ROUTES
 // ══════════════════════════════════════════════════════════════════
 
-// ─── POST /api/admin/users/:id/gold ──────────────────────────────
-router.post('/users/:id/gold', requireRole('admin'), async (req, res) => {
-    const userId = parseInt(req.params.id);
-    const { amount } = req.body;
-    if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
-    if (typeof amount !== 'number' || amount === 0) {
-        return res.status(400).json({ error: 'Amount required (positive or negative number)' });
-    }
+// POST /api/admin/users/:id/gold — adjust the gold balance by a (possibly
+// negative) delta, floored at 0.
+function registerResourceRoute(field) {
+    router.post(`/users/:id/${field}`, requireRole('admin'), async (req, res) => {
+        const userId = parseInt(req.params.id);
+        const { amount } = req.body;
+        if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+        if (typeof amount !== 'number' || amount === 0) {
+            return res.status(400).json({ error: 'Amount required (positive or negative number)' });
+        }
 
-    try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
+        try {
+            const state = await prisma.gameState.findUnique({ where: { userId } });
+            if (!state) return res.status(404).json({ error: 'Game state not found' });
 
-        const newGold = Math.max(0, state.gold + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { gold: newGold } });
-        await logAudit(req.user.userId, 'add_gold', userId, { amount, newGold });
+            const newValue = Math.max(0, state[field] + Math.floor(amount));
+            const detailKey = `new${field[0].toUpperCase()}${field.slice(1)}`;
+            await prisma.gameState.update({ where: { userId }, data: { [field]: newValue } });
+            await logAudit(req.user.userId, `add_${field}`, userId, { amount, [detailKey]: newValue });
 
-        res.json({ gold: newGold });
-    } catch (err) {
-        console.error('Add gold error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+            res.json({ [field]: newValue });
+        } catch (err) {
+            console.error(`Add ${field} error:`, err);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+}
 
-// ─── POST /api/admin/users/:id/essence ───────────────────────────
-router.post('/users/:id/essence', requireRole('admin'), async (req, res) => {
-    const userId = parseInt(req.params.id);
-    const { amount } = req.body;
-    if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
-    if (typeof amount !== 'number' || amount === 0) {
-        return res.status(400).json({ error: 'Amount required' });
-    }
-
-    try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
-
-        const newEssence = Math.max(0, state.essence + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { essence: newEssence } });
-        await logAudit(req.user.userId, 'add_essence', userId, { amount, newEssence });
-
-        res.json({ essence: newEssence });
-    } catch (err) {
-        console.error('Add essence error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// ─── POST /api/admin/users/:id/diamonds ───────────────────────────
-router.post('/users/:id/diamonds', requireRole('admin'), async (req, res) => {
-    const userId = parseInt(req.params.id);
-    const { amount } = req.body;
-    if (isNaN(userId)) return res.status(400).json({ error: 'Invalid user ID' });
-    if (typeof amount !== 'number' || amount === 0) {
-        return res.status(400).json({ error: 'Amount required (positive or negative number)' });
-    }
-
-    try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
-
-        const newDiamonds = Math.max(0, state.diamonds + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { diamonds: newDiamonds } });
-        await logAudit(req.user.userId, 'add_diamonds', userId, { amount, newDiamonds });
-
-        res.json({ diamonds: newDiamonds });
-    } catch (err) {
-        console.error('Add diamonds error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+['gold'].forEach(registerResourceRoute);
 
 // ─── POST /api/admin/users/:id/level ─────────────────────────────
 router.post('/users/:id/level', requireRole('admin'), async (req, res) => {
@@ -488,13 +446,8 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
             data: {
                 equipment: {},
                 gold: 0,
-                diamonds: 100,
                 forgeLevel: 1,
-                forgeUpgrade: null,
-                combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-                essence: 0,
                 player: { level: 1, xp: 0, profilePicture: 'wizard' },
-                research: { completed: {}, active: null, queue: [] },
                 forgeHighestLevel: {},
             },
         });
@@ -510,12 +463,10 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
 // ─── GET /api/admin/stats ────────────────────────────────────────
 router.get('/stats', requireRole('admin'), async (req, res) => {
     try {
-        const [totalUsers, totalGuests, totalGold, totalEssence, totalDiamonds] = await Promise.all([
+        const [totalUsers, totalGuests, totalGold] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { isGuest: true } }),
             prisma.gameState.aggregate({ _sum: { gold: true } }),
-            prisma.gameState.aggregate({ _sum: { essence: true } }),
-            prisma.gameState.aggregate({ _sum: { diamonds: true } }),
         ]);
 
         res.json({
@@ -523,8 +474,6 @@ router.get('/stats', requireRole('admin'), async (req, res) => {
             totalGuests,
             registeredUsers: totalUsers - totalGuests,
             totalGoldInCirculation: totalGold._sum.gold || 0,
-            totalEssenceInCirculation: totalEssence._sum.essence || 0,
-            totalDiamondsInCirculation: totalDiamonds._sum.diamonds || 0,
         });
     } catch (err) {
         console.error('Stats error:', err);

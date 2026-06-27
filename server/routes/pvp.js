@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
 import { simulateBattle } from '../../shared/combat.js';
-import { clanPerks, clanLevelFromXp } from '../../shared/clan-config.js';
+import { clanStatBonusPct } from '../../shared/clan-config.js';
 import { pickOpponent, attackerEloChange } from '../lib/pvp-match.js';
 
 const router = Router();
@@ -19,18 +19,12 @@ const USER_SELECT = {
     clanMembership: { select: { clan: { select: { xp: true } } } },
 };
 
-// Clan stat perk (HP/damage %) so clan bonuses count in PvP exactly as in PvE.
-function clanStatBonusPct(membership) {
-    const xp = membership?.clan?.xp;
-    if (typeof xp !== 'number') return 0;
-    return clanPerks(clanLevelFromXp(xp)).statBonusPct || 0;
-}
-
 // Build a combat-ready fighter (full stats + power) from a user's saved snapshot.
 function fighterFromUser(user) {
     const equipment = user.gameState?.equipment || {};
     const level = user.gameState?.player?.level || 1;
-    const statBonusPct = clanStatBonusPct(user.clanMembership);
+    // Clan stat perk (HP/damage %) so clan bonuses count in PvP exactly as in PvE.
+    const statBonusPct = clanStatBonusPct(user.clanMembership?.clan?.xp);
     const stats = computeStatsFromEquipment(equipment, level, statBonusPct);
     const power = playerPowerScore(equipment, level, statBonusPct);
     return {

@@ -154,14 +154,8 @@ model GameState {
   equipment         Json     @default("{}")
   gold              Int      @default(100)
   forgeLevel        Int      @default(1)
-  forgeUpgrade      Json?
-  combat            Json     @default("{\"currentWave\":1,\"currentSubWave\":1,\"highestWave\":1,\"highestSubWave\":1}")
-  essence           Int      @default(0)
-  diamonds          Int      @default(100)
   player            Json     @default("{\"level\":1,\"xp\":0,\"profilePicture\":\"wizard\"}")
-  research          Json     @default("{\"completed\":{},\"active\":null,\"queue\":[]}")
   forgeHighestLevel Json     @default("{}")
-  skills            Json     @default("{\"unlocked\":{},\"equipped\":[]}")
   updatedAt         DateTime @updatedAt
 }
 
@@ -267,56 +261,6 @@ model AuditLog {
   @@index([targetId])
 }
 
-model SpriteSheet {
-  id       Int               @id @default(autoincrement())
-  type     String            @unique @db.VarChar(30) // hat, weapon, armor, ..., monster, player
-  file     String            @db.VarChar(200) // /assets/helmets.png
-  width    Int
-  height   Int
-  items    ItemTemplate[]
-  sprites  Sprite[]          @relation("SpriteSheetSprites")
-  monsters MonsterTemplate[]
-  players  PlayerTemplate[]
-}
-
-model Sprite {
-  id            Int               @id @default(autoincrement())
-  name          String            @db.VarChar(100)
-  spriteX       Int
-  spriteY       Int
-  spriteW       Int
-  spriteH       Int
-  spriteSheetId Int
-  spriteSheet   SpriteSheet       @relation("SpriteSheetSprites", fields: [spriteSheetId], references: [id])
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  items         ItemTemplate[]
-  monsters      MonsterTemplate[]
-  players       PlayerTemplate[]
-
-  @@index([spriteSheetId])
-}
-
-model ItemTemplate {
-  id            Int         @id @default(autoincrement())
-  type          String      @db.VarChar(30) // hat, weapon, armor, etc.
-  tier          Int // 1-7
-  skin          String      @unique @db.VarChar(50)
-  name          String      @db.VarChar(100)
-  spriteId      Int?
-  sprite        Sprite?     @relation(fields: [spriteId], references: [id])
-  spriteX       Int?
-  spriteY       Int?
-  spriteW       Int?
-  spriteH       Int?
-  spriteSheetId Int
-  spriteSheet   SpriteSheet @relation(fields: [spriteSheetId], references: [id])
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@index([type, tier])
-}
-
 model Purchase {
   id              Int      @id @default(autoincrement())
   userId          Int
@@ -333,37 +277,4 @@ model Purchase {
 
   @@index([userId, createdAt])
   @@index([status])
-}
-
-model MonsterTemplate {
-  id            Int          @id @default(autoincrement())
-  slug          String       @unique @db.VarChar(50) // e.g. "rat", "wolf", "spider"
-  name          String       @db.VarChar(100) // Display name: "Rat", "Wolf"
-  emoji         String       @db.VarChar(10) // Fallback emoji: "🐀"
-  color         String       @db.VarChar(10) // Theme color hex: "#8d6e63"
-  wave          Int // Wave index (1-20)
-  hpMultiplier  Float        @default(1.0) // Per-monster HP modifier
-  dmgMultiplier Float        @default(1.0) // Per-monster damage modifier
-  speedModifier Int          @default(0) // Attack speed offset (ms)
-  spriteId      Int?
-  sprite        Sprite?      @relation(fields: [spriteId], references: [id])
-  spriteSheetId Int?
-  spriteSheet   SpriteSheet? @relation(fields: [spriteSheetId], references: [id])
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([wave])
-}
-
-model PlayerTemplate {
-  id            Int          @id @default(autoincrement())
-  slug          String       @unique @db.VarChar(50) // e.g. "warrior", "mage"
-  name          String       @db.VarChar(100) // Display name
-  isDefault     Boolean      @default(false) // Default player skin
-  spriteId      Int?
-  sprite        Sprite?      @relation(fields: [spriteId], references: [id])
-  spriteSheetId Int?
-  spriteSheet   SpriteSheet? @relation(fields: [spriteSheetId], references: [id])
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
 }

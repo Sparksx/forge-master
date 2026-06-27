@@ -343,8 +343,6 @@ function buildSave() {
         gold: state.gold,
         forgeLevel: state.forgeLevel,
         forgeHighestLevel: state.bestLevels,
-        // Stub kept so the server's combat validator accepts the save.
-        combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
         player: {
             level: state.playerLevel,
             xp: state.playerXp,

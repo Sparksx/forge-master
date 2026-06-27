@@ -15,6 +15,7 @@
 // spawn columns (cols 11–13) and never wall off a lane — the line-up always has
 // a clear path to engage.
 import { seededRng } from './config.js';
+import { randomItem } from '../../shared/utils.js';
 
 /**
  * @typedef {object} ArenaTheme
@@ -105,7 +106,7 @@ export function getArena(id) {
  */
 export function pickArenaId(seed) {
     const rng = seededRng((seed >>> 0) || 1);
-    return ARENAS[Math.floor(rng() * ARENAS.length) % ARENAS.length].id;
+    return randomItem(ARENAS, rng).id;
 }
 
 /**
@@ -113,5 +114,5 @@ export function pickArenaId(seed) {
  * the encounter so the chosen arena can be reproduced if the fight is restaged.
  */
 export function randomArenaId() {
-    return ARENAS[Math.floor(Math.random() * ARENAS.length) % ARENAS.length].id;
+    return randomItem(ARENAS).id;
 }

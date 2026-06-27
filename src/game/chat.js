@@ -19,15 +19,6 @@ const SOCKET_EVENTS = [
     'chat:conversations', 'chat:conversation', 'chat:conversation-opened', 'chat:error',
 ];
 
-// Map a stored channel ("general" | "clan:<id>" | "conv:<id>") to its buffer key.
-function bucketKey(channel) {
-    if (channel === 'general') return 'general';
-    if (typeof channel !== 'string') return null;
-    if (channel.startsWith('clan:')) return 'clan';
-    if (channel.startsWith('conv:')) return channel; // keep full id-qualified key
-    return null;
-}
-
 function convIdOf(channel) {
     return typeof channel === 'string' && channel.startsWith('conv:') ? Number(channel.slice(5)) : null;
 }
