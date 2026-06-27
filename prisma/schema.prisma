@@ -154,14 +154,8 @@ model GameState {
   equipment         Json     @default("{}")
   gold              Int      @default(100)
   forgeLevel        Int      @default(1)
-  forgeUpgrade      Json?
-  combat            Json     @default("{\"currentWave\":1,\"currentSubWave\":1,\"highestWave\":1,\"highestSubWave\":1}")
-  essence           Int      @default(0)
-  diamonds          Int      @default(100)
   player            Json     @default("{\"level\":1,\"xp\":0,\"profilePicture\":\"wizard\"}")
-  research          Json     @default("{\"completed\":{},\"active\":null,\"queue\":[]}")
   forgeHighestLevel Json     @default("{}")
-  skills            Json     @default("{\"unlocked\":{},\"equipped\":[]}")
   updatedAt         DateTime @updatedAt
 }
 

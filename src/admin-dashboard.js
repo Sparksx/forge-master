@@ -108,18 +108,6 @@ async function addGoldToUser(userId, amount) {
     return res.json();
 }
 
-async function addEssenceToUser(userId, amount) {
-    const res = await apiFetch(`/api/admin/users/${userId}/essence`, { method: 'POST', body: { amount } });
-    if (!res.ok) throw new Error('Echec ajout essence');
-    return res.json();
-}
-
-async function addDiamondsToUser(userId, amount) {
-    const res = await apiFetch(`/api/admin/users/${userId}/diamonds`, { method: 'POST', body: { amount } });
-    if (!res.ok) throw new Error('Echec ajout diamants');
-    return res.json();
-}
-
 async function setUserLevel(userId, level) {
     const res = await apiFetch(`/api/admin/users/${userId}/level`, { method: 'POST', body: { level } });
     if (!res.ok) throw new Error('Echec set level');
@@ -315,8 +303,6 @@ function renderPlayerDetail(container, data) {
     html += '<div class="adm-detail-stats">';
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${level}</span><span class="adm-stat-lbl">Niveau</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.gold || 0).toLocaleString()}</span><span class="adm-stat-lbl">Gold</span></div>`;
-    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.essence || 0).toLocaleString()}</span><span class="adm-stat-lbl">Essence</span></div>`;
-    html += `<div class="adm-detail-stat"><span class="adm-stat-val">${(gs.diamonds || 0).toLocaleString()}</span><span class="adm-stat-lbl">Diamants</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">Lv.${gs.forgeLevel || 1}</span><span class="adm-stat-lbl">Forge</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${user.pvpRating}</span><span class="adm-stat-lbl">ELO</span></div>`;
     html += `<div class="adm-detail-stat"><span class="adm-stat-val">${user.pvpWins}/${user.pvpLosses}</span><span class="adm-stat-lbl">W/L</span></div>`;
@@ -353,10 +339,6 @@ function renderPlayerDetail(container, data) {
         html += '<div class="adm-btn-row">';
         html += `<button class="adm-btn adm-btn-gold" data-action="gold-10k">+10K Gold</button>`;
         html += `<button class="adm-btn adm-btn-gold" data-action="gold-100k">+100K Gold</button>`;
-        html += `<button class="adm-btn adm-btn-essence-btn" data-action="essence-1k">+1K Essence</button>`;
-        html += `<button class="adm-btn adm-btn-essence-btn" data-action="essence-10k">+10K Essence</button>`;
-        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-100">+100 Diamants</button>`;
-        html += `<button class="adm-btn adm-btn-diamond" data-action="diamond-1k">+1K Diamants</button>`;
         html += '</div>';
         html += '<div class="adm-btn-row adm-resource-extra">';
         html += `<label>Role: <select id="adm-role-select">`;
@@ -493,26 +475,6 @@ async function handleUserAction(action, userId) {
                 showToast('+100K gold', 'success');
                 break;
             }
-            case 'essence-1k': {
-                await addEssenceToUser(userId, 1000);
-                showToast('+1K essence', 'success');
-                break;
-            }
-            case 'essence-10k': {
-                await addEssenceToUser(userId, 10000);
-                showToast('+10K essence', 'success');
-                break;
-            }
-            case 'diamond-100': {
-                await addDiamondsToUser(userId, 100);
-                showToast('+100 diamants', 'success');
-                break;
-            }
-            case 'diamond-1k': {
-                await addDiamondsToUser(userId, 1000);
-                showToast('+1K diamants', 'success');
-                break;
-            }
             case 'set-role': {
                 const select = document.getElementById('adm-role-select');
                 if (!select) return;
@@ -560,14 +522,6 @@ async function loadStats() {
                 `<div class="adm-stats-card">` +
                     `<div class="adm-stats-value">${stats.totalGoldInCirculation.toLocaleString()}</div>` +
                     `<div class="adm-stats-label">Gold en Circulation</div>` +
-                `</div>` +
-                `<div class="adm-stats-card">` +
-                    `<div class="adm-stats-value">${stats.totalEssenceInCirculation.toLocaleString()}</div>` +
-                    `<div class="adm-stats-label">Essence en Circulation</div>` +
-                `</div>` +
-                `<div class="adm-stats-card">` +
-                    `<div class="adm-stats-value">${(stats.totalDiamondsInCirculation || 0).toLocaleString()}</div>` +
-                    `<div class="adm-stats-label">Diamants en Circulation</div>` +
                 `</div>` +
             '</div>';
     } catch (err) {

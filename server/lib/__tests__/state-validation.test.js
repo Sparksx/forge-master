@@ -14,7 +14,6 @@ import {
     isValidBonuses,
     isValidItem,
     isValidEquipment,
-    isValidCombat,
     isValidPlayer,
 } from '../state-validation.js';
 
@@ -195,20 +194,5 @@ describe('isValidPlayer guards level/xp', () => {
     it('rejects non-finite or negative xp', () => {
         expect(isValidPlayer({ level: 1, xp: -5 })).toBe(false);
         expect(isValidPlayer({ level: 1, xp: Infinity })).toBe(false);
-    });
-});
-
-describe('isValidCombat guards wave progress', () => {
-    it('accepts valid waves', () => {
-        expect(isValidCombat({ currentWave: 3, currentSubWave: 1, highestWave: 5, highestSubWave: 2 })).toBe(true);
-    });
-
-    it('rejects non-finite wave values (NaN/Infinity)', () => {
-        expect(isValidCombat({ currentWave: Infinity, currentSubWave: 1, highestWave: 1, highestSubWave: 1 })).toBe(false);
-        expect(isValidCombat({ currentWave: NaN, currentSubWave: 1, highestWave: 1, highestSubWave: 1 })).toBe(false);
-    });
-
-    it('rejects waves below 1', () => {
-        expect(isValidCombat({ currentWave: 0, currentSubWave: 1, highestWave: 1, highestSubWave: 1 })).toBe(false);
     });
 });

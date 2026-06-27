@@ -61,7 +61,7 @@ router.get('/users/:id/profile', requireRole('admin', 'moderator'), async (req, 
                 isGuest: true, createdAt: true,
                 pvpRating: true, pvpWins: true, pvpLosses: true,
                 gameState: {
-                    select: { gold: true, diamonds: true, essence: true, forgeLevel: true, equipment: true, player: true },
+                    select: { gold: true, forgeLevel: true, equipment: true, player: true },
                 },
             },
         });
@@ -321,9 +321,8 @@ router.delete('/messages/:id', requireRole('admin', 'moderator'), async (req, re
 // ADMIN-ONLY ROUTES
 // ══════════════════════════════════════════════════════════════════
 
-// POST /api/admin/users/:id/{gold,essence,diamonds} — adjust a numeric currency
-// field by a (possibly negative) delta, floored at 0. The three currencies share
-// identical logic, so one factory registers all three routes.
+// POST /api/admin/users/:id/gold — adjust the gold balance by a (possibly
+// negative) delta, floored at 0.
 function registerResourceRoute(field) {
     router.post(`/users/:id/${field}`, requireRole('admin'), async (req, res) => {
         const userId = parseInt(req.params.id);
@@ -350,7 +349,7 @@ function registerResourceRoute(field) {
     });
 }
 
-['gold', 'essence', 'diamonds'].forEach(registerResourceRoute);
+['gold'].forEach(registerResourceRoute);
 
 // ─── POST /api/admin/users/:id/level ─────────────────────────────
 router.post('/users/:id/level', requireRole('admin'), async (req, res) => {
@@ -447,13 +446,8 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
             data: {
                 equipment: {},
                 gold: 0,
-                diamonds: 100,
                 forgeLevel: 1,
-                forgeUpgrade: null,
-                combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-                essence: 0,
                 player: { level: 1, xp: 0, profilePicture: 'wizard' },
-                research: { completed: {}, active: null, queue: [] },
                 forgeHighestLevel: {},
             },
         });
@@ -469,12 +463,10 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
 // ─── GET /api/admin/stats ────────────────────────────────────────
 router.get('/stats', requireRole('admin'), async (req, res) => {
     try {
-        const [totalUsers, totalGuests, totalGold, totalEssence, totalDiamonds] = await Promise.all([
+        const [totalUsers, totalGuests, totalGold] = await Promise.all([
             prisma.user.count(),
             prisma.user.count({ where: { isGuest: true } }),
             prisma.gameState.aggregate({ _sum: { gold: true } }),
-            prisma.gameState.aggregate({ _sum: { essence: true } }),
-            prisma.gameState.aggregate({ _sum: { diamonds: true } }),
         ]);
 
         res.json({
@@ -482,8 +474,6 @@ router.get('/stats', requireRole('admin'), async (req, res) => {
             totalGuests,
             registeredUsers: totalUsers - totalGuests,
             totalGoldInCirculation: totalGold._sum.gold || 0,
-            totalEssenceInCirculation: totalEssence._sum.essence || 0,
-            totalDiamondsInCirculation: totalDiamonds._sum.diamonds || 0,
         });
     } catch (err) {
         console.error('Stats error:', err);
