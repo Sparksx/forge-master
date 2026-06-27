@@ -206,6 +206,9 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
     font-size: .74rem; font-weight: 800; letter-spacing: .03em;
     text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
 }
+/* Footer of the auto-forge modal: Cancel + Launch, side by side. */
+.auto-forge-actions { display: flex; gap: 10px; margin-top: 16px; }
+.auto-forge-actions .btn { flex: 1; }
 /* Keep-slot grid — same look as the home gear grid, two rows of four. A slot in
    colour means "keep forging for me"; greyscale means "I'm done, trash rolls". */
 .auto-gear-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
