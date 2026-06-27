@@ -8,14 +8,15 @@ import { avatarEmoji } from '../game/config.js';
 import { getAvatar, getPowerScore } from '../game/state.js';
 import { getCurrentUser } from '../auth.js';
 import { createDungeon } from './dungeon.js';
-import { pvpFight, pvpLeaderboard } from '../game/pvp.js';
+import { pvpFight, pvpLeaderboard, fetchPlayerProfile } from '../game/pvp.js';
+import { showPlayerProfile } from './player-profile.js';
 
 let root = null;
 let dungeon = null;
 let visible = false;
 let busy = false;          // a fight request is in flight or replaying
 let lastResult = null;     // the resolved fight, shown once the replay finishes
-let friendlyTarget = null; // userId for a one-shot unranked clan duel
+let friendlyTarget = null; // userId for a one-shot unranked friendly duel
 
 export const id = 'pvp';
 export const icon = '🏆';
@@ -67,9 +68,10 @@ export function onHide() {
 }
 
 /**
- * Kick off an unranked friendly duel against a clanmate. Called after navigating
- * to this screen (e.g. from the clan roster). Resolves through the same async
- * fight pipeline, but the server skips all Elo / win-loss bookkeeping.
+ * Kick off an unranked friendly duel against any player. Called after navigating
+ * to this screen (e.g. from the clan roster, the leaderboard, or chat). Resolves
+ * through the same async fight pipeline, but the server skips all Elo / win-loss
+ * bookkeeping.
  */
 export function startFriendly(targetUserId) {
     friendlyTarget = targetUserId;
@@ -215,9 +217,24 @@ function renderLeaderboard(list) {
     if (!box) return;
     clear(box);
     if (!list || list.length === 0) { box.appendChild(h('p', { className: 'muted', text: 'No ranked players yet — be the first!' })); return; }
-    list.forEach((p, i) => box.appendChild(h('div', { className: 'pvp-lb-row' },
+    list.forEach((p, i) => box.appendChild(h('div', {
+        className: 'pvp-lb-row pvp-lb-clickable',
+        onclick: () => openPlayerProfile(p.id),
+    },
         h('span', { className: 'pvp-lb-rank', text: `#${i + 1}` }),
         h('span', { className: 'pvp-lb-name', text: p.username }),
         h('span', { className: 'pvp-lb-elo', text: `${fmt(p.rating)} ELO` }),
     )));
+}
+
+// Tap a leaderboard player to inspect their public profile (gear + stats) and
+// optionally challenge them to a friendly duel — open to everyone, not just clanmates.
+async function openPlayerProfile(userId) {
+    if (userId == null) return;
+    try {
+        const profile = await fetchPlayerProfile(userId);
+        showPlayerProfile(profile);
+    } catch (err) {
+        toast(err.message || 'Could not load profile', 'error');
+    }
 }

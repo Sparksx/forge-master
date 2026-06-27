@@ -10,6 +10,7 @@ import { getCurrentUser } from '../auth.js';
 import { getMyClanCached } from '../game/clan.js';
 import { switchTab as navigateToScreen } from './app.js';
 import { startFriendly } from './pvp.js';
+import { showItemPreview } from './player-profile.js';
 import {
     getMessages, getConversations, requestHistory, requestConversations,
     sendChat, startDm, createGroup, fetchPlayerProfile,
@@ -252,8 +253,6 @@ async function showProfileModal(userId) {
     }
 
     const isMe = me?.id === p.userId;
-    const myClan = getMyClanCached();
-    const sameClan = !!(myClan && p.clan && p.clan.id === myClan.id);
 
     const statRow = (label, value) => h('div', { className: 'member-stat-row' },
         h('span', { className: 'member-stat-label muted', text: label }),
@@ -264,7 +263,8 @@ async function showProfileModal(userId) {
         ? `${p.clan.emblem || '🛡️'} ${p.clan.name}${p.clan.tag ? ` [${p.clan.tag}]` : ''} · Lv ${fmt(p.clan.level || 1)}`
         : 'No clan';
 
-    const body = h('div', { className: 'member-modal' },
+    // Rebuildable so the item preview's Back action can re-open the profile.
+    const buildBody = () => h('div', { className: 'member-modal' },
         h('div', { className: 'member-modal-head' },
             h('span', { className: `member-modal-avatar frame-${safeFrame(p.frame)}`, text: avatarEmoji(p.profilePicture) }),
             h('div', { className: 'member-modal-id' },
@@ -283,25 +283,24 @@ async function showProfileModal(userId) {
             statRow('❤️ Max HP', fmt(p.maxHP || 0)),
             statRow('🔨 Forge Lv', fmt(p.forgeLevel || 1)),
         ),
-        renderGear(p.equipment),
-        sameClan && !isMe ? h('button', {
+        // Friendly duels are open to everyone, not just clanmates.
+        renderGear(p.equipment, (item) => showItemPreview(item, () => openModal(buildBody()))),
+        isMe ? null : h('button', {
             className: 'btn btn-primary btn-block', text: '⚔️ Friendly Duel',
             onclick: () => { closeModal(); closeChat(); navigateToScreen('pvp'); startFriendly(p.userId); },
-        }) : null,
-        sameClan && !isMe
-            ? h('p', { className: 'muted small member-duel-note', text: 'A practice fight against their gear — your ELO and record stay unchanged.' })
-            : (!isMe ? h('p', { className: 'muted small member-duel-note', text: 'Join their clan to challenge them to a friendly duel.' }) : null),
+        }),
+        isMe ? null : h('p', { className: 'muted small member-duel-note', text: 'A practice fight against their gear — your ELO and record stay unchanged.' }),
         h('button', { className: 'btn btn-ghost btn-block', text: 'Close', onclick: closeModal }),
     );
     // Swap the loading body for the full profile in the same modal shell — unless
     // the user already dismissed it while the request was in flight.
-    if (loading.parentNode) loading.replaceWith(body);
+    if (loading.parentNode) loading.replaceWith(buildBody());
 }
 
 // Equipped-gear grid for the profile modal. Uses the SAME vivid rarity gear
 // slots as the home screen (`.gear-grid` / `.gear-slot`) so the gear design is
 // identical everywhere — home is the reference.
-function renderGear(equipment) {
+function renderGear(equipment, onPick) {
     const eq = equipment && typeof equipment === 'object' ? equipment : {};
     return h('div', { className: 'profile-gear' },
         h('div', { className: 'profile-gear-title muted', text: 'Equipped Gear' }),
@@ -316,6 +315,7 @@ function renderGear(equipment) {
                 return h('div', {
                     className: 'gear-slot filled', style: { '--rarity': rarityColor(item.tier) },
                     attrs: { title: `${itemName(item)} · ${rarityName(item.tier)} · ${slotLabel(slot)} · Lv ${item.level || 1}` },
+                    onclick: onPick ? () => onPick(item) : undefined,
                 },
                     h('span', { className: 'gear-slot-icon', text: itemIcon(item) }),
                     h('span', { className: 'gear-slot-lvl', text: `Lv ${fmt(item.level || 1)}` }),

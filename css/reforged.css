@@ -587,6 +587,12 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .pvp-lb-rank { font-weight: 900; color: var(--gold); width: 32px; }
 .pvp-lb-name { flex: 1; font-weight: 700; }
 .pvp-lb-elo { color: var(--accent-2); font-weight: 800; font-size: .85rem; }
+.pvp-lb-clickable { cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.pvp-lb-clickable:hover { border-color: var(--accent); background: var(--bg-3); }
+.pvp-lb-clickable:active { transform: scale(.99); }
+
+/* Item-stat preview opened from a public profile's gear grid. */
+.item-preview { display: flex; flex-direction: column; gap: 14px; }
 
 .spinner { width: 48px; height: 48px; border: 4px solid var(--line); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 18px; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -698,7 +704,8 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 .profile-gear { display: flex; flex-direction: column; gap: 8px; }
 .profile-gear-title { font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .profile-gear .gear-slot { cursor: default; }
-.profile-gear .gear-slot:active { transform: none; }
+.profile-gear .gear-slot.filled { cursor: pointer; }
+.profile-gear .gear-slot.filled:active { transform: scale(.95); }
 .member-duel-note { margin: -6px 0 2px; text-align: center; }
 
 /* ── Profile ─────────────────────────────────────────────── */
