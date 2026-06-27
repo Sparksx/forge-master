@@ -528,6 +528,21 @@ h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: .3px; }
 @keyframes pop { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .reveal-delta { margin: 14px 0; }
 .reveal-replaces { font-size: .78rem; color: var(--muted); margin-bottom: 12px; }
+
+/* Stat-by-stat forge comparison: Equipped vs New, with ▲/▼ per stat. */
+.stat-compare { text-align: left; margin: 4px 0 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.stat-compare-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 7px 12px; font-size: .82rem; }
+.stat-compare-row + .stat-compare-row { border-top: 1px solid var(--line); }
+.stat-compare-head { background: var(--bg-3); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.stat-compare .sc-label { font-weight: 600; }
+.stat-compare .sc-col { min-width: 84px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat-compare .sc-col.sc-new { color: var(--text); font-weight: 700; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.stat-compare .sc-delta { font-size: .68rem; font-weight: 800; }
+.stat-compare .sc-up .sc-delta { color: var(--success); }
+.stat-compare .sc-down .sc-delta { color: var(--danger); }
+.stat-compare .sc-up .sc-val { color: var(--success); }
+.stat-compare .sc-down .sc-val { color: var(--danger); }
+
 .reveal-actions, .slot-detail-actions { display: flex; gap: 10px; }
 .reveal-actions .btn, .slot-detail-actions .btn { flex: 1; }
 
