@@ -66,10 +66,8 @@ export function simulateBattle(allies, enemies, seed) {
         side,
         hp: c.maxHP,
         // Fire on focus: ranged have it at range (t=0); melee fire after a short
-        // approach. After each shot `next` advances one full period. An optional
-        // `engageAt` delays a fighter's first attack so a pack can join the brawl
-        // in waves instead of all at once (PvE staging; unset for PvP duels).
-        next: (c.engageAt || 0) + (c.ranged ? 0 : RANGED_OPENING_FRACTION) * attackPeriod(c),
+        // approach. After each shot `next` advances one full period.
+        next: (c.ranged ? 0 : RANGED_OPENING_FRACTION) * attackPeriod(c),
     });
     const A = allies.map((c, i) => mk(c, 'ally', i));
     const E = enemies.map((c, i) => mk(c, 'enemy', i));
