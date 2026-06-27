@@ -318,9 +318,10 @@ export function createDungeon({ onResolve } = {}) {
         }
     }
 
-    // PvE pre-combat intro: the hero advances on the pack while the enemies
-    // patrol their aggro zones. The instant the hero alerts one, the fight is
-    // joined — `simClock` resets so the resolved timeline plays from t=0.
+    // PvE pre-combat intro: the hero advances on the pack while every enemy
+    // patrols. Enemies don't engage here — they wake as their wave fires once the
+    // timeline starts (see stepReplay). Joining resets `simClock` so the resolved
+    // timeline plays from t=0.
     function stepIntro(dt) {
         const target = heroTarget();
         if (player.alive && target) {
@@ -328,14 +329,7 @@ export function createDungeon({ onResolve } = {}) {
             if (dist(player, target) > reach) seek(player, target, 3.4 * tile, dt, reach);
             else player.facing = (target.x - player.x) < 0 ? -1 : 1;
         }
-        for (const e of aliveEnemies()) {
-            if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
-                e.aggro = true;
-                spawnFloater(e, '!', 'alert', false);
-            }
-            if (!e.aggro) idleEnemy(e, dt);
-            else if (dist(e, player) > reachOf(e, player)) seek(e, player, 2.3 * tile, dt, reachOf(e, player));
-        }
+        for (const e of aliveEnemies()) idleEnemy(e, dt);
         // Join once the hero has actually closed on its first scripted target (so
         // the timeline opens with the hero in striking range and the first blow
         // connects). A safety timeout covers a hero that can't path to the pack.
@@ -363,17 +357,9 @@ export function createDungeon({ onResolve } = {}) {
         }
         for (const e of aliveEnemies()) {
             if (!player.alive) break;
-            // PvE stragglers keep patrolling until the hero (or the fight) alerts
-            // them; PvP enemies are always aggro'd, so this just seeks.
-            if (patrolIntro && !e.aggro) {
-                if (dist(player, e) <= AGGRO_TILES * tile) {
-                    e.aggro = true;
-                    spawnFloater(e, '!', 'alert', false);
-                } else {
-                    idleEnemy(e, dt);
-                    continue;
-                }
-            }
+            // PvE: an enemy keeps patrolling until its wave engages it (its first
+            // event — see below). PvP enemies are always aggro'd, so this seeks.
+            if (patrolIntro && !e.aggro) { idleEnemy(e, dt); continue; }
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) seek(e, player, 2.3 * tile, dt, reach);
             else e.facing = (player.x - e.x) < 0 ? -1 : 1;
@@ -387,10 +373,16 @@ export function createDungeon({ onResolve } = {}) {
             if (simClock < ev.t) break;
             const attacker = entById(ev.by);
             const target = entById(ev.target);
-            // Trading blows alerts any still-patrolling participant (PvE).
+            // A pack member joins the brawl the moment it first acts or is struck:
+            // wake it and pop the "!" alert (PvE — this is what staggers the aggro
+            // across the fight instead of all at once).
             if (patrolIntro) {
-                if (attacker && attacker.id !== 'player') attacker.aggro = true;
-                if (target && target.id !== 'player') target.aggro = true;
+                for (const c of [attacker, target]) {
+                    if (c && c.id !== 'player' && !c.aggro) {
+                        c.aggro = true;
+                        spawnFloater(c, '!', 'alert', false);
+                    }
+                }
             }
             // PvP holds the opening blow until the attacker has closed (so it
             // doesn't fly across the room). PvE pre-positions the hero in the

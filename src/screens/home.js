@@ -35,6 +35,10 @@ let nextTimer = null;
 // Combat is always automatic at normal speed — the hero walks to mobs and
 // fights on its own; speed is not player-toggleable.
 const fast = false;
+// Seconds between each pack member joining the brawl. The lead engages at once;
+// the rest wave in a beat apart so the fight ramps up instead of swarming on
+// frame one. Higher = more "fight them one at a time"; lower = more gang-up.
+const ENEMY_ENGAGE_STAGGER = 0.8;
 
 // Forge
 let forging = false;
@@ -151,6 +155,10 @@ function startEncounter() {
     // back. PvE keeps its walk-in/aggro intro via `patrol: true`. A rank-derived
     // seed keeps a refought rank replaying identically.
     const payload = encounterPayload(currentEncounter);
+    // Stagger when each pack member joins the brawl: the lead engages at once and
+    // the rest follow a beat apart, so distant enemies keep patrolling (no events
+    // yet) until their wave — instead of the whole pack swarming on frame one.
+    payload.enemies.forEach((e, i) => { e.engageAt = i * ENEMY_ENGAGE_STAGGER; });
     // Distinct mix from makeEncounter's seed so the fight RNG (crits/variance) is
     // an independent stream from the enemy-composition RNG.
     const seed = ((getArenaRank() + 1) * 1103515245) >>> 0;
