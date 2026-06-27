@@ -1,5 +1,6 @@
 // Shared constants and stat computation used by both client and server.
 // This avoids duplicating game-balance values in multiple places.
+import { clampInt } from './utils.js';
 
 export const EQUIPMENT_TYPES = ['hat', 'armor', 'belt', 'boots', 'gloves', 'necklace', 'ring', 'weapon'];
 export const HEALTH_ITEMS = ['hat', 'armor', 'belt', 'boots'];
@@ -101,6 +102,16 @@ export const TIERS = [
 
 export const MAX_TIER = TIERS.length;
 
+/** Fold an item's `bonuses` array into a running { type: total } accumulator. */
+function accumulateBonuses(target, item) {
+    if (!item || !Array.isArray(item.bonuses)) return;
+    for (const b of item.bonuses) {
+        if (b.type && typeof b.value === 'number' && b.value) {
+            target[b.type] = (target[b.type] || 0) + b.value;
+        }
+    }
+}
+
 /**
  * Compute the raw stat value for an item given its level, tier, and type.
  */
@@ -127,13 +138,7 @@ export function calculateStats(equipment) {
         } else {
             totalDamage += item.stats;
         }
-        if (item.bonuses && Array.isArray(item.bonuses)) {
-            item.bonuses.forEach(bonus => {
-                if (bonus.type && bonus.value) {
-                    bonuses[bonus.type] = (bonuses[bonus.type] || 0) + bonus.value;
-                }
-            });
-        }
+        accumulateBonuses(bonuses, item);
     });
 
     return { totalHealth, totalDamage, bonuses };
@@ -180,13 +185,7 @@ export function computeStatsFromEquipment(equipment, playerLevel = 1, statBonusP
         if (isHealth) totalHealth += stats;
         else totalDamage += stats;
 
-        if (item.bonuses && Array.isArray(item.bonuses)) {
-            for (const b of item.bonuses) {
-                if (b.type && typeof b.value === 'number') {
-                    bonuses[b.type] = (bonuses[b.type] || 0) + b.value;
-                }
-            }
-        }
+        accumulateBonuses(bonuses, item);
     }
 
     // Only the conditional damage bonus matching the equipped weapon's style
@@ -288,13 +287,6 @@ export function powerBreakdown(equipment, playerLevel = 1, statBonusPct = 0) {
         gearPower, subtotal, total,
         rows,
     };
-}
-
-/** Clamp a value to an integer within [min, max], treating junk as min. */
-function clampInt(value, min, max) {
-    const n = Math.floor(Number(value));
-    if (!Number.isFinite(n)) return min;
-    return Math.min(max, Math.max(min, n));
 }
 
 /**

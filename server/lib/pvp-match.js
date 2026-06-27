@@ -1,6 +1,7 @@
 // Pure (DB-free) helpers for async PvP matchmaking + rating, kept out of the
 // route module so they can be unit-tested without pulling in Prisma.
 import { PVP_BASE_POWER_RANGE, PVP_POWER_RANGE_EXPANSION } from '../../shared/pvp-config.js';
+import { randomItem } from '../../shared/utils.js';
 
 export const K_FACTOR = 32;
 // Snapshot matching widens the live-PvP base range a few notches so a fight can
@@ -20,7 +21,7 @@ export function pickOpponent(candidates, attackerPower, rng = Math.random) {
         return { c, diff: Math.abs(c.power - attackerPower) / avg };
     });
     const inRange = withDiff.filter((x) => x.diff <= MAX_POWER_RANGE);
-    if (inRange.length) return inRange[Math.floor(rng() * inRange.length)].c;
+    if (inRange.length) return randomItem(inRange, rng).c;
     withDiff.sort((a, b) => a.diff - b.diff);
     return withDiff[0].c;
 }

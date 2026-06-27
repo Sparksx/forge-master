@@ -38,6 +38,12 @@ export function clanPerks(level) {
     };
 }
 
+/** The clan stat perk (player HP & damage %) granted by a clan's total XP. */
+export function clanStatBonusPct(xp) {
+    if (typeof xp !== 'number') return 0;
+    return clanPerks(clanLevelFromXp(xp)).statBonusPct || 0;
+}
+
 /** Progress toward the next level: { level, into, span, pct, atMax }. */
 export function clanLevelProgress(xp) {
     const level = clanLevelFromXp(xp);

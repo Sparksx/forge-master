@@ -7,6 +7,7 @@ import {
 } from './config.js';
 import { itemName } from './items.js';
 import { getForgeLevel, getBestLevelForSlot, recordForgedLevel, getForgeLuckPct, grantForgeXp } from './state.js';
+import { randomItem, randomInt } from '../../shared/utils.js';
 
 // Minimum bonus value (as % of max) by tier: Legendary+ guarantees strong rolls.
 const BONUS_MIN_PCT = [0, 0, 0, 0, 15, 30, 50];
@@ -18,12 +19,12 @@ export function rollBonuses(count, tier) {
     for (let i = 0; i < count && used.size < BONUS_STAT_KEYS.length; i++) {
         let key;
         do {
-            key = BONUS_STAT_KEYS[Math.floor(Math.random() * BONUS_STAT_KEYS.length)];
+            key = randomItem(BONUS_STAT_KEYS);
         } while (used.has(key));
         used.add(key);
         const max = BONUS_STATS[key].max;
         const min = minPct > 0 ? Math.max(1, Math.ceil((max * minPct) / 100)) : 1;
-        bonuses.push({ type: key, value: Math.floor(Math.random() * (max - min + 1)) + min });
+        bonuses.push({ type: key, value: randomInt(min, max) });
     }
     return bonuses;
 }
@@ -73,11 +74,11 @@ export function rollTier(forgeLevel, luckPct = 0) {
 /** Pick the level for a freshly rolled item, banded around your best for that slot. */
 export function rollLevel(best) {
     if (best == null) {
-        return Math.floor(Math.random() * INITIAL_LEVEL_MAX) + 1;
+        return randomInt(1, INITIAL_LEVEL_MAX);
     }
     const min = Math.max(1, best - LEVEL_BAND);
     const max = Math.min(MAX_ITEM_LEVEL, best + LEVEL_BAND);
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    return randomInt(min, max);
 }
 
 /** Sum of an item's bonus values — a tie-breaker when ranking forge candidates. */
@@ -107,7 +108,7 @@ export function forge(count = 1) {
     let best = null;
     let gold = 0;
     for (let i = 0; i < rolls; i++) {
-        const type = EQUIPMENT_TYPES[Math.floor(Math.random() * EQUIPMENT_TYPES.length)];
+        const type = randomItem(EQUIPMENT_TYPES);
         const tier = rollTier(forgeLevel, getForgeLuckPct());
         const level = rollLevel(getBestLevelForSlot(type, tier));
         const item = createItem(type, level, tier);

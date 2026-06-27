@@ -1,6 +1,7 @@
 // Clan activity templates + resolution math — shared by client (UI) and server
 // (creation, validation, reward computation). Expeditions are timed cooperative
 // runs; missions are play-tracked clan goals. Both pay clan XP.
+import { clampInt } from './utils.js';
 
 const HOUR = 3600 * 1000;
 
@@ -39,9 +40,7 @@ export const EXPEDITION_MAX_SLOTS = 10;
 
 /** Clamp a requested run length to the allowed whole-hour range. */
 export function clampExpeditionHours(hours) {
-    const h = Math.floor(Number(hours));
-    if (!Number.isFinite(h)) return EXPEDITION_MIN_HOURS;
-    return Math.max(EXPEDITION_MIN_HOURS, Math.min(EXPEDITION_MAX_HOURS, h));
+    return clampInt(hours, EXPEDITION_MIN_HOURS, EXPEDITION_MAX_HOURS);
 }
 
 // Longer commitments pay better PER HOUR, so there's a real reason to run one long
@@ -59,8 +58,7 @@ export function expeditionDurationMultiplier(hours) {
 
 /** Available slots for a clan of `memberCount`, clamped to the collaboration band. */
 export function expeditionSlots(memberCount) {
-    const n = Math.floor(Number(memberCount) || 0);
-    return Math.max(EXPEDITION_MIN_SLOTS, Math.min(EXPEDITION_MAX_SLOTS, n));
+    return clampInt(memberCount, EXPEDITION_MIN_SLOTS, EXPEDITION_MAX_SLOTS);
 }
 
 /**
