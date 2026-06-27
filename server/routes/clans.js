@@ -170,14 +170,20 @@ async function resolveExpedition(expId, forUserId = null) {
     return prisma.$transaction(async (tx) => {
         const exp = await tx.expedition.findUnique({ where: { id: expId }, include: { members: true } });
         if (!exp || exp.status !== 'active') return 0;
-        const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
         const filledSlots = exp.members.length;
-        // `exp` carries the stored powerReq + slots, so outcome reflects this run's party size.
+        if (filledSlots === 0) {
+            await tx.expedition.update({ where: { id: exp.id }, data: { status: 'resolved', success: false, resolvedAt: new Date() } });
+            return 0;
+        }
+        if (!Number.isFinite(exp.rewardXp) || exp.rewardXp < 0 || !Number.isFinite(exp.rewardGold) || exp.rewardGold < 0) {
+            await tx.expedition.update({ where: { id: exp.id }, data: { status: 'resolved', success: false, resolvedAt: new Date() } });
+            return 0;
+        }
+        const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
         const outcome = expeditionOutcome(exp, { totalPower, filledSlots }, Math.random());
         const xpGain = Math.round(exp.rewardXp * outcome.rewardMult);
-        // rewardGold is the total pot — split it evenly across everyone who joined.
         const goldPot = Math.round(exp.rewardGold * outcome.rewardMult);
-        const goldEach = filledSlots > 0 ? Math.round(goldPot / filledSlots) : 0;
+        const goldEach = Math.round(goldPot / filledSlots);
 
         await tx.expedition.update({
             where: { id: exp.id },
@@ -218,7 +224,7 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: { _count: { select: { members: true } } },
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
@@ -622,11 +628,12 @@ router.post('/contribute', requireAuth, async (req, res) => {
 
 // ── Rank management ──────────────────────────────────────────────────────────
 
-/** Load the actor's membership and a target member in the same clan. */
-async function loadActorAndTarget(actorUserId, targetUserId) {
-    const actor = await prisma.clanMember.findUnique({ where: { userId: actorUserId } });
+/** Load the actor's membership and a target member in the same clan. Accepts an optional
+ *  Prisma transaction client so the read can be part of a serializable transaction. */
+async function loadActorAndTarget(actorUserId, targetUserId, client = prisma) {
+    const actor = await client.clanMember.findUnique({ where: { userId: actorUserId } });
     if (!actor) return { error: { status: 400, message: 'You are not in a clan' } };
-    const target = await prisma.clanMember.findUnique({ where: { userId: targetUserId } });
+    const target = await client.clanMember.findUnique({ where: { userId: targetUserId } });
     if (!target || target.clanId !== actor.clanId) return { error: { status: 404, message: 'Member not found in your clan' } };
     if (target.userId === actor.userId) return { error: { status: 400, message: "You can't do that to yourself" } };
     return { actor, target };
@@ -637,18 +644,22 @@ router.post('/members/:userId/promote', requireAuth, async (req, res) => {
     try {
         const targetUserId = Number(req.params.userId);
         if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
-        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
-        if (error) return res.status(error.status).json({ error: error.message });
-        if (!can(actor.role, 'promote', target.role)) return res.status(403).json({ error: 'You lack permission to promote this member' });
 
-        const newRole = nextRankUp(target.role);
-        if (!newRole) return res.status(400).json({ error: 'That member is already at the top assignable rank' });
-        // Never let a promotion reach or exceed the actor's own rank.
-        if (!can(actor.role, 'promote', newRole)) return res.status(403).json({ error: 'You can only promote below your own rank' });
+        const clanId = await prisma.$transaction(async (tx) => {
+            const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId, tx);
+            if (error) throw Object.assign(new Error(error.message), { status: error.status });
+            if (!can(actor.role, 'promote', target.role)) throw Object.assign(new Error('You lack permission to promote this member'), { status: 403 });
 
-        await prisma.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
-        res.json(await freshClan(actor.clanId));
+            const newRole = nextRankUp(target.role);
+            if (!newRole) throw Object.assign(new Error('That member is already at the top assignable rank'), { status: 400 });
+            if (!can(actor.role, 'promote', newRole)) throw Object.assign(new Error('You can only promote below your own rank'), { status: 403 });
+
+            await tx.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
+            return actor.clanId;
+        });
+        res.json(await freshClan(clanId));
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Promote error:', err);
         res.status(500).json({ error: 'Failed to promote member' });
     }
@@ -659,16 +670,21 @@ router.post('/members/:userId/demote', requireAuth, async (req, res) => {
     try {
         const targetUserId = Number(req.params.userId);
         if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
-        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
-        if (error) return res.status(error.status).json({ error: error.message });
-        if (!can(actor.role, 'demote', target.role)) return res.status(403).json({ error: 'You lack permission to demote this member' });
 
-        const newRole = nextRankDown(target.role);
-        if (!newRole) return res.status(400).json({ error: 'That member is already at the lowest rank' });
+        const clanId = await prisma.$transaction(async (tx) => {
+            const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId, tx);
+            if (error) throw Object.assign(new Error(error.message), { status: error.status });
+            if (!can(actor.role, 'demote', target.role)) throw Object.assign(new Error('You lack permission to demote this member'), { status: 403 });
 
-        await prisma.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
-        res.json(await freshClan(actor.clanId));
+            const newRole = nextRankDown(target.role);
+            if (!newRole) throw Object.assign(new Error('That member is already at the lowest rank'), { status: 400 });
+
+            await tx.clanMember.update({ where: { userId: targetUserId }, data: { role: newRole } });
+            return actor.clanId;
+        });
+        res.json(await freshClan(clanId));
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Demote error:', err);
         res.status(500).json({ error: 'Failed to demote member' });
     }
@@ -679,13 +695,18 @@ router.post('/members/:userId/kick', requireAuth, async (req, res) => {
     try {
         const targetUserId = Number(req.params.userId);
         if (!Number.isInteger(targetUserId)) return res.status(400).json({ error: 'Invalid member id' });
-        const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId);
-        if (error) return res.status(error.status).json({ error: error.message });
-        if (!can(actor.role, 'kick', target.role)) return res.status(403).json({ error: 'You lack permission to kick this member' });
 
-        await prisma.clanMember.delete({ where: { userId: targetUserId } });
-        res.json(await freshClan(actor.clanId));
+        const clanId = await prisma.$transaction(async (tx) => {
+            const { actor, target, error } = await loadActorAndTarget(req.user.userId, targetUserId, tx);
+            if (error) throw Object.assign(new Error(error.message), { status: error.status });
+            if (!can(actor.role, 'kick', target.role)) throw Object.assign(new Error('You lack permission to kick this member'), { status: 403 });
+
+            await tx.clanMember.delete({ where: { userId: targetUserId } });
+            return actor.clanId;
+        });
+        res.json(await freshClan(clanId));
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Kick error:', err);
         res.status(500).json({ error: 'Failed to kick member' });
     }

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import Stripe from 'stripe';
 import { requireAuth, logAudit } from '../middleware/auth.js';
-import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOLD_PACKS, CORS_ORIGIN } from '../config.js';
+import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOLD_PACKS, CORS_ORIGIN, NODE_ENV } from '../config.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
@@ -100,9 +100,15 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         const stripe = getStripe();
         const totalGold = pack.gold + pack.bonus;
 
-        // Build success/cancel URLs from the request origin (works in both dev and prod)
-        const origin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
-        const baseUrl = origin.replace(/\/+$/, '');
+        // Build success/cancel URLs — validate origin to prevent open redirects
+        const rawOrigin = (req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || '').replace(/\/+$/, '');
+        const ALLOWED_ORIGINS = [
+            'https://web-production-aeea.up.railway.app',
+            ...(NODE_ENV !== 'production' ? ['http://localhost:5173', 'http://localhost:3000'] : []),
+        ];
+        const baseUrl = ALLOWED_ORIGINS.includes(rawOrigin)
+            ? rawOrigin
+            : (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
         const successUrl = `${baseUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${baseUrl}?payment=cancelled`;
 

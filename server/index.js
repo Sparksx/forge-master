@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: NODE_ENV === 'production' ? {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'blob:'],
+            connectSrc: ["'self'", 'https://checkout.stripe.com', 'wss:'],
+            frameSrc: ["'self'", 'https://checkout.stripe.com'],
+            fontSrc: ["'self'"],
+        },
+    } : false,
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -132,7 +142,7 @@ server.listen(PORT, async () => {
         }
     }
     await cleanupExpiredTokens();
-    setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+    setInterval(() => cleanupExpiredTokens().catch(() => {}), 24 * 60 * 60 * 1000);
 });
 
 // Graceful shutdown
