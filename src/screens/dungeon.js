@@ -107,6 +107,21 @@ export function createDungeon({ onResolve } = {}) {
         }
         return best;
     };
+    // The enemy the hero strikes next per the resolved timeline. The engine
+    // focus-fires (enemy 0, then 1, …), so the hero must walk to the *scripted*
+    // target — not the nearest sprite — or it ends up beside the wrong enemy and
+    // the timeline stalls waiting for it to be "in reach". Falls back to nearest.
+    const nextHeroTargetId = () => {
+        for (let i = replayIdx; i < replayEvents.length; i++) {
+            if (replayEvents[i].by === player.id) return replayEvents[i].target;
+        }
+        return null;
+    };
+    const heroTarget = () => {
+        const id = nextHeroTargetId();
+        const scripted = id ? enemies.find((e) => e.id === id && e.alive) : null;
+        return scripted || nearestEnemy();
+    };
     // How close a fighter must be to its target to land a blow.
     const reachOf = (atk, target) => (atk.ranged ? RANGED_STANDOFF * tile : atk.r + target.r + 4);
 
@@ -303,27 +318,23 @@ export function createDungeon({ onResolve } = {}) {
         }
     }
 
-    // PvE pre-combat intro: the hero advances on the pack while the enemies
-    // patrol their aggro zones. The instant the hero alerts one, the fight is
-    // joined — `simClock` resets so the resolved timeline plays from t=0.
+    // PvE pre-combat intro: the hero advances on the pack while every enemy
+    // patrols. Enemies don't engage here — they wake as their wave fires once the
+    // timeline starts (see stepReplay). Joining resets `simClock` so the resolved
+    // timeline plays from t=0.
     function stepIntro(dt) {
-        const target = nearestEnemy();
+        const target = heroTarget();
         if (player.alive && target) {
             const reach = reachOf(player, target);
             if (dist(player, target) > reach) seek(player, target, 3.4 * tile, dt, reach);
             else player.facing = (target.x - player.x) < 0 ? -1 : 1;
         }
-        for (const e of aliveEnemies()) {
-            if (!e.aggro && dist(player, e) <= AGGRO_TILES * tile) {
-                e.aggro = true;
-                spawnFloater(e, '!', 'alert', false);
-            }
-            if (!e.aggro) idleEnemy(e, dt);
-            else if (dist(e, player) > reachOf(e, player)) seek(e, player, 2.3 * tile, dt, reachOf(e, player));
-        }
-        // Join on first contact, or force it after a few seconds so a hero that
-        // can't path to the pack can never soft-hang the fight.
-        if (aliveEnemies().some((e) => e.aggro) || simClock > 4) {
+        for (const e of aliveEnemies()) idleEnemy(e, dt);
+        // Join once the hero has actually closed on its first scripted target (so
+        // the timeline opens with the hero in striking range and the first blow
+        // connects). A safety timeout covers a hero that can't path to the pack.
+        const ready = target && dist(player, target) <= reachOf(player, target);
+        if (ready || simClock > 4) {
             combatJoined = true;
             simClock = 0;        // play the resolved timeline from the engagement
             replayIdx = 0;
@@ -338,7 +349,7 @@ export function createDungeon({ onResolve } = {}) {
         const entById = (id) => (id === player.id ? player : enemies.find((e) => e.id === id));
 
         // Flavour movement: both sides walk toward their foe, then trade in place.
-        const foe = nearestEnemy();
+        const foe = heroTarget();
         if (player.alive && foe) {
             const reach = reachOf(player, foe);
             if (dist(player, foe) > reach) seek(player, foe, 3.4 * tile, dt, reach);
@@ -346,17 +357,9 @@ export function createDungeon({ onResolve } = {}) {
         }
         for (const e of aliveEnemies()) {
             if (!player.alive) break;
-            // PvE stragglers keep patrolling until the hero (or the fight) alerts
-            // them; PvP enemies are always aggro'd, so this just seeks.
-            if (patrolIntro && !e.aggro) {
-                if (dist(player, e) <= AGGRO_TILES * tile) {
-                    e.aggro = true;
-                    spawnFloater(e, '!', 'alert', false);
-                } else {
-                    idleEnemy(e, dt);
-                    continue;
-                }
-            }
+            // PvE: an enemy keeps patrolling until its wave engages it (its first
+            // event — see below). PvP enemies are always aggro'd, so this seeks.
+            if (patrolIntro && !e.aggro) { idleEnemy(e, dt); continue; }
             const reach = reachOf(e, player);
             if (dist(e, player) > reach) seek(e, player, 2.3 * tile, dt, reach);
             else e.facing = (player.x - e.x) < 0 ? -1 : 1;
@@ -370,12 +373,23 @@ export function createDungeon({ onResolve } = {}) {
             if (simClock < ev.t) break;
             const attacker = entById(ev.by);
             const target = entById(ev.target);
-            // Trading blows alerts any still-patrolling participant (PvE).
+            // A pack member joins the brawl the moment it first acts or is struck:
+            // wake it and pop the "!" alert (PvE — this is what staggers the aggro
+            // across the fight instead of all at once).
             if (patrolIntro) {
-                if (attacker && attacker.id !== 'player') attacker.aggro = true;
-                if (target && target.id !== 'player') target.aggro = true;
+                for (const c of [attacker, target]) {
+                    if (c && c.id !== 'player' && !c.aggro) {
+                        c.aggro = true;
+                        spawnFloater(c, '!', 'alert', false);
+                    }
+                }
             }
-            if (attacker && target && attacker.alive) {
+            // PvP holds the opening blow until the attacker has closed (so it
+            // doesn't fly across the room). PvE pre-positions the hero in the
+            // walk-in intro and fires on schedule instead — holding here would
+            // stall the whole timeline whenever the hero repositions between pack
+            // targets (events are HP-snapshots, so they can't fire out of order).
+            if (!patrolIntro && attacker && target && attacker.alive) {
                 const inReach = dist(attacker, target) <= reachOf(attacker, target) + 2;
                 if (!inReach && simClock < ev.t + 2) break;
             }
