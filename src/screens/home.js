@@ -43,6 +43,10 @@ let autoForgeTimer = null;
 // Set while auto-forge is paused waiting on a player decision (the reveal modal
 // is open). The loop resumes once that decision is made.
 let autoForgePaused = false;
+let pendingRefresh = false;
+
+// Bound listener references for proper cleanup.
+let boundSyncChat = null;
 
 // Restore the player's saved auto-forge filters (kept slots, trash-lower-power).
 loadAutoForgeSettings();
@@ -56,7 +60,8 @@ export function render(container) {
     root = container;
     clear(root);
     root.appendChild(h('div', { className: 'home-screen' }, buildBattle(), buildForge(), buildChat()));
-    gameEvents.on(EVENTS.CHAT_UPDATED, () => syncChat());
+    boundSyncChat = () => syncChat();
+    gameEvents.on(EVENTS.CHAT_UPDATED, boundSyncChat);
     refresh();
 }
 
@@ -76,16 +81,24 @@ export function onHide() {
     autoForgeTimer = null;
     clearTimeout(nextTimer);
     nextTimer = null;
+    if (boundSyncChat) {
+        gameEvents.off(EVENTS.CHAT_UPDATED, boundSyncChat);
+        boundSyncChat = null;
+    }
 }
 
 export function refresh() {
     if (!root || !root.querySelector('.gear-grid')) return;
-    updateGearGrid();
-    const chip = root.querySelector('.forge-level-chip');
-    if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
-    syncForgeXp();
-    // A live fight is never disturbed by a gear/gold change — the next encounter
-    // picks up the new stats. So there's nothing battle-related to sync here.
+    if (pendingRefresh) return;
+    pendingRefresh = true;
+    requestAnimationFrame(() => {
+        pendingRefresh = false;
+        if (!root || !root.querySelector('.gear-grid')) return;
+        updateGearGrid();
+        const chip = root.querySelector('.forge-level-chip');
+        if (chip) chip.textContent = `Forge Lv ${getForgeLevel()}`;
+        syncForgeXp();
+    });
 }
 
 // ── Battle zone ─────────────────────────────────────────────────────────────
