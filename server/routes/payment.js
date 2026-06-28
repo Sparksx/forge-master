@@ -257,16 +257,20 @@ router.post('/webhook', async (req, res) => {
                 });
 
                 if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    // Atomic clawback: decrement in a single operation to avoid
+                    // a race where the user spends gold between read and write.
+                    // Prisma's decrement can go negative, so clamp afterward.
+                    const gs = await prisma.gameState.update({
                         where: { userId: purchase.userId },
+                        data: { gold: { decrement: purchase.goldGranted } },
                         select: { gold: true },
                     });
-                    const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
-                        where: { userId: purchase.userId },
-                        data: { gold: newGold },
-                    });
+                    if (gs.gold < 0) {
+                        await prisma.gameState.update({
+                            where: { userId: purchase.userId },
+                            data: { gold: 0 },
+                        });
+                    }
 
                     await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
                         packId: purchase.packId,

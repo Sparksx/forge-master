@@ -26,7 +26,7 @@ process.on('unhandledRejection', (reason) => {
 });
 process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
-    process.exit(1);
+    shutdown('uncaughtException');
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: NODE_ENV === 'production' ? {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'", "wss:", "https://discord.com", "https://accounts.google.com", "https://api.stripe.com"],
+            frameSrc: ["https://checkout.stripe.com"],
+            fontSrc: ["'self'"],
+        },
+    } : false,
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -112,11 +122,13 @@ app.use((err, req, res, _next) => {
 server.listen(PORT, async () => {
     console.log(`Gear Master server running on port ${PORT} (${NODE_ENV})`);
 
-    // Migrate existing sprites if upgrading from old schema
-    await migrateSpritesIfNeeded();
-
-    // Seed equipment templates into DB if tables are empty (first run)
-    await seedEquipmentIfEmpty();
+    try {
+        await migrateSpritesIfNeeded();
+        await seedEquipmentIfEmpty();
+    } catch (err) {
+        console.error('Fatal startup error during DB init:', err);
+        process.exit(1);
+    }
 
     // Cleanup expired refresh tokens on startup + every 24h
     async function cleanupExpiredTokens() {
