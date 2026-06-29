@@ -29,6 +29,7 @@ model User {
   conversations  ConversationMember[]
 
   @@index([pvpRating])
+  @@index([updatedAt])
   refreshTokens  RefreshToken[]
   bans           Ban[]          @relation("bannedUser")
   mutes          Mute[]         @relation("mutedUser")
@@ -214,6 +215,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([expiresAt])
 }
 
 model Ban {

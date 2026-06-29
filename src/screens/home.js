@@ -52,11 +52,14 @@ export const icon = '🔨';
 export const label = 'Forge';
 
 // ── Render ────────────────────────────────────────────────────────────────
+function onChatUpdated() { syncChat(); }
+
 export function render(container) {
     root = container;
     clear(root);
     root.appendChild(h('div', { className: 'home-screen' }, buildBattle(), buildForge(), buildChat()));
-    gameEvents.on(EVENTS.CHAT_UPDATED, () => syncChat());
+    gameEvents.off(EVENTS.CHAT_UPDATED, onChatUpdated);
+    gameEvents.on(EVENTS.CHAT_UPDATED, onChatUpdated);
     refresh();
 }
 
@@ -76,6 +79,7 @@ export function onHide() {
     autoForgeTimer = null;
     clearTimeout(nextTimer);
     nextTimer = null;
+    gameEvents.off(EVENTS.CHAT_UPDATED, onChatUpdated);
 }
 
 export function refresh() {
