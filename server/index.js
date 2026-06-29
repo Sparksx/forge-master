@@ -45,7 +45,19 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://discord.com", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://api.stripe.com", "wss:", "ws:"],
+            frameSrc: ["https://js.stripe.com", "https://accounts.google.com"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -133,6 +145,23 @@ server.listen(PORT, async () => {
     }
     await cleanupExpiredTokens();
     setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+
+    // Prune old chat messages (keep last 30 days) on startup + every 24h
+    async function cleanupOldChatMessages() {
+        try {
+            const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            const { count } = await prisma.chatMessage.deleteMany({
+                where: { createdAt: { lt: cutoff } }
+            });
+            if (count > 0) {
+                console.log(`Cleaned up ${count} old chat message(s)`);
+            }
+        } catch (err) {
+            console.error('Failed to cleanup old chat messages:', err);
+        }
+    }
+    await cleanupOldChatMessages();
+    setInterval(cleanupOldChatMessages, 24 * 60 * 60 * 1000);
 });
 
 // Graceful shutdown

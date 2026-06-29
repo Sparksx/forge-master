@@ -39,15 +39,16 @@ function generateRefreshToken(user) {
     );
 }
 
-/** Store refresh token in DB and return both tokens as JSON */
+/** Store hashed refresh token in DB and return both tokens as JSON */
 async function issueTokens(user, res, statusCode = 200) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
     const decoded = jwt.decode(refreshToken);
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
     await prisma.refreshToken.create({
         data: {
-            token: refreshToken,
+            token: tokenHash,
             userId: user.id,
             expiresAt: new Date(decoded.exp * 1000),
         }
@@ -88,7 +89,8 @@ function generateGuestUsername() {
 
 // ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', authLimiter, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_.-]+$/).withMessage('Username can only contain letters, numbers, underscores, dots, and dashes'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ], async (req, res) => {
@@ -474,9 +476,10 @@ router.post('/refresh', async (req, res) => {
     try {
         const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
 
-        // Check token exists in DB (not revoked)
+        // Check token exists in DB (not revoked) — stored as SHA-256 hash
+        const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
         const stored = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken }
+            where: { token: tokenHash }
         });
         if (!stored) {
             return res.status(401).json({ error: 'Token revoked' });
@@ -491,12 +494,13 @@ router.post('/refresh', async (req, res) => {
         const newAccessToken = generateAccessToken(user);
         const newRefreshToken = generateRefreshToken(user);
         const decoded = jwt.decode(newRefreshToken);
+        const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
 
         await prisma.$transaction([
             prisma.refreshToken.delete({ where: { id: stored.id } }),
             prisma.refreshToken.create({
                 data: {
-                    token: newRefreshToken,
+                    token: newTokenHash,
                     userId: user.id,
                     expiresAt: new Date(decoded.exp * 1000),
                 }
@@ -519,8 +523,9 @@ router.post('/logout', requireAuth, async (req, res) => {
 
     try {
         if (refreshToken) {
+            const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
             await prisma.refreshToken.deleteMany({
-                where: { token: refreshToken, userId: req.user.userId }
+                where: { token: tokenHash, userId: req.user.userId }
             });
         } else {
             // Delete all refresh tokens for this user
@@ -570,7 +575,8 @@ router.get('/me', requireAuth, async (req, res) => {
 
 // ─── POST /api/auth/change-username ─────────────────────────────
 router.post('/change-username', requireAuth, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_.-]+$/).withMessage('Username can only contain letters, numbers, underscores, dots, and dashes'),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -606,8 +612,13 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    // Only allow known setting keys to prevent arbitrary data injection
+    const ALLOWED_KEYS = ['theme', 'language', 'sfx', 'music', 'notifications', 'chatFilter'];
     const VALID_THEMES = ['dark', 'light'];
+    const unknownKeys = Object.keys(settings).filter(k => !ALLOWED_KEYS.includes(k));
+    if (unknownKeys.length > 0) {
+        return res.status(400).json({ error: `Unknown setting keys: ${unknownKeys.join(', ')}` });
+    }
     if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
     }

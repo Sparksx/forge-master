@@ -2,6 +2,7 @@
 // server-side with the shared deterministic combat engine (anti-cheat) and
 // replayed identically on the client. No live opponent, no real-time timers.
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
@@ -12,6 +13,14 @@ import { pickOpponent, attackerEloChange } from '../lib/pvp-match.js';
 const router = Router();
 
 const CANDIDATE_POOL = 100; // recent players considered as opponents per fight
+
+const pvpFightLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many fights, please wait a moment' },
+});
 
 const USER_SELECT = {
     id: true, username: true, profilePicture: true, pvpRating: true,
@@ -85,7 +94,7 @@ function mirrorBot(attacker) {
 }
 
 // POST /api/pvp/fight — resolve one async fight and (for real opponents) apply Elo.
-router.post('/fight', requireAuth, async (req, res) => {
+router.post('/fight', pvpFightLimiter, requireAuth, async (req, res) => {
     try {
         const me = await prisma.user.findUnique({
             where: { id: req.user.userId },
@@ -156,14 +165,23 @@ router.post('/fight', requireAuth, async (req, res) => {
 });
 
 // GET /api/pvp/leaderboard — top players by Elo, with recomputed power.
+// Supports ?page=1&limit=25 for pagination and returns the caller's own rank.
 router.get('/leaderboard', requireAuth, async (req, res) => {
     try {
-        const players = await prisma.user.findMany({
-            where: { pvpWins: { gt: 0 } },
-            orderBy: { pvpRating: 'desc' },
-            take: 10,
-            select: { ...USER_SELECT, pvpWins: true, pvpLosses: true },
-        });
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 25));
+
+        const [players, total] = await Promise.all([
+            prisma.user.findMany({
+                where: { pvpWins: { gt: 0 } },
+                orderBy: { pvpRating: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+                select: { ...USER_SELECT, pvpWins: true, pvpLosses: true },
+            }),
+            prisma.user.count({ where: { pvpWins: { gt: 0 } } }),
+        ]);
+
         const result = players.map((p) => ({
             id: p.id,
             username: p.username,
@@ -172,7 +190,13 @@ router.get('/leaderboard', requireAuth, async (req, res) => {
             losses: p.pvpLosses,
             power: fighterFromUser(p).power,
         }));
-        res.json(result);
+
+        // Caller's own rank (count of players with higher rating + 1)
+        const myRank = await prisma.user.count({
+            where: { pvpWins: { gt: 0 }, pvpRating: { gt: req.user.userId ? (await prisma.user.findUnique({ where: { id: req.user.userId }, select: { pvpRating: true } }))?.pvpRating ?? 0 : 0 } },
+        }) + 1;
+
+        res.json({ leaderboard: result, total, page, pages: Math.ceil(total / limit), myRank });
     } catch (err) {
         console.error('PvP leaderboard error:', err);
         res.status(500).json({ error: 'Internal server error' });
