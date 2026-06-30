@@ -454,14 +454,25 @@ export async function loadFromServer() {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
-// Flush pending save on tab hide / unload.
+// Flush pending save on tab hide / unload. Use sendBeacon on unload so the
+// browser guarantees delivery even if the tab is closing (async fetch is
+// cancelled during beforeunload/pagehide).
 if (typeof document !== 'undefined') {
-    const flush = () => {
+    const flush = (useBeacon = false) => {
         if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
             if (saveTimer) clearTimeout(saveTimer);
-            saveToServer();
+            if (useBeacon && navigator.sendBeacon) {
+                const token = getAccessToken();
+                const beaconPayload = { ...buildSave(), _token: token };
+                const blob = new globalThis.Blob([JSON.stringify(beaconPayload)], { type: 'application/json' });
+                navigator.sendBeacon('/api/game/state/beacon', blob);
+                saveTimer = null;
+                dirtyWhileSaving = false;
+            } else {
+                saveToServer();
+            }
         }
     };
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
-    window.addEventListener('beforeunload', flush);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(true); });
+    window.addEventListener('pagehide', () => flush(true));
 }

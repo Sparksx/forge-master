@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import jwt from 'jsonwebtoken';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+import { JWT_SECRET } from '../config.js';
 import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
 import {
     isFiniteNumber,
@@ -151,6 +153,32 @@ router.put('/state', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('Save state error:', err);
         res.status(500).json({ error: 'Failed to save game state' });
+    }
+});
+
+// POST /api/game/state/beacon — fire-and-forget save via navigator.sendBeacon().
+// sendBeacon can't set headers, so the JWT is embedded in the JSON body as `_token`.
+router.post('/state/beacon', async (req, res) => {
+    const token = req.body?._token;
+    if (!token || typeof token !== 'string') return res.status(401).end();
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const { equipment, gold, forgeLevel, combat, player, forgeHighestLevel } = req.body;
+        const data = {};
+        if (equipment !== undefined) data.equipment = equipment;
+        if (gold !== undefined && typeof gold === 'number' && gold >= 0) data.gold = Math.floor(gold);
+        if (forgeLevel !== undefined && typeof forgeLevel === 'number') data.forgeLevel = Math.floor(forgeLevel);
+        if (combat !== undefined) data.combat = combat;
+        if (player !== undefined) data.player = player;
+        if (forgeHighestLevel !== undefined) data.forgeHighestLevel = forgeHighestLevel;
+        await prisma.gameState.upsert({
+            where: { userId: payload.userId },
+            update: data,
+            create: { userId: payload.userId, ...data },
+        });
+        res.status(204).end();
+    } catch {
+        res.status(401).end();
     }
 });
 

@@ -100,9 +100,15 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         const stripe = getStripe();
         const totalGold = pack.gold + pack.bonus;
 
-        // Build success/cancel URLs from the request origin (works in both dev and prod)
-        const origin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
-        const baseUrl = origin.replace(/\/+$/, '');
+        // Build success/cancel URLs — only trust origins that match the configured CORS_ORIGIN
+        // to prevent open-redirect attacks via forged Origin/Referer headers.
+        const rawOrigin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '');
+        const allowedOrigins = CORS_ORIGIN === '*'
+            ? ['http://localhost:5173', 'http://localhost:3000']
+            : [CORS_ORIGIN];
+        const baseUrl = (rawOrigin && allowedOrigins.includes(rawOrigin.replace(/\/+$/, '')))
+            ? rawOrigin.replace(/\/+$/, '')
+            : allowedOrigins[0];
         const successUrl = `${baseUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${baseUrl}?payment=cancelled`;
 
@@ -279,6 +285,7 @@ router.post('/webhook', async (req, res) => {
             }
         } catch (err) {
             console.error('Refund webhook error:', err);
+            return res.status(500).json({ error: 'Refund processing failed' });
         }
     }
 
