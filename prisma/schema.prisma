@@ -29,6 +29,7 @@ model User {
   conversations  ConversationMember[]
 
   @@index([pvpRating])
+  @@index([createdAt])
   refreshTokens  RefreshToken[]
   bans           Ban[]          @relation("bannedUser")
   mutes          Mute[]         @relation("mutedUser")
@@ -176,6 +177,7 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@index([channel, createdAt])
+  @@index([senderId])
 }
 
 // A private conversation: a 1:1 direct message ("dm") or a named custom group

@@ -587,5 +587,6 @@ async function sendHistory(socket, channel) {
         });
     } catch (err) {
         console.error('Chat history error:', err);
+        socket.emit('chat:history', { channel, messages: [], error: 'Failed to load history' });
     }
 }

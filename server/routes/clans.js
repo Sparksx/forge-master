@@ -176,9 +176,9 @@ async function resolveExpedition(expId, forUserId = null) {
         const filledSlots = exp.members.length;
         // `exp` carries the stored powerReq + slots, so outcome reflects this run's party size.
         const outcome = expeditionOutcome(exp, { totalPower, filledSlots }, Math.random());
-        const xpGain = Math.round(exp.rewardXp * outcome.rewardMult);
+        const xpGain = Math.max(0, Math.round(exp.rewardXp * outcome.rewardMult));
         // rewardGold is the total pot — split it evenly across everyone who joined.
-        const goldPot = Math.round(exp.rewardGold * outcome.rewardMult);
+        const goldPot = Math.max(0, Math.round(exp.rewardGold * outcome.rewardMult));
         const goldEach = filledSlots > 0 ? Math.round(goldPot / filledSlots) : 0;
 
         await tx.expedition.update({
@@ -259,7 +259,13 @@ router.get('/expeditions', requireAuth, async (req, res) => {
             select: { id: true },
         });
         let goldGained = 0;
-        for (const e of due) goldGained += await resolveExpedition(e.id, req.user.userId);
+        for (const e of due) {
+            try {
+                goldGained += await resolveExpedition(e.id, req.user.userId);
+            } catch (err) {
+                console.error(`Failed to resolve expedition ${e.id}:`, err);
+            }
+        }
 
         const list = await prisma.expedition.findMany({
             where: { clanId: membership.clanId, OR: [{ status: 'active' }, { resolvedAt: { not: null } }] },
@@ -412,7 +418,13 @@ router.get('/missions', requireAuth, async (req, res) => {
             where: { clanId: membership.clanId },
             orderBy: { id: 'desc' },
             take: 20,
-            include: { contributions: { include: { user: { select: { username: true } } } } },
+            include: {
+                contributions: {
+                    orderBy: { amount: 'desc' },
+                    take: 3,
+                    include: { user: { select: { username: true } } },
+                },
+            },
         });
         res.json({
             missions: list.map(serializeMission),
@@ -462,19 +474,22 @@ router.post('/missions/progress', requireAuth, async (req, res) => {
         const missions = await prisma.mission.findMany({ where: { clanId: membership.clanId, type, status: 'active' } });
         const completed = [];
         for (const m of missions) {
-            const remaining = Math.max(0, m.target - m.progress);
-            const applied = Math.min(amount, remaining);
-            if (applied <= 0) continue;
-            await prisma.$transaction([
-                prisma.mission.update({ where: { id: m.id }, data: { progress: { increment: applied } } }),
-                prisma.clanMember.update({ where: { userId: req.user.userId }, data: { xpContributed: { increment: applied } } }),
-                prisma.missionContribution.upsert({
+            const didComplete = await prisma.$transaction(async (tx) => {
+                const current = await tx.mission.findUnique({ where: { id: m.id }, select: { progress: true, target: true, status: true } });
+                if (!current || current.status !== 'active') return false;
+                const remaining = Math.max(0, current.target - current.progress);
+                const applied = Math.min(amount, remaining);
+                if (applied <= 0) return false;
+                await tx.mission.update({ where: { id: m.id }, data: { progress: { increment: applied } } });
+                await tx.clanMember.update({ where: { userId: req.user.userId }, data: { xpContributed: { increment: applied } } });
+                await tx.missionContribution.upsert({
                     where: { missionId_userId: { missionId: m.id, userId: req.user.userId } },
                     create: { missionId: m.id, userId: req.user.userId, amount: applied },
                     update: { amount: { increment: applied } },
-                }),
-            ]);
-            if (m.progress + applied >= m.target) { await completeMission(m.id); completed.push(m.defKey); }
+                });
+                return current.progress + applied >= current.target;
+            });
+            if (didComplete) { await completeMission(m.id); completed.push(m.defKey); }
         }
         res.json({ ok: true, completed });
     } catch (err) {
@@ -567,24 +582,24 @@ router.post('/leave', requireAuth, async (req, res) => {
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
         const clanId = membership.clanId;
-        await prisma.clanMember.delete({ where: { userId: req.user.userId } });
 
-        // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
-        const clan = await prisma.clan.findUnique({ where: { id: clanId } });
-        if (clan && clan.ownerId === req.user.userId) {
-            const next = await prisma.clanMember.findFirst({
-                where: { clanId },
-                orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
-            });
-            if (next) {
-                await prisma.$transaction([
-                    prisma.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } }),
-                    prisma.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
-                ]);
-            } else {
-                await prisma.clan.delete({ where: { id: clanId } });
+        await prisma.$transaction(async (tx) => {
+            await tx.clanMember.delete({ where: { userId: req.user.userId } });
+
+            const clan = await tx.clan.findUnique({ where: { id: clanId } });
+            if (clan && clan.ownerId === req.user.userId) {
+                const next = await tx.clanMember.findFirst({
+                    where: { clanId },
+                    orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+                });
+                if (next) {
+                    await tx.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } });
+                    await tx.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } });
+                } else {
+                    await tx.clan.delete({ where: { id: clanId } });
+                }
             }
-        }
+        });
         res.json({ ok: true });
     } catch (err) {
         console.error('Leave clan error:', err);

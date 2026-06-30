@@ -1,6 +1,29 @@
 import { describe, it, expect } from 'vitest';
 import { rollTier, createItem, rollLevel, rollBonuses, forge } from '../forge.js';
-import { TIERS, HEALTH_ITEMS, forgeGoldDrop } from '../config.js';
+import { TIERS, HEALTH_ITEMS, forgeGoldDrop, FORGE_LEVELS } from '../config.js';
+
+describe('FORGE_LEVELS integrity', () => {
+    it('every level chances sum to exactly 100', () => {
+        FORGE_LEVELS.forEach((lvl, i) => {
+            const sum = lvl.chances.reduce((a, b) => a + b, 0);
+            expect(sum, `FORGE_LEVELS[${i}] sums to ${sum}`).toBe(100);
+        });
+    });
+
+    it('every level has exactly 7 rarity slots', () => {
+        FORGE_LEVELS.forEach((lvl, i) => {
+            expect(lvl.chances.length, `FORGE_LEVELS[${i}]`).toBe(7);
+        });
+    });
+
+    it('no negative chances', () => {
+        FORGE_LEVELS.forEach((lvl, i) => {
+            lvl.chances.forEach((c, j) => {
+                expect(c, `FORGE_LEVELS[${i}].chances[${j}]`).toBeGreaterThanOrEqual(0);
+            });
+        });
+    });
+});
 
 describe('rollTier', () => {
     it('always rolls Common at forge level 1', () => {
