@@ -14,7 +14,7 @@ export function requireAuth(req, res, next) {
 
     const token = header.slice(7);
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         req.user = { userId: payload.userId, username: payload.username };
         next();
     } catch (err) {
@@ -106,7 +106,7 @@ export function socketAuth(socket, next) {
     }
 
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         socket.user = { userId: payload.userId, username: payload.username };
         next();
     } catch (err) {

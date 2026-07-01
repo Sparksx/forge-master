@@ -472,7 +472,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     try {
-        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
 
         // Check token exists in DB (not revoked)
         const stored = await prisma.refreshToken.findUnique({

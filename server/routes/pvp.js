@@ -13,6 +13,12 @@ const router = Router();
 
 const CANDIDATE_POOL = 100; // recent players considered as opponents per fight
 
+let leaderboardCache = null;
+let leaderboardCacheAt = 0;
+const LEADERBOARD_TTL = 30_000;
+
+function invalidateLeaderboard() { leaderboardCache = null; }
+
 const USER_SELECT = {
     id: true, username: true, profilePicture: true, pvpRating: true,
     gameState: { select: { equipment: true, player: true } },
@@ -136,6 +142,7 @@ router.post('/fight', requireAuth, async (req, res) => {
                     ...(win ? { pvpWins: { increment: 1 } } : { pvpLosses: { increment: 1 } }),
                 },
             });
+            invalidateLeaderboard();
         }
 
         res.json({
@@ -156,8 +163,13 @@ router.post('/fight', requireAuth, async (req, res) => {
 });
 
 // GET /api/pvp/leaderboard — top players by Elo, with recomputed power.
+// Cached for 30 s — the data changes only on rated fights.
 router.get('/leaderboard', requireAuth, async (req, res) => {
     try {
+        const now = Date.now();
+        if (leaderboardCache && now - leaderboardCacheAt < LEADERBOARD_TTL) {
+            return res.json(leaderboardCache);
+        }
         const players = await prisma.user.findMany({
             where: { pvpWins: { gt: 0 } },
             orderBy: { pvpRating: 'desc' },
@@ -172,6 +184,8 @@ router.get('/leaderboard', requireAuth, async (req, res) => {
             losses: p.pvpLosses,
             power: fighterFromUser(p).power,
         }));
+        leaderboardCache = result;
+        leaderboardCacheAt = now;
         res.json(result);
     } catch (err) {
         console.error('PvP leaderboard error:', err);
