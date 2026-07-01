@@ -147,9 +147,22 @@ async function sendConversations(socket) {
     socket.emit('chat:conversations', convs.map((c) => serializeConversation(c, userId)));
 }
 
+function makeRateLimit(windowMs, max) {
+    const hits = [];
+    return () => {
+        const now = Date.now();
+        while (hits.length && hits[0] <= now - windowMs) hits.shift();
+        if (hits.length >= max) return true;
+        hits.push(now);
+        return false;
+    };
+}
+
 export function registerChatHandlers(io, socket) {
     let lastMessageAt = 0;
     const userId = socket.user.userId;
+    const profileLimit = makeRateLimit(10_000, 10);
+    const historyLimit = makeRateLimit(5_000, 5);
 
     // Join the general channel by default and send its recent history.
     socket.join('chat:general');
@@ -242,6 +255,7 @@ export function registerChatHandlers(io, socket) {
 
     // Send the recent history for a specific channel on demand (tab switches).
     socket.on('chat:request-history', async (data) => {
+        if (historyLimit()) return;
         const { channel } = data || {};
         const target = await resolveChannel(userId, channel);
         if (!target) { socket.emit('chat:history', { channel, messages: [] }); return; }
@@ -373,6 +387,7 @@ export function registerChatHandlers(io, socket) {
     socket.on('chat:player-profile', async (data) => {
         const { userId } = data || {};
         if (!userId || typeof userId !== 'number') return;
+        if (profileLimit()) return;
 
         try {
             const user = await prisma.user.findUnique({
