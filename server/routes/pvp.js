@@ -128,14 +128,19 @@ router.post('/fight', requireAuth, async (req, res) => {
         let newRating = attacker.rating;
         if (!friendly && !opponent.isBot) {
             ratingChange = attackerEloChange(attacker.rating, opponent.rating, win, attacker.power, opponent.power);
-            newRating = Math.max(0, attacker.rating + ratingChange);
-            await prisma.user.update({
+            const updated = await prisma.user.update({
                 where: { id: me.id },
                 data: {
-                    pvpRating: newRating,
+                    pvpRating: { increment: ratingChange },
                     ...(win ? { pvpWins: { increment: 1 } } : { pvpLosses: { increment: 1 } }),
                 },
+                select: { pvpRating: true },
             });
+            newRating = Math.max(0, updated.pvpRating);
+            if (updated.pvpRating < 0) {
+                await prisma.user.update({ where: { id: me.id }, data: { pvpRating: 0 } });
+                newRating = 0;
+            }
         }
 
         res.json({

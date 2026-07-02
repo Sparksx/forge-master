@@ -188,11 +188,20 @@ async function resolveExpedition(expId, forUserId = null) {
         if (xpGain > 0) await tx.clan.update({ where: { id: exp.clanId }, data: { xp: { increment: xpGain } } });
         const xpEach = filledSlots > 0 ? Math.round(xpGain / filledSlots) : 0;
         let goldForUser = 0;
-        for (const m of exp.members) {
-            if (goldEach > 0) await tx.gameState.updateMany({ where: { userId: m.userId }, data: { gold: { increment: goldEach } } });
-            if (xpEach > 0) await tx.clanMember.updateMany({ where: { userId: m.userId, clanId: exp.clanId }, data: { xpContributed: { increment: xpEach } } });
-            if (goldEach > 0 && m.userId === forUserId) goldForUser = goldEach;
+        const memberUserIds = exp.members.map(m => m.userId);
+        if (goldEach > 0 && memberUserIds.length > 0) {
+            await tx.gameState.updateMany({
+                where: { userId: { in: memberUserIds } },
+                data: { gold: { increment: goldEach } },
+            });
         }
+        if (xpEach > 0 && memberUserIds.length > 0) {
+            await tx.clanMember.updateMany({
+                where: { userId: { in: memberUserIds }, clanId: exp.clanId },
+                data: { xpContributed: { increment: xpEach } },
+            });
+        }
+        if (goldEach > 0 && forUserId && memberUserIds.includes(forUserId)) goldForUser = goldEach;
         return goldForUser;
     });
 }
