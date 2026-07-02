@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://discord.com", "https://oauth2.googleapis.com", "https://api.stripe.com", "wss:", "ws:"],
+            frameSrc: ["'self'", "https://js.stripe.com"],
+            fontSrc: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -79,9 +89,14 @@ app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+// Health check — verifies database connectivity
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'error', message: 'Database unreachable' });
+    }
 });
 
 // Setup Socket.io
@@ -109,6 +124,8 @@ app.use((err, req, res, _next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
+let cleanupInterval = null;
+
 server.listen(PORT, async () => {
     console.log(`Gear Master server running on port ${PORT} (${NODE_ENV})`);
 
@@ -132,12 +149,13 @@ server.listen(PORT, async () => {
         }
     }
     await cleanupExpiredTokens();
-    setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+    cleanupInterval = setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 });
 
 // Graceful shutdown
 function shutdown(signal) {
     console.log(`${signal} received — shutting down gracefully`);
+    clearInterval(cleanupInterval);
     io.close();
     server.close(async () => {
         await prisma.$disconnect();
