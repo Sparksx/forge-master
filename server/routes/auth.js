@@ -465,7 +465,7 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
@@ -606,14 +606,17 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
     const VALID_THEMES = ['dark', 'light'];
+    const ALLOWED_KEYS = ['theme', 'soundEnabled', 'musicEnabled', 'autoForge', 'language', 'notifications'];
+    const unknown = Object.keys(settings).filter((k) => !ALLOWED_KEYS.includes(k));
+    if (unknown.length > 0) {
+        return res.status(400).json({ error: `Unknown setting keys: ${unknown.join(', ')}` });
+    }
     if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
     }
 
     try {
-        // Use a transaction to atomically read-merge-write settings
         const updated = await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { id: req.user.userId },

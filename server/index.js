@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
 import { setupSocket } from './socket/index.js';
@@ -45,12 +46,27 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://discord.com", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://js.stripe.com", "wss:", "ws:"],
+            frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // CORS
 app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
+
+// Response compression
+app.use(compression());
 
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
@@ -89,6 +105,7 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
+app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
 app.use(express.static(distPath));
 
 // Admin dashboard — serve admin.html for /admin route
