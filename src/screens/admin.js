@@ -4,6 +4,7 @@
 import { h, clear, fmt, toast, openModal } from './components.js';
 import { getCurrentUser } from '../auth.js';
 import { addGold, resetProgress } from '../game/state.js';
+import { MAX_FORGE_LEVEL } from '../game/config.js';
 import {
     isStaff, isAdmin, getUserRole,
     searchUsers, getUserProfile,
@@ -239,7 +240,7 @@ async function act(action, userId, detail) {
             case 'gold-100k': await addGoldToUser(userId, 100_000); toast('+100K gold', 'success'); break;
             case 'gold-1m': await addGoldToUser(userId, 1_000_000); toast('+1M gold', 'success'); break;
             case 'forge': {
-                const lvl = parseInt(prompt('Set forge level (1–12):', '6'), 10);
+                const lvl = parseInt(prompt(`Set forge level (1–${MAX_FORGE_LEVEL}):`, '6'), 10);
                 if (!lvl) return;
                 await setUserForgeLevel(userId, lvl);
                 toast(`Forge level set to ${lvl}`, 'success');
