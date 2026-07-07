@@ -29,6 +29,7 @@ model User {
   conversations  ConversationMember[]
 
   @@index([pvpRating])
+  @@index([updatedAt])
   refreshTokens  RefreshToken[]
   bans           Ban[]          @relation("bannedUser")
   mutes          Mute[]         @relation("mutedUser")
@@ -57,6 +58,7 @@ model Clan {
   expeditions Expedition[]
   missions    Mission[]
 
+  @@index([ownerId])
   @@index([treasury])
   @@index([xp])
 }
@@ -100,6 +102,7 @@ model Expedition {
   members ExpeditionMember[]
 
   @@index([clanId, status])
+  @@index([status, endsAt])
 }
 
 model ExpeditionMember {

@@ -6,7 +6,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
+import compression from 'compression';
 import { setupSocket } from './socket/index.js';
+import { requireNotBanned } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
@@ -67,17 +69,24 @@ app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '16kb' }));
 
-// API routes
+// Compression for API responses and static assets
+app.use(compression());
+
+// Serve static frontend early so asset requests skip API route matching
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+// API routes — auth is open (login/register); game-affecting routes check bans
 app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/game', requireNotBanned, gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
-app.use('/api/equipment', equipmentRoutes);
+app.use('/api/equipment', requireNotBanned, equipmentRoutes);
 app.use('/api/sprites', spriteRoutes);
 app.use('/api/monsters', monsterRoutes);
 app.use('/api/players', playerRoutes);
-app.use('/api/clans', clanRoutes);
-app.use('/api/pvp', pvpRoutes);
+app.use('/api/clans', requireNotBanned, clanRoutes);
+app.use('/api/pvp', requireNotBanned, pvpRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -86,10 +95,6 @@ app.get('/api/health', (req, res) => {
 
 // Setup Socket.io
 const io = setupSocket(server);
-
-// Serve static frontend in production
-const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
