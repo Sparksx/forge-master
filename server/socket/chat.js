@@ -5,7 +5,7 @@ import { getActiveMute, logAudit } from '../middleware/auth.js';
 
 // Extract a player's equipped cosmetic frame from their stored game-state JSON,
 // guarding against a missing/non-object `player` blob.
-function frameOf(gameState) {
+export function frameOf(gameState) {
     const player = gameState?.player;
     return player && typeof player === 'object' && typeof player.frame === 'string'
         ? player.frame
@@ -90,7 +90,7 @@ async function resolveChannel(userId, channel) {
 
 // Shape a conversation for a given viewer: derive a display title (group name, or
 // the other party's username for a DM) and a flat member list.
-function serializeConversation(conv, viewerId) {
+export function serializeConversation(conv, viewerId) {
     const members = conv.members.map((m) => ({
         id: m.userId,
         username: m.user?.username,
@@ -547,7 +547,7 @@ export function registerChatHandlers(io, socket) {
     });
 }
 
-function getEloRank(rating) {
+export function getEloRank(rating) {
     if (rating >= 2000) return { name: 'Master', icon: '👑' };
     if (rating >= 1700) return { name: 'Diamond', icon: '💎' };
     if (rating >= 1400) return { name: 'Platinum', icon: '⭐' };

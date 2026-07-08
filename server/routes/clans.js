@@ -18,13 +18,13 @@ const router = Router();
  * ignoring any client-supplied raw `stats`) so a modified save can't inflate a
  * member's standing on the clan leaderboard.
  */
-function memberPower(gameState) {
+export function memberPower(gameState) {
     if (!gameState || !gameState.equipment) return 0;
     return gearPowerFromEquipment(gameState.equipment);
 }
 
 /** Serialize a clan (with members) into the client shape. Level comes from XP. */
-function serializeClan(clan, { withMembers = false } = {}) {
+export function serializeClan(clan, { withMembers = false } = {}) {
     const level = clanLevelFromXp(clan.xp);
     const members = (clan.members || []).map((m) => {
         const gs = m.user?.gameState;
@@ -99,7 +99,7 @@ async function freshClan(id) {
     return clan ? serializeClan(clan, { withMembers: true }) : null;
 }
 
-function validClanFields({ name, tag, emblem, description }) {
+export function validClanFields({ name, tag, emblem, description }) {
     if (typeof name !== 'string' || name.trim().length < 3 || name.trim().length > 30) {
         return 'Clan name must be 3–30 characters';
     }
@@ -116,7 +116,7 @@ function validClanFields({ name, tag, emblem, description }) {
 }
 
 // ── Activity serialization ──────────────────────────────────────────────────
-function serializeExpedition(exp, now = Date.now()) {
+export function serializeExpedition(exp, now = Date.now()) {
     const members = (exp.members || []).map((m) => ({
         userId: m.userId, username: m.user?.username || '???', power: m.power,
     }));
@@ -140,7 +140,7 @@ function serializeExpedition(exp, now = Date.now()) {
     };
 }
 
-function serializeMission(m) {
+export function serializeMission(m) {
     const top = (m.contributions || [])
         .slice()
         .sort((a, b) => b.amount - a.amount)
