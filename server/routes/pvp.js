@@ -20,14 +20,14 @@ const USER_SELECT = {
 };
 
 // Clan stat perk (HP/damage %) so clan bonuses count in PvP exactly as in PvE.
-function clanStatBonusPct(membership) {
+export function clanStatBonusPct(membership) {
     const xp = membership?.clan?.xp;
     if (typeof xp !== 'number') return 0;
     return clanPerks(clanLevelFromXp(xp)).statBonusPct || 0;
 }
 
 // Build a combat-ready fighter (full stats + power) from a user's saved snapshot.
-function fighterFromUser(user) {
+export function fighterFromUser(user) {
     const equipment = user.gameState?.equipment || {};
     const level = user.gameState?.player?.level || 1;
     const statBonusPct = clanStatBonusPct(user.clanMembership);
@@ -55,7 +55,7 @@ function fighterFromUser(user) {
 }
 
 // The fields the client needs to render + replay the fight.
-function publicFighter(f) {
+export function publicFighter(f) {
     return {
         userId: f.id ?? null,
         username: f.username,
@@ -80,7 +80,7 @@ function publicFighter(f) {
 
 // Synthesize a sparring opponent when no other eligible players exist (new/small
 // server). Mirrors the attacker so the fight is fair; grants no rating (anti-farm).
-function mirrorBot(attacker) {
+export function mirrorBot(attacker) {
     return { ...attacker, id: null, isBot: true, username: 'Sparring Dummy', avatar: 'robot' };
 }
 

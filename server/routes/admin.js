@@ -9,7 +9,7 @@ const router = Router();
 router.use(requireAuth);
 
 // ─── Helper: duration string to milliseconds ──────────────────────
-function parseDuration(duration) {
+export function parseDuration(duration) {
     const match = duration?.match(/^(\d+)(m|h|d)$/);
     if (!match) return null;
     const val = parseInt(match[1]);
