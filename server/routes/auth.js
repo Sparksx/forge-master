@@ -73,7 +73,7 @@ async function createDefaultGameState(userId) {
         data: {
             userId,
             equipment: {},
-            gold: 0,
+            gold: 100,
             forgeLevel: 1,
             combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
         }
@@ -88,7 +88,8 @@ function generateGuestUsername() {
 
 // ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', authLimiter, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_-]+$/).withMessage('Username can only contain letters, numbers, hyphens, and underscores'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ], async (req, res) => {
@@ -464,8 +465,16 @@ router.post('/link-google', requireAuth, async (req, res) => {
     }
 });
 
+const refreshLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many refresh attempts, please try again later' },
+});
+
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', refreshLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
@@ -570,7 +579,8 @@ router.get('/me', requireAuth, async (req, res) => {
 
 // ─── POST /api/auth/change-username ─────────────────────────────
 router.post('/change-username', requireAuth, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_-]+$/).withMessage('Username can only contain letters, numbers, hyphens, and underscores'),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -604,6 +614,12 @@ router.put('/settings', requireAuth, async (req, res) => {
 
     if (typeof settings !== 'object' || Array.isArray(settings) || settings === null) {
         return res.status(400).json({ error: 'Settings must be an object' });
+    }
+
+    const ALLOWED_KEYS = ['theme', 'language', 'sfx', 'music', 'notifications'];
+    const unknownKeys = Object.keys(settings).filter((k) => !ALLOWED_KEYS.includes(k));
+    if (unknownKeys.length > 0) {
+        return res.status(400).json({ error: `Unknown settings: ${unknownKeys.join(', ')}` });
     }
 
     // Validate known keys

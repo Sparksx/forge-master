@@ -80,8 +80,13 @@ app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'degraded', error: 'Database unreachable' });
+    }
 });
 
 // Setup Socket.io

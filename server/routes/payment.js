@@ -82,21 +82,21 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid pack' });
     }
 
-    // One-time packs: check if user already purchased
-    if (pack.oneTime) {
-        const existing = await prisma.purchase.findFirst({
-            where: {
-                userId: req.user.userId,
-                packId: pack.id,
-                status: 'completed',
-            },
-        });
-        if (existing) {
-            return res.status(400).json({ error: 'This pack can only be purchased once' });
-        }
-    }
-
     try {
+        // One-time packs: check if user already purchased
+        if (pack.oneTime) {
+            const existing = await prisma.purchase.findFirst({
+                where: {
+                    userId: req.user.userId,
+                    packId: pack.id,
+                    status: 'completed',
+                },
+            });
+            if (existing) {
+                return res.status(400).json({ error: 'This pack can only be purchased once' });
+            }
+        }
+
         const stripe = getStripe();
         const totalGold = pack.gold + pack.bonus;
 
@@ -250,32 +250,40 @@ router.post('/webhook', async (req, res) => {
             });
 
             if (purchase && purchase.status === 'completed') {
-                // Atomically claim the refund so it can't double-reverse.
-                const claim = await prisma.purchase.updateMany({
-                    where: { id: purchase.id, status: 'completed' },
-                    data: { status: 'refunded' },
-                });
+                await prisma.$transaction(async (tx) => {
+                    const claim = await tx.purchase.updateMany({
+                        where: { id: purchase.id, status: 'completed' },
+                        data: { status: 'refunded' },
+                    });
+                    if (claim.count === 0) return;
 
-                if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    const gs = await tx.gameState.findUnique({
                         where: { userId: purchase.userId },
                         select: { gold: true },
                     });
-                    const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
-                        where: { userId: purchase.userId },
-                        data: { gold: newGold },
-                    });
+                    const clawback = Math.min(purchase.goldGranted, gs?.gold ?? 0);
+                    if (clawback > 0) {
+                        await tx.gameState.update({
+                            where: { userId: purchase.userId },
+                            data: { gold: { decrement: clawback } },
+                        });
+                    }
 
-                    await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
-                        packId: purchase.packId,
-                        gold: purchase.goldGranted,
-                        stripePaymentId: charge.payment_intent,
+                    await tx.auditLog.create({
+                        data: {
+                            actorId: purchase.userId,
+                            action: 'refund_gold',
+                            targetId: purchase.userId,
+                            details: {
+                                packId: purchase.packId,
+                                gold: purchase.goldGranted,
+                                stripePaymentId: charge.payment_intent,
+                            },
+                        },
                     });
+                });
 
-                    console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
-                }
+                console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
             }
         } catch (err) {
             console.error('Refund webhook error:', err);
