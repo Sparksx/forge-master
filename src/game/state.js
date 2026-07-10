@@ -300,6 +300,9 @@ export function equipItem(item) {
 
 /** Discard an item. Gold can't be recovered from gear — gold is deliberately scarce. */
 export function trashItem(item) {
+    if (item && state.equipment[item.type] === item) {
+        state.equipment[item.type] = null;
+    }
     save();
     gameEvents.emit(EVENTS.ITEM_TRASHED, { item });
     gameEvents.emit(EVENTS.STATE_CHANGED);
@@ -457,10 +460,10 @@ export async function loadFromServer() {
 // Flush pending save on tab hide / unload.
 if (typeof document !== 'undefined') {
     const flush = () => {
-        if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
-            if (saveTimer) clearTimeout(saveTimer);
-            saveToServer();
-        }
+        if (!(saveTimer || dirtyWhileSaving) || !getAccessToken()) return;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = null;
+        saveToServer();
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
     window.addEventListener('beforeunload', flush);

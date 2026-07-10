@@ -1,12 +1,22 @@
 import { Router } from 'express';
-import { requireAuth, requireRole, logAudit } from '../middleware/auth.js';
+import { requireAuth, requireRole, logAudit, getActiveBan } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { MAX_PLAYER_LEVEL, MAX_FORGE_LEVEL } from '../../shared/stats.js';
 
 const router = Router();
 
-// All admin routes require auth
+// All admin routes require auth + ban check
 router.use(requireAuth);
+router.use(async (req, res, next) => {
+    try {
+        const ban = await getActiveBan(req.user.userId);
+        if (ban) return res.status(403).json({ error: 'Your account is banned' });
+        next();
+    } catch (err) {
+        console.error('Admin ban check error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 // ─── Helper: duration string to milliseconds ──────────────────────
 export function parseDuration(duration) {

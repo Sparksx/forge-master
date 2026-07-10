@@ -176,6 +176,7 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@index([channel, createdAt])
+  @@index([senderId])
 }
 
 // A private conversation: a 1:1 direct message ("dm") or a named custom group
@@ -333,6 +334,7 @@ model Purchase {
 
   @@index([userId, createdAt])
   @@index([status])
+  @@index([stripePaymentId])
 }
 
 model MonsterTemplate {
