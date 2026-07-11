@@ -454,12 +454,24 @@ export async function loadFromServer() {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
-// Flush pending save on tab hide / unload.
+// Flush pending save on tab hide / unload. Uses keepalive so the request
+// survives page teardown — more reliable than bare fetch on beforeunload.
 if (typeof document !== 'undefined') {
     const flush = () => {
-        if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
+        const token = getAccessToken();
+        if ((saveTimer || dirtyWhileSaving) && token) {
             if (saveTimer) clearTimeout(saveTimer);
-            saveToServer();
+            saveTimer = null;
+            dirtyWhileSaving = false;
+            saveInFlight = false;
+            try {
+                fetch('/api/game/state', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify(buildSave()),
+                    keepalive: true,
+                });
+            } catch { /* best-effort */ }
         }
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });

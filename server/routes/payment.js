@@ -1,10 +1,19 @@
 import { Router } from 'express';
 import Stripe from 'stripe';
+import rateLimit from 'express-rate-limit';
 import { requireAuth, logAudit } from '../middleware/auth.js';
 import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOLD_PACKS, CORS_ORIGIN } from '../config.js';
 import prisma from '../lib/prisma.js';
 
 const router = Router();
+
+const paymentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many payment requests, please try again later' },
+});
 
 // Initialize Stripe (lazy — only when keys are configured)
 function getStripe() {
@@ -21,35 +30,40 @@ function getStripe() {
  * granted amount and the player's new gold balance.
  */
 async function creditPurchase(purchase, paymentIntent) {
-    const claim = await prisma.purchase.updateMany({
-        where: { id: purchase.id, status: 'pending' },
-        data: { status: 'completed', stripePaymentId: paymentIntent ?? purchase.stripePaymentId },
-    });
+    const result = await prisma.$transaction(async (tx) => {
+        const claim = await tx.purchase.updateMany({
+            where: { id: purchase.id, status: 'pending' },
+            data: { status: 'completed', stripePaymentId: paymentIntent ?? purchase.stripePaymentId },
+        });
 
-    if (claim.count === 0) {
-        // Already credited by the other path — report the current balance, grant nothing.
-        const gs = await prisma.gameState.findUnique({
+        if (claim.count === 0) {
+            const gs = await tx.gameState.findUnique({
+                where: { userId: purchase.userId },
+                select: { gold: true },
+            });
+            return { status: 'completed', granted: 0, gold: gs?.gold ?? 0 };
+        }
+
+        const gs = await tx.gameState.update({
             where: { userId: purchase.userId },
+            data: { gold: { increment: purchase.goldGranted } },
             select: { gold: true },
         });
-        return { status: 'completed', granted: 0, gold: gs?.gold ?? 0 };
+
+        return { status: 'completed', granted: purchase.goldGranted, gold: gs.gold };
+    });
+
+    if (result.granted > 0) {
+        await logAudit(purchase.userId, 'purchase_gold', purchase.userId, {
+            packId: purchase.packId,
+            gold: purchase.goldGranted,
+            amountCents: purchase.amountCents,
+            stripeSessionId: purchase.stripeSessionId,
+        });
+        console.log(`Purchase completed: user ${purchase.userId} received ${purchase.goldGranted} gold (${purchase.packId})`);
     }
 
-    const gs = await prisma.gameState.update({
-        where: { userId: purchase.userId },
-        data: { gold: { increment: purchase.goldGranted } },
-        select: { gold: true },
-    });
-
-    await logAudit(purchase.userId, 'purchase_gold', purchase.userId, {
-        packId: purchase.packId,
-        gold: purchase.goldGranted,
-        amountCents: purchase.amountCents,
-        stripeSessionId: purchase.stripeSessionId,
-    });
-
-    console.log(`Purchase completed: user ${purchase.userId} received ${purchase.goldGranted} gold (${purchase.packId})`);
-    return { status: 'completed', granted: purchase.goldGranted, gold: gs.gold };
+    return result;
 }
 
 // ─── GET /api/payment/packs ─────────────────────────────────────
@@ -70,7 +84,7 @@ router.get('/packs', (req, res) => {
 
 // ─── POST /api/payment/create-checkout-session ──────────────────
 // Authenticated: create a Stripe Checkout Session for a gold pack
-router.post('/create-checkout-session', requireAuth, async (req, res) => {
+router.post('/create-checkout-session', paymentLimiter, requireAuth, async (req, res) => {
     const { packId } = req.body;
 
     if (!packId || typeof packId !== 'string') {
@@ -157,7 +171,7 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
 // Authenticated: called when the player returns from Stripe Checkout. Verifies
 // payment directly with Stripe and credits the gold, so purchases land
 // immediately even if the webhook is delayed or not configured. Idempotent.
-router.post('/confirm', requireAuth, async (req, res) => {
+router.post('/confirm', paymentLimiter, requireAuth, async (req, res) => {
     const { sessionId } = req.body;
 
     if (!sessionId || typeof sessionId !== 'string') {
@@ -244,36 +258,36 @@ router.post('/webhook', async (req, res) => {
     if (event.type === 'charge.refunded') {
         const charge = event.data.object;
         try {
-            // Find purchase by payment intent
             const purchase = await prisma.purchase.findFirst({
                 where: { stripePaymentId: charge.payment_intent },
             });
 
             if (purchase && purchase.status === 'completed') {
-                // Atomically claim the refund so it can't double-reverse.
-                const claim = await prisma.purchase.updateMany({
-                    where: { id: purchase.id, status: 'completed' },
-                    data: { status: 'refunded' },
-                });
+                const claimed = await prisma.$transaction(async (tx) => {
+                    const claim = await tx.purchase.updateMany({
+                        where: { id: purchase.id, status: 'completed' },
+                        data: { status: 'refunded' },
+                    });
+                    if (claim.count === 0) return false;
 
-                if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    const gs = await tx.gameState.findUnique({
                         where: { userId: purchase.userId },
                         select: { gold: true },
                     });
                     const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
+                    await tx.gameState.update({
                         where: { userId: purchase.userId },
                         data: { gold: newGold },
                     });
+                    return true;
+                });
 
+                if (claimed) {
                     await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
                         packId: purchase.packId,
                         gold: purchase.goldGranted,
                         stripePaymentId: charge.payment_intent,
                     });
-
                     console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
                 }
             }
