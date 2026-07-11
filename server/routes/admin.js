@@ -331,15 +331,17 @@ router.post('/users/:id/gold', requireRole('admin'), async (req, res) => {
     }
 
     try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
-
-        const newGold = Math.max(0, state.gold + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { gold: newGold } });
-        await logAudit(req.user.userId, 'add_gold', userId, { amount, newGold });
-
-        res.json({ gold: newGold });
+        const result = await prisma.$transaction(async (tx) => {
+            const state = await tx.gameState.findUnique({ where: { userId }, select: { gold: true } });
+            if (!state) throw Object.assign(new Error('Game state not found'), { status: 404 });
+            const newGold = Math.max(0, state.gold + Math.floor(amount));
+            await tx.gameState.update({ where: { userId }, data: { gold: newGold } });
+            return newGold;
+        });
+        await logAudit(req.user.userId, 'add_gold', userId, { amount, newGold: result });
+        res.json({ gold: result });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Add gold error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -355,15 +357,17 @@ router.post('/users/:id/essence', requireRole('admin'), async (req, res) => {
     }
 
     try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
-
-        const newEssence = Math.max(0, state.essence + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { essence: newEssence } });
-        await logAudit(req.user.userId, 'add_essence', userId, { amount, newEssence });
-
-        res.json({ essence: newEssence });
+        const result = await prisma.$transaction(async (tx) => {
+            const state = await tx.gameState.findUnique({ where: { userId }, select: { essence: true } });
+            if (!state) throw Object.assign(new Error('Game state not found'), { status: 404 });
+            const newEssence = Math.max(0, state.essence + Math.floor(amount));
+            await tx.gameState.update({ where: { userId }, data: { essence: newEssence } });
+            return newEssence;
+        });
+        await logAudit(req.user.userId, 'add_essence', userId, { amount, newEssence: result });
+        res.json({ essence: result });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Add essence error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -379,15 +383,17 @@ router.post('/users/:id/diamonds', requireRole('admin'), async (req, res) => {
     }
 
     try {
-        const state = await prisma.gameState.findUnique({ where: { userId } });
-        if (!state) return res.status(404).json({ error: 'Game state not found' });
-
-        const newDiamonds = Math.max(0, state.diamonds + Math.floor(amount));
-        await prisma.gameState.update({ where: { userId }, data: { diamonds: newDiamonds } });
-        await logAudit(req.user.userId, 'add_diamonds', userId, { amount, newDiamonds });
-
-        res.json({ diamonds: newDiamonds });
+        const result = await prisma.$transaction(async (tx) => {
+            const state = await tx.gameState.findUnique({ where: { userId }, select: { diamonds: true } });
+            if (!state) throw Object.assign(new Error('Game state not found'), { status: 404 });
+            const newDiamonds = Math.max(0, state.diamonds + Math.floor(amount));
+            await tx.gameState.update({ where: { userId }, data: { diamonds: newDiamonds } });
+            return newDiamonds;
+        });
+        await logAudit(req.user.userId, 'add_diamonds', userId, { amount, newDiamonds: result });
+        res.json({ diamonds: result });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Add diamonds error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }

@@ -210,6 +210,7 @@ async function completeMission(missionId) {
 // ── Listing / detail ────────────────────────────────────────────────────────
 
 // GET /api/clans — top clans by XP, optional ?q= search
+// Uses a lightweight include (member count only, no full roster) for the list view.
 router.get('/', requireAuth, async (req, res) => {
     try {
         const q = (req.query.q || '').toString().trim();
@@ -220,9 +221,24 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: { _count: { select: { members: true } } },
         });
-        res.json(clans.map((c) => serializeClan(c)));
+        res.json(clans.map((c) => {
+            const level = clanLevelFromXp(c.xp);
+            return {
+                id: c.id,
+                name: c.name,
+                tag: c.tag,
+                emblem: c.emblem,
+                description: c.description,
+                treasury: c.treasury,
+                xp: c.xp,
+                level,
+                perks: clanPerks(level),
+                ownerId: c.ownerId,
+                memberCount: c._count.members,
+            };
+        }));
     } catch (err) {
         console.error('List clans error:', err);
         res.status(500).json({ error: 'Failed to list clans' });
@@ -567,24 +583,25 @@ router.post('/leave', requireAuth, async (req, res) => {
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
         const clanId = membership.clanId;
-        await prisma.clanMember.delete({ where: { userId: req.user.userId } });
 
-        // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
-        const clan = await prisma.clan.findUnique({ where: { id: clanId } });
-        if (clan && clan.ownerId === req.user.userId) {
-            const next = await prisma.clanMember.findFirst({
-                where: { clanId },
-                orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
-            });
-            if (next) {
-                await prisma.$transaction([
-                    prisma.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } }),
-                    prisma.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
-                ]);
-            } else {
-                await prisma.clan.delete({ where: { id: clanId } });
+        await prisma.$transaction(async (tx) => {
+            await tx.clanMember.delete({ where: { userId: req.user.userId } });
+
+            const clan = await tx.clan.findUnique({ where: { id: clanId }, select: { ownerId: true } });
+            if (clan && clan.ownerId === req.user.userId) {
+                const next = await tx.clanMember.findFirst({
+                    where: { clanId },
+                    orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+                });
+                if (next) {
+                    await tx.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } });
+                    await tx.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } });
+                } else {
+                    await tx.clan.delete({ where: { id: clanId } });
+                }
             }
-        }
+        });
+
         res.json({ ok: true });
     } catch (err) {
         console.error('Leave clan error:', err);
