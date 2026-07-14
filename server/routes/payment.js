@@ -257,16 +257,12 @@ router.post('/webhook', async (req, res) => {
                 });
 
                 if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
-                        where: { userId: purchase.userId },
-                        select: { gold: true },
-                    });
-                    const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
-                        where: { userId: purchase.userId },
-                        data: { gold: newGold },
-                    });
+                    // Atomic clawback: decrement in-place, clamped to zero via a raw query.
+                    await prisma.$executeRaw`
+                        UPDATE "GameState"
+                        SET gold = GREATEST(0, gold - ${purchase.goldGranted})
+                        WHERE "userId" = ${purchase.userId}
+                    `;
 
                     await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
                         packId: purchase.packId,

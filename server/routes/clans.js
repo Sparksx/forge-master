@@ -88,6 +88,9 @@ const MEMBER_INCLUDE = {
 
 const FULL_CLAN_INCLUDE = { ...MEMBER_INCLUDE, _count: { select: { members: true } } };
 
+// Lightweight include for list views — only fetches the member count, not full member data.
+const LIST_CLAN_INCLUDE = { _count: { select: { members: true } } };
+
 /** Load the requesting user's membership (or null). */
 function getMembership(userId) {
     return prisma.clanMember.findUnique({ where: { userId } });
@@ -220,7 +223,7 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: LIST_CLAN_INCLUDE,
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
@@ -567,24 +570,24 @@ router.post('/leave', requireAuth, async (req, res) => {
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
 
         const clanId = membership.clanId;
-        await prisma.clanMember.delete({ where: { userId: req.user.userId } });
 
-        // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
-        const clan = await prisma.clan.findUnique({ where: { id: clanId } });
-        if (clan && clan.ownerId === req.user.userId) {
-            const next = await prisma.clanMember.findFirst({
-                where: { clanId },
-                orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
-            });
-            if (next) {
-                await prisma.$transaction([
-                    prisma.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } }),
-                    prisma.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
-                ]);
-            } else {
-                await prisma.clan.delete({ where: { id: clanId } });
+        await prisma.$transaction(async (tx) => {
+            await tx.clanMember.delete({ where: { userId: req.user.userId } });
+
+            const clan = await tx.clan.findUnique({ where: { id: clanId } });
+            if (clan && clan.ownerId === req.user.userId) {
+                const next = await tx.clanMember.findFirst({
+                    where: { clanId },
+                    orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+                });
+                if (next) {
+                    await tx.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } });
+                    await tx.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } });
+                } else {
+                    await tx.clan.delete({ where: { id: clanId } });
+                }
             }
-        }
+        });
         res.json({ ok: true });
     } catch (err) {
         console.error('Leave clan error:', err);
