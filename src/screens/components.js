@@ -26,6 +26,21 @@ export function h(tag, props = {}, ...children) {
     return el;
 }
 
+/**
+ * Escape user-generated strings for safe insertion into HTML.
+ * Use this when content must go through innerHTML; prefer textContent (or the
+ * h() helper's `text` prop) whenever possible — it escapes automatically.
+ */
+export function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 export function clear(node) {
     while (node.firstChild) node.removeChild(node.firstChild);
     return node;

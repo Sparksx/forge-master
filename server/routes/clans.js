@@ -563,28 +563,35 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 // POST /api/clans/leave — leave the current clan (owner transfers or disbands)
 router.post('/leave', requireAuth, async (req, res) => {
     try {
-        const membership = await getMembership(req.user.userId);
-        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+        // Check membership outside the transaction for an early 400 response.
+        const existing = await getMembership(req.user.userId);
+        if (!existing) return res.status(400).json({ error: 'You are not in a clan' });
 
-        const clanId = membership.clanId;
-        await prisma.clanMember.delete({ where: { userId: req.user.userId } });
+        await prisma.$transaction(async (tx) => {
+            // Re-fetch membership inside the transaction for consistency.
+            const membership = await tx.clanMember.findUnique({ where: { userId: req.user.userId } });
+            if (!membership) return; // already gone — nothing to do
 
-        // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
-        const clan = await prisma.clan.findUnique({ where: { id: clanId } });
-        if (clan && clan.ownerId === req.user.userId) {
-            const next = await prisma.clanMember.findFirst({
-                where: { clanId },
-                orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
-            });
-            if (next) {
-                await prisma.$transaction([
-                    prisma.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } }),
-                    prisma.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
-                ]);
-            } else {
-                await prisma.clan.delete({ where: { id: clanId } });
+            const clanId = membership.clanId;
+            const wasOwner = membership.role === 'owner';
+
+            await tx.clanMember.delete({ where: { userId: req.user.userId } });
+
+            // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
+            if (wasOwner) {
+                const next = await tx.clanMember.findFirst({
+                    where: { clanId },
+                    orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+                });
+                if (next) {
+                    await tx.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } });
+                    await tx.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } });
+                } else {
+                    await tx.clan.delete({ where: { id: clanId } });
+                }
             }
-        }
+        });
+
         res.json({ ok: true });
     } catch (err) {
         console.error('Leave clan error:', err);

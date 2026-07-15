@@ -39,6 +39,11 @@ function generateRefreshToken(user) {
     );
 }
 
+/** SHA-256 hash a token before storing — the raw token is only sent to the client */
+function hashToken(token) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 /** Store refresh token in DB and return both tokens as JSON */
 async function issueTokens(user, res, statusCode = 200) {
     const accessToken = generateAccessToken(user);
@@ -47,7 +52,7 @@ async function issueTokens(user, res, statusCode = 200) {
     const decoded = jwt.decode(refreshToken);
     await prisma.refreshToken.create({
         data: {
-            token: refreshToken,
+            token: hashToken(refreshToken),
             userId: user.id,
             expiresAt: new Date(decoded.exp * 1000),
         }
@@ -476,7 +481,7 @@ router.post('/refresh', async (req, res) => {
 
         // Check token exists in DB (not revoked)
         const stored = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken }
+            where: { token: hashToken(refreshToken) }
         });
         if (!stored) {
             return res.status(401).json({ error: 'Token revoked' });
@@ -496,7 +501,7 @@ router.post('/refresh', async (req, res) => {
             prisma.refreshToken.delete({ where: { id: stored.id } }),
             prisma.refreshToken.create({
                 data: {
-                    token: newRefreshToken,
+                    token: hashToken(newRefreshToken),
                     userId: user.id,
                     expiresAt: new Date(decoded.exp * 1000),
                 }
@@ -520,7 +525,7 @@ router.post('/logout', requireAuth, async (req, res) => {
     try {
         if (refreshToken) {
             await prisma.refreshToken.deleteMany({
-                where: { token: refreshToken, userId: req.user.userId }
+                where: { token: hashToken(refreshToken), userId: req.user.userId }
             });
         } else {
             // Delete all refresh tokens for this user
