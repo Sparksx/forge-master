@@ -2,6 +2,7 @@
 // server-side with the shared deterministic combat engine (anti-cheat) and
 // replayed identically on the client. No live opponent, no real-time timers.
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
@@ -11,7 +12,16 @@ import { pickOpponent, attackerEloChange } from '../lib/pvp-match.js';
 
 const router = Router();
 
-const CANDIDATE_POOL = 100; // recent players considered as opponents per fight
+const fightLimiter = rateLimit({
+    windowMs: 10 * 1000, // 10 seconds
+    max: 2,              // max 2 fights per 10 seconds
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many fights, please wait a moment' },
+});
+
+const CANDIDATE_POOL = 20;  // players considered as opponents per fight
+const RATING_RANGE = 300;   // preferred pvpRating proximity for matchmaking
 
 const USER_SELECT = {
     id: true, username: true, profilePicture: true, pvpRating: true,
@@ -85,7 +95,7 @@ export function mirrorBot(attacker) {
 }
 
 // POST /api/pvp/fight — resolve one async fight and (for real opponents) apply Elo.
-router.post('/fight', requireAuth, async (req, res) => {
+router.post('/fight', requireAuth, fightLimiter, async (req, res) => {
     try {
         const me = await prisma.user.findUnique({
             where: { id: req.user.userId },
@@ -106,12 +116,29 @@ router.post('/fight', requireAuth, async (req, res) => {
             if (!target || !target.gameState) return res.status(400).json({ error: 'That player has no battle data yet' });
             opponent = fighterFromUser(target);
         } else {
-            const others = await prisma.user.findMany({
-                where: { id: { not: me.id }, gameState: { isNot: null } },
+            // Prefer opponents whose Elo is close to the attacker's; fall back
+            // to a wider search when the narrow band returns too few candidates.
+            const myRating = me.pvpRating ?? 1000;
+            const ratingFilter = {
+                id: { not: me.id },
+                gameState: { isNot: null },
+                pvpRating: { gte: myRating - RATING_RANGE, lte: myRating + RATING_RANGE },
+            };
+            let others = await prisma.user.findMany({
+                where: ratingFilter,
                 select: USER_SELECT,
-                orderBy: { updatedAt: 'desc' },
+                orderBy: { pvpRating: 'asc' },
                 take: CANDIDATE_POOL,
             });
+            // Broaden if too few nearby — drop the rating constraint entirely.
+            if (others.length < 3) {
+                others = await prisma.user.findMany({
+                    where: { id: { not: me.id }, gameState: { isNot: null } },
+                    select: USER_SELECT,
+                    orderBy: { pvpRating: 'asc' },
+                    take: CANDIDATE_POOL,
+                });
+            }
             opponent = pickOpponent(others.map(fighterFromUser), attacker.power) || mirrorBot(attacker);
         }
 
