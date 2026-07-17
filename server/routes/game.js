@@ -71,7 +71,21 @@ router.put('/state', requireAuth, async (req, res) => {
             if (!isNonNegativeNumber(gold)) {
                 return res.status(400).json({ error: 'Gold must be a non-negative number' });
             }
-            data.gold = Math.floor(gold);
+            // Gold guard: the client can only spend gold (decrease), never grant it
+            // to itself. All gold increases come from server-side operations (boss
+            // rewards, expeditions, Stripe purchases). This blocks the main cheat
+            // vector where a crafted PUT sets gold to an arbitrary value.
+            const current = await prisma.gameState.findUnique({
+                where: { userId: req.user.userId },
+                select: { gold: true },
+            });
+            const clientGold = Math.floor(gold);
+            if (current && clientGold > current.gold) {
+                console.warn(`Gold guard: user ${req.user.userId} tried to save gold ${clientGold} > current ${current.gold}`);
+                data.gold = current.gold;
+            } else {
+                data.gold = clientGold;
+            }
         }
         if (diamonds !== undefined) {
             if (!isNonNegativeNumber(diamonds)) {

@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import cors from 'cors';
+import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
@@ -45,12 +46,35 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://js.stripe.com"],
+            frameSrc: ["'self'", "https://js.stripe.com", "https://checkout.stripe.com"],
+            connectSrc: [
+                "'self'",
+                "wss:",
+                "ws:",
+                "https://api.stripe.com",
+                "https://discord.com",
+                "https://accounts.google.com",
+                "https://oauth2.googleapis.com",
+            ],
+            imgSrc: ["'self'", "data:", "blob:"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            fontSrc: ["'self'", "data:"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // CORS
 app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
+
+// Compress responses (skip raw Stripe webhook body)
+app.use(compression({ filter: (req) => !req.path.endsWith('/webhook') }));
 
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
@@ -61,6 +85,26 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later' },
 });
 app.use('/api/', apiLimiter);
+
+// Stricter rate limits on payment (10 req/min) and game-state save (30 req/min)
+const paymentLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many payment requests, please slow down' },
+});
+app.use('/api/payment/create-checkout-session', paymentLimiter);
+app.use('/api/payment/confirm', paymentLimiter);
+
+const saveLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many save requests' },
+});
+app.use('/api/game/state', saveLimiter);
 
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
@@ -79,9 +123,22 @@ app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+// Health check — verifies DB connectivity + reports basic metrics
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        const mem = process.memoryUsage();
+        res.json({
+            status: 'ok',
+            uptime: Math.floor(process.uptime()),
+            memory: {
+                rss: Math.round(mem.rss / 1024 / 1024),
+                heap: Math.round(mem.heapUsed / 1024 / 1024),
+            },
+        });
+    } catch {
+        res.status(503).json({ status: 'degraded', error: 'database unreachable' });
+    }
 });
 
 // Setup Socket.io
