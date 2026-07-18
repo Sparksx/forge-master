@@ -5,8 +5,10 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
+import jwt from 'jsonwebtoken';
+import { PORT, NODE_ENV, CORS_ORIGIN, JWT_SECRET } from './config.js';
 import { setupSocket } from './socket/index.js';
+import { getActiveBan } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
@@ -18,6 +20,7 @@ import playerRoutes from './routes/players.js';
 import clanRoutes from './routes/clans.js';
 import pvpRoutes from './routes/pvp.js';
 import prisma from './lib/prisma.js';
+import { cleanupCombatLogInterval } from './socket/chat.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
 
@@ -45,7 +48,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://accounts.google.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://discord.com", "https://accounts.google.com", "wss:", "ws:"],
+            frameSrc: ["https://js.stripe.com", "https://accounts.google.com"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -67,17 +80,40 @@ app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '16kb' }));
 
+// Ban middleware for gameplay routes — banned users can still authenticate
+// (so they see the ban message) and access public template data, but cannot
+// play, trade, or interact with other players via REST. Lazily decodes the JWT
+// to discover the userId; if absent or invalid, passes through (the route's own
+// requireAuth will reject later).
+const banGuard = async (req, res, next) => {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Bearer ')) return next();
+    try {
+        const payload = jwt.verify(header.slice(7), JWT_SECRET);
+        const ban = await getActiveBan(payload.userId);
+        if (ban) {
+            const expiry = ban.expiresAt
+                ? `until ${ban.expiresAt.toISOString()}`
+                : 'permanently';
+            return res.status(403).json({ error: `You are banned ${expiry}. Reason: ${ban.reason}` });
+        }
+        next();
+    } catch {
+        next();
+    }
+};
+
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/game', banGuard, gameRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment', banGuard, paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/sprites', spriteRoutes);
 app.use('/api/monsters', monsterRoutes);
-app.use('/api/players', playerRoutes);
-app.use('/api/clans', clanRoutes);
-app.use('/api/pvp', pvpRoutes);
+app.use('/api/players', banGuard, playerRoutes);
+app.use('/api/clans', banGuard, clanRoutes);
+app.use('/api/pvp', banGuard, pvpRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -89,7 +125,10 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use(express.static(distPath, {
+    maxAge: NODE_ENV === 'production' ? '1d' : 0,
+    etag: true,
+}));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
@@ -132,12 +171,16 @@ server.listen(PORT, async () => {
         }
     }
     await cleanupExpiredTokens();
-    setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+    tokenCleanupInterval = setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 });
+
+let tokenCleanupInterval;
 
 // Graceful shutdown
 function shutdown(signal) {
     console.log(`${signal} received — shutting down gracefully`);
+    clearInterval(tokenCleanupInterval);
+    clearInterval(cleanupCombatLogInterval);
     io.close();
     server.close(async () => {
         await prisma.$disconnect();

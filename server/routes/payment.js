@@ -65,6 +65,7 @@ router.get('/packs', (req, res) => {
         tag: p.tag || null,
         oneTime: p.oneTime || false,
     }));
+    res.set('Cache-Control', 'public, max-age=3600');
     res.json({ packs });
 });
 
@@ -100,9 +101,8 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         const stripe = getStripe();
         const totalGold = pack.gold + pack.bonus;
 
-        // Build success/cancel URLs from the request origin (works in both dev and prod)
-        const origin = req.headers.origin || req.headers.referer?.replace(/\/+$/, '') || (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173');
-        const baseUrl = origin.replace(/\/+$/, '');
+        // Use the server-configured origin, never the client-supplied headers (anti-phishing).
+        const baseUrl = (CORS_ORIGIN !== '*' ? CORS_ORIGIN : 'http://localhost:5173').replace(/\/+$/, '');
         const successUrl = `${baseUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
         const cancelUrl = `${baseUrl}?payment=cancelled`;
 

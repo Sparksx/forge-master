@@ -97,6 +97,26 @@ export async function logAudit(actorId, action, targetId = null, details = null)
 }
 
 /**
+ * Express middleware — rejects requests from banned users.
+ * Must be used AFTER requireAuth so req.user is available.
+ */
+export async function requireNotBanned(req, res, next) {
+    try {
+        const ban = await getActiveBan(req.user.userId);
+        if (ban) {
+            const expiry = ban.expiresAt
+                ? `until ${ban.expiresAt.toISOString()}`
+                : 'permanently';
+            return res.status(403).json({ error: `You are banned ${expiry}. Reason: ${ban.reason}` });
+        }
+        next();
+    } catch (err) {
+        console.error('Ban check error:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+/**
  * Socket.io middleware — verifies JWT from handshake auth.
  */
 export function socketAuth(socket, next) {

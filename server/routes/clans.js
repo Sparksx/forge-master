@@ -88,6 +88,8 @@ const MEMBER_INCLUDE = {
 
 const FULL_CLAN_INCLUDE = { ...MEMBER_INCLUDE, _count: { select: { members: true } } };
 
+const LISTING_CLAN_INCLUDE = { _count: { select: { members: true } } };
+
 /** Load the requesting user's membership (or null). */
 function getMembership(userId) {
     return prisma.clanMember.findUnique({ where: { userId } });
@@ -220,7 +222,7 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: LISTING_CLAN_INCLUDE,
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
