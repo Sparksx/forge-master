@@ -19,21 +19,22 @@ export function setupSocket(server) {
     // Auth middleware for all socket connections
     io.use(socketAuth);
 
-    // Ban check middleware
+    // Ban check + role fetch middleware (parallelized to halve connection latency)
     io.use(async (socket, next) => {
         try {
-            const ban = await getActiveBan(socket.user.userId);
+            const [ban, user] = await Promise.all([
+                getActiveBan(socket.user.userId),
+                prisma.user.findUnique({
+                    where: { id: socket.user.userId },
+                    select: { role: true },
+                }),
+            ]);
             if (ban) {
                 const expiry = ban.expiresAt
                     ? `until ${ban.expiresAt.toISOString()}`
                     : 'permanently';
                 return next(new Error(`You are banned ${expiry}. Reason: ${ban.reason}`));
             }
-            // Attach user role to socket
-            const user = await prisma.user.findUnique({
-                where: { id: socket.user.userId },
-                select: { role: true },
-            });
             if (user) {
                 socket.user.role = user.role;
             }

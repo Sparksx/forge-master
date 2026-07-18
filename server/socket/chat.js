@@ -27,7 +27,7 @@ const COMBAT_LOG_TTL = 24 * 60 * 60 * 1000; // 24h
 const MAX_COMBAT_LOGS = 5000;
 
 // Cleanup expired logs every hour
-setInterval(() => {
+export const cleanupCombatLogInterval = setInterval(() => {
     const now = Date.now();
     for (const [id, log] of combatLogs) {
         if (now - log.createdAt > COMBAT_LOG_TTL) {

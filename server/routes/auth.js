@@ -465,7 +465,7 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
@@ -606,10 +606,16 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    // Only allow known settings keys to prevent arbitrary data storage
+    const ALLOWED_KEYS = ['theme', 'language', 'sfx', 'music', 'notifications'];
     const VALID_THEMES = ['dark', 'light'];
     if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
+    }
+
+    const filtered = {};
+    for (const key of ALLOWED_KEYS) {
+        if (key in settings) filtered[key] = settings[key];
     }
 
     try {
@@ -621,7 +627,7 @@ router.put('/settings', requireAuth, async (req, res) => {
             });
 
             const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-            const merged = { ...current, ...settings };
+            const merged = { ...current, ...filtered };
 
             return tx.user.update({
                 where: { id: req.user.userId },
