@@ -441,12 +441,7 @@ export function registerChatHandlers(io, socket) {
                 role: membership.role,
             } : null;
 
-            // Get requesting user's role to decide what to include
-            const requestingUser = await prisma.user.findUnique({
-                where: { id: socket.user.userId },
-                select: { role: true },
-            });
-            const isStaff = requestingUser && (requestingUser.role === 'admin' || requestingUser.role === 'moderator');
+            const isStaff = socket.user.role === 'admin' || socket.user.role === 'moderator';
 
             const profileData = {
                 userId: user.id,
@@ -512,12 +507,7 @@ export function registerChatHandlers(io, socket) {
         if (!messageId || typeof messageId !== 'number') return;
 
         try {
-            // Check role
-            const user = await prisma.user.findUnique({
-                where: { id: socket.user.userId },
-                select: { role: true },
-            });
-            if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return;
+            if (socket.user.role !== 'admin' && socket.user.role !== 'moderator') return;
 
             const message = await prisma.chatMessage.findUnique({ where: { id: messageId } });
             if (!message) return;

@@ -6,12 +6,14 @@ import prisma from '../lib/prisma.js';
 
 const router = Router();
 
-// Initialize Stripe (lazy — only when keys are configured)
+// Initialize Stripe (lazy singleton — only when keys are configured)
+let _stripe = null;
 function getStripe() {
     if (!STRIPE_SECRET_KEY) {
         throw new Error('Stripe is not configured');
     }
-    return new Stripe(STRIPE_SECRET_KEY);
+    if (!_stripe) _stripe = new Stripe(STRIPE_SECRET_KEY);
+    return _stripe;
 }
 
 /**
@@ -250,24 +252,26 @@ router.post('/webhook', async (req, res) => {
             });
 
             if (purchase && purchase.status === 'completed') {
-                // Atomically claim the refund so it can't double-reverse.
-                const claim = await prisma.purchase.updateMany({
-                    where: { id: purchase.id, status: 'completed' },
-                    data: { status: 'refunded' },
-                });
+                const clawedBack = await prisma.$transaction(async (tx) => {
+                    const claim = await tx.purchase.updateMany({
+                        where: { id: purchase.id, status: 'completed' },
+                        data: { status: 'refunded' },
+                    });
+                    if (claim.count === 0) return false;
 
-                if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    const gs = await tx.gameState.findUnique({
                         where: { userId: purchase.userId },
                         select: { gold: true },
                     });
                     const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
+                    await tx.gameState.update({
                         where: { userId: purchase.userId },
                         data: { gold: newGold },
                     });
+                    return true;
+                });
 
+                if (clawedBack) {
                     await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
                         packId: purchase.packId,
                         gold: purchase.goldGranted,
