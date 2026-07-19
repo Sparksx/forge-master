@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: NODE_ENV === 'production' ? {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "wss:", "ws:", "https://accounts.google.com", "https://discord.com", "https://checkout.stripe.com"],
+            frameSrc: ["https://accounts.google.com", "https://discord.com", "https://checkout.stripe.com"],
+        },
+    } : false,
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -61,6 +71,16 @@ const apiLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later' },
 });
 app.use('/api/', apiLimiter);
+
+// Stricter rate limit for game state saves (30/min per IP)
+const stateSaveLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many save requests, please try again later' },
+});
+app.use('/api/game/state', stateSaveLimiter);
 
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
@@ -89,7 +109,15 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+// Hashed assets (Vite output) are immutable — cache aggressively
+app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+}));
+app.use(express.static(distPath, {
+    maxAge: '0',
+    etag: true,
+}));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
