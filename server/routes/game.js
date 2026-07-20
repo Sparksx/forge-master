@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+import { DEFAULT_GAME_STATE } from '../lib/defaults.js';
 import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
 import {
     isFiniteNumber,
@@ -24,15 +25,8 @@ router.get('/state', requireAuth, async (req, res) => {
         });
 
         if (!state) {
-            // Create default state if none exists
             state = await prisma.gameState.create({
-                data: {
-                    userId: req.user.userId,
-                    equipment: {},
-                    gold: 100, // fresh players start with a small purse (STARTING_GOLD)
-                    forgeLevel: 1,
-                    combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-                }
+                data: { userId: req.user.userId, ...DEFAULT_GAME_STATE },
             });
         }
 
@@ -57,7 +51,7 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
+    const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, skills } = req.body;
 
     try {
         const data = {};
@@ -133,17 +127,8 @@ router.put('/state', requireAuth, async (req, res) => {
             update: data,
             create: {
                 userId: req.user.userId,
-                equipment: equipment || {},
-                gold: typeof gold === 'number' ? Math.floor(gold) : 100, // STARTING_GOLD
-                diamonds: typeof diamonds === 'number' ? Math.floor(diamonds) : 100,
-                forgeLevel: forgeLevel || 1,
-                forgeUpgrade: forgeUpgrade || null,
-                combat: combat || { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-                essence: typeof essence === 'number' ? Math.floor(essence) : 0,
-                player: player || { level: 1, xp: 0, profilePicture: 'wizard' },
-                research: research || { completed: {}, active: null, queue: [] },
-                forgeHighestLevel: forgeHighestLevel || {},
-                skills: skills || { unlocked: {}, equipped: [] },
+                ...DEFAULT_GAME_STATE,
+                ...data,
             }
         });
 

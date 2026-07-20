@@ -18,43 +18,55 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
 }
 
+window.addEventListener('error', (e) => {
+    console.error('Uncaught error:', e.error);
+});
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection:', e.reason);
+});
+
 let started = false;
 
 async function startGame() {
     if (started) return;
     started = true;
 
-    if (getAccessToken()) {
-        await loadFromServer();
-    } else {
-        loadLocal();
-    }
-
-    // Reconcile a return from Stripe Checkout BEFORE the idle loop starts, so a
-    // purchased gold balance is synced and can't be clobbered by the next save.
-    const checkout = await reconcileCheckoutReturn();
-
-    // Live chat over the authenticated socket. PvP is now async REST (no socket).
-    connectSocket({ onReconnect: () => initChat() });
-    initChat();
-
-    // Load the player's clan so perks apply before the UI renders.
-    await loadMyClan();
-
-    // Track gameplay toward clan missions (forge/defeat/boss/swap/arena).
-    initClanMissions();
-
-    initApp(document.getElementById('game-container'));
-
-    // Toast the checkout outcome once the toast root exists (after initApp).
-    if (checkout) {
-        if (checkout.status === 'completed' || checkout.granted > 0) {
-            toast(`Purchase complete — +${checkout.granted.toLocaleString('en-US')} gold!`, 'success');
-        } else if (checkout.status === 'cancelled') {
-            toast('Checkout cancelled', 'info');
-        } else if (checkout.status === 'error') {
-            toast('We could not confirm your purchase. Contact support if you were charged.', 'error');
+    try {
+        if (getAccessToken()) {
+            await loadFromServer();
+        } else {
+            loadLocal();
         }
+
+        // Reconcile a return from Stripe Checkout BEFORE the idle loop starts, so a
+        // purchased gold balance is synced and can't be clobbered by the next save.
+        const checkout = await reconcileCheckoutReturn();
+
+        // Live chat over the authenticated socket. PvP is now async REST (no socket).
+        connectSocket({ onReconnect: () => initChat() });
+        initChat();
+
+        // Load the player's clan so perks apply before the UI renders.
+        await loadMyClan();
+
+        // Track gameplay toward clan missions (forge/defeat/boss/swap/arena).
+        initClanMissions();
+
+        initApp(document.getElementById('game-container'));
+
+        // Toast the checkout outcome once the toast root exists (after initApp).
+        if (checkout) {
+            if (checkout.status === 'completed' || checkout.granted > 0) {
+                toast(`Purchase complete — +${checkout.granted.toLocaleString('en-US')} gold!`, 'success');
+            } else if (checkout.status === 'cancelled') {
+                toast('Checkout cancelled', 'info');
+            } else if (checkout.status === 'error') {
+                toast('We could not confirm your purchase. Contact support if you were charged.', 'error');
+            }
+        }
+    } catch (err) {
+        console.error('Failed to start game:', err);
+        document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:2rem"><h2>Failed to load the game</h2><p>Please refresh the page or try again later.</p></div>';
     }
 }
 

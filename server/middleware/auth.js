@@ -6,7 +6,7 @@ import prisma from '../lib/prisma.js';
  * Express middleware — verifies JWT access token from Authorization header.
  * Attaches decoded payload to req.user = { userId, username }.
  */
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Missing or invalid token' });
@@ -14,8 +14,14 @@ export function requireAuth(req, res, next) {
 
     const token = header.slice(7);
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         req.user = { userId: payload.userId, username: payload.username };
+
+        const ban = await getActiveBan(payload.userId);
+        if (ban) {
+            return res.status(403).json({ error: 'Account banned', reason: ban.reason });
+        }
+
         next();
     } catch (err) {
         if (err.name === 'TokenExpiredError') {
@@ -106,7 +112,7 @@ export function socketAuth(socket, next) {
     }
 
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         socket.user = { userId: payload.userId, username: payload.username };
         next();
     } catch (err) {
