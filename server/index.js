@@ -45,7 +45,16 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: NODE_ENV === 'production' ? {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://js.stripe.com"],
+            frameSrc: ["'self'", "https://js.stripe.com"],
+            connectSrc: ["'self'", "https://api.stripe.com", "wss:"],
+            imgSrc: ["'self'", "data:", "https:"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+        },
+    } : false,
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -79,9 +88,14 @@ app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+// Health check — verifies database connectivity
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'degraded', error: 'Database unreachable' });
+    }
 });
 
 // Setup Socket.io

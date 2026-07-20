@@ -12,6 +12,7 @@ import {
 } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+import { DEFAULT_GAME_STATE } from '../lib/defaults.js';
 
 const router = Router();
 
@@ -67,16 +68,9 @@ async function issueTokens(user, res, statusCode = 200) {
     });
 }
 
-/** Create default game state for a new user */
 async function createDefaultGameState(userId) {
     await prisma.gameState.create({
-        data: {
-            userId,
-            equipment: {},
-            gold: 0,
-            forgeLevel: 1,
-            combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-        }
+        data: { userId, ...DEFAULT_GAME_STATE },
     });
 }
 
@@ -465,7 +459,7 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
