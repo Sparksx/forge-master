@@ -10,8 +10,12 @@ import {
     DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI,
     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 } from '../config.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, getActiveBan } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
+
+function hashToken(token) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 const router = Router();
 
@@ -39,7 +43,7 @@ function generateRefreshToken(user) {
     );
 }
 
-/** Store refresh token in DB and return both tokens as JSON */
+/** Store refresh token hash in DB and return both tokens as JSON */
 async function issueTokens(user, res, statusCode = 200) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
@@ -47,7 +51,7 @@ async function issueTokens(user, res, statusCode = 200) {
     const decoded = jwt.decode(refreshToken);
     await prisma.refreshToken.create({
         data: {
-            token: refreshToken,
+            token: hashToken(refreshToken),
             userId: user.id,
             expiresAt: new Date(decoded.exp * 1000),
         }
@@ -73,7 +77,7 @@ async function createDefaultGameState(userId) {
         data: {
             userId,
             equipment: {},
-            gold: 0,
+            gold: 100, // STARTING_GOLD — must match src/game/config.js
             forgeLevel: 1,
             combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
         }
@@ -88,7 +92,8 @@ function generateGuestUsername() {
 
 // ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', authLimiter, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[a-zA-Z0-9_\- ]+$/).withMessage('Username may only contain letters, numbers, spaces, hyphens, and underscores'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ], async (req, res) => {
@@ -144,6 +149,12 @@ router.post('/login', authLimiter, [
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
             return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const ban = await getActiveBan(user.id);
+        if (ban) {
+            const expiry = ban.expiresAt ? `until ${ban.expiresAt.toISOString()}` : 'permanently';
+            return res.status(403).json({ error: `Account banned ${expiry}. Reason: ${ban.reason}` });
         }
 
         await issueTokens(user, res);
@@ -465,7 +476,7 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
@@ -474,9 +485,9 @@ router.post('/refresh', async (req, res) => {
     try {
         const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
 
-        // Check token exists in DB (not revoked)
+        // Look up by hash so a DB leak doesn't expose raw tokens
         const stored = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken }
+            where: { token: hashToken(refreshToken) }
         });
         if (!stored) {
             return res.status(401).json({ error: 'Token revoked' });
@@ -496,7 +507,7 @@ router.post('/refresh', async (req, res) => {
             prisma.refreshToken.delete({ where: { id: stored.id } }),
             prisma.refreshToken.create({
                 data: {
-                    token: newRefreshToken,
+                    token: hashToken(newRefreshToken),
                     userId: user.id,
                     expiresAt: new Date(decoded.exp * 1000),
                 }
@@ -520,7 +531,7 @@ router.post('/logout', requireAuth, async (req, res) => {
     try {
         if (refreshToken) {
             await prisma.refreshToken.deleteMany({
-                where: { token: refreshToken, userId: req.user.userId }
+                where: { token: hashToken(refreshToken), userId: req.user.userId }
             });
         } else {
             // Delete all refresh tokens for this user
@@ -570,7 +581,8 @@ router.get('/me', requireAuth, async (req, res) => {
 
 // ─── POST /api/auth/change-username ─────────────────────────────
 router.post('/change-username', requireAuth, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[a-zA-Z0-9_\- ]+$/).withMessage('Username may only contain letters, numbers, spaces, hyphens, and underscores'),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

@@ -139,14 +139,14 @@ router.delete('/admin/:id', requireAuth, requireRole('admin'), async (req, res) 
 
         if (sprite._count.items > 0) {
             return res.status(409).json({
-                error: `Ce sprite est utilise par ${sprite._count.items} equipement(s). Dissociez-les avant de supprimer.`,
+                error: `This sprite is used by ${sprite._count.items} item(s). Unlink them before deleting.`,
             });
         }
 
         await prisma.sprite.delete({ where: { id } });
         await logAudit(req.user.userId, 'delete_sprite', null, { spriteId: id, name: sprite.name });
 
-        res.json({ message: 'Sprite supprime', id });
+        res.json({ message: 'Sprite deleted', id });
     } catch (err) {
         console.error('Admin delete sprite error:', err);
         res.status(500).json({ error: 'Internal server error' });

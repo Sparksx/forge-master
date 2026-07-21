@@ -6,12 +6,14 @@ import prisma from '../lib/prisma.js';
 
 const router = Router();
 
-// Initialize Stripe (lazy — only when keys are configured)
+// Initialize Stripe (lazy singleton — only when keys are configured)
+let _stripe = null;
 function getStripe() {
     if (!STRIPE_SECRET_KEY) {
         throw new Error('Stripe is not configured');
     }
-    return new Stripe(STRIPE_SECRET_KEY);
+    if (!_stripe) _stripe = new Stripe(STRIPE_SECRET_KEY);
+    return _stripe;
 }
 
 /**
@@ -82,21 +84,21 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid pack' });
     }
 
-    // One-time packs: check if user already purchased
-    if (pack.oneTime) {
-        const existing = await prisma.purchase.findFirst({
-            where: {
-                userId: req.user.userId,
-                packId: pack.id,
-                status: 'completed',
-            },
-        });
-        if (existing) {
-            return res.status(400).json({ error: 'This pack can only be purchased once' });
-        }
-    }
-
     try {
+        // One-time packs: check if user already purchased
+        if (pack.oneTime) {
+            const existing = await prisma.purchase.findFirst({
+                where: {
+                    userId: req.user.userId,
+                    packId: pack.id,
+                    status: 'completed',
+                },
+            });
+            if (existing) {
+                return res.status(400).json({ error: 'This pack can only be purchased once' });
+            }
+        }
+
         const stripe = getStripe();
         const totalGold = pack.gold + pack.bonus;
 
