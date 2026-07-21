@@ -45,7 +45,17 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com"],
+            frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+            connectSrc: ["'self'", "https://accounts.google.com", "https://discord.com", "wss:", "ws:"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            fontSrc: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 

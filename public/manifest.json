@@ -1,12 +1,12 @@
 {
   "name": "Gear Master",
   "short_name": "Gear Master",
-  "description": "Forge equipment, conquer dungeons, and battle other players in this idle RPG!",
+  "description": "Forge gear, battle the arena, and fight PvP in this idle RPG!",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#0e0b1a",
+  "theme_color": "#0e0b1a",
   "icons": [
     {
       "src": "/icon-192.svg",
