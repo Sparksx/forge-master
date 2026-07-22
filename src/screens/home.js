@@ -178,6 +178,10 @@ function onFightResolved({ win }) {
         setArenaRank(enc.rank + 1);
         const xp = grantPlayerXp(arenaXp(enc.rank));
         if (xp) dungeon.floater('player', `+${fmt(xp)} XP`, 'xp');
+        const enemyCount = enc.enemies?.length || 1;
+        for (let i = 0; i < enemyCount; i++) {
+            gameEvents.emit(EVENTS.COMBAT_MONSTER_DEFEATED);
+        }
     } else {
         // On a loss, fall back one sub-stage so the player isn't stuck refighting
         // a deterministic fight they keep losing — but never drop a chapter: the

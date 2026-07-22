@@ -626,9 +626,11 @@ router.post('/contribute', requireAuth, async (req, res) => {
 
 /** Load the actor's membership and a target member in the same clan. */
 async function loadActorAndTarget(actorUserId, targetUserId) {
-    const actor = await prisma.clanMember.findUnique({ where: { userId: actorUserId } });
+    const [actor, target] = await Promise.all([
+        prisma.clanMember.findUnique({ where: { userId: actorUserId } }),
+        prisma.clanMember.findUnique({ where: { userId: targetUserId } }),
+    ]);
     if (!actor) return { error: { status: 400, message: 'You are not in a clan' } };
-    const target = await prisma.clanMember.findUnique({ where: { userId: targetUserId } });
     if (!target || target.clanId !== actor.clanId) return { error: { status: 404, message: 'Member not found in your clan' } };
     if (target.userId === actor.userId) return { error: { status: 400, message: "You can't do that to yourself" } };
     return { actor, target };

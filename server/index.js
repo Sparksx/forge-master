@@ -6,7 +6,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
+import compression from 'compression';
 import { setupSocket } from './socket/index.js';
+import { requireNotBanned } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import adminRoutes from './routes/admin.js';
@@ -45,12 +47,25 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com"],
+            frameSrc: ["https://accounts.google.com", "https://js.stripe.com"],
+            connectSrc: ["'self'", "https://discord.com", "https://accounts.google.com", "https://api.stripe.com", "wss:", "ws:"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            fontSrc: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
 // CORS
 app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
+
+// Compress responses
+app.use(compression());
 
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
@@ -67,17 +82,17 @@ app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '16kb' }));
 
-// API routes
+// API routes — auth/admin are exempt from the ban gate; gameplay routes are not.
 app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/payment', paymentRoutes);
+app.use('/api/game', requireNotBanned, gameRoutes);
+app.use('/api/payment', requireNotBanned, paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/sprites', spriteRoutes);
 app.use('/api/monsters', monsterRoutes);
 app.use('/api/players', playerRoutes);
-app.use('/api/clans', clanRoutes);
-app.use('/api/pvp', pvpRoutes);
+app.use('/api/clans', requireNotBanned, clanRoutes);
+app.use('/api/pvp', requireNotBanned, pvpRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -89,7 +104,11 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+}));
+app.use(express.static(distPath, { maxAge: '10m' }));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
@@ -132,12 +151,15 @@ server.listen(PORT, async () => {
         }
     }
     await cleanupExpiredTokens();
-    setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
+    cleanupInterval = setInterval(cleanupExpiredTokens, 24 * 60 * 60 * 1000);
 });
+
+let cleanupInterval;
 
 // Graceful shutdown
 function shutdown(signal) {
     console.log(`${signal} received — shutting down gracefully`);
+    clearInterval(cleanupInterval);
     io.close();
     server.close(async () => {
         await prisma.$disconnect();
