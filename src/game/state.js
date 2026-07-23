@@ -211,7 +211,7 @@ export function grantGold(base) {
 }
 
 export function spendGold(amount) {
-    if (state.gold < amount) return false;
+    if (amount <= 0 || state.gold < amount) return false;
     state.gold -= amount;
     save();
     gameEvents.emit(EVENTS.STATE_CHANGED);
@@ -300,6 +300,9 @@ export function equipItem(item) {
 
 /** Discard an item. Gold can't be recovered from gear — gold is deliberately scarce. */
 export function trashItem(item) {
+    if (item?.type && state.equipment[item.type] === item) {
+        state.equipment[item.type] = null;
+    }
     save();
     gameEvents.emit(EVENTS.ITEM_TRASHED, { item });
     gameEvents.emit(EVENTS.STATE_CHANGED);

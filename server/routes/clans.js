@@ -88,6 +88,21 @@ const MEMBER_INCLUDE = {
 
 const FULL_CLAN_INCLUDE = { ...MEMBER_INCLUDE, _count: { select: { members: true } } };
 
+// Lightweight include for list views — loads only the data needed for power computation
+// and member count, skipping full player/gameState JSON blobs.
+const LIST_CLAN_INCLUDE = {
+    members: {
+        include: {
+            user: {
+                select: {
+                    gameState: { select: { equipment: true } },
+                },
+            },
+        },
+    },
+    _count: { select: { members: true } },
+};
+
 /** Load the requesting user's membership (or null). */
 function getMembership(userId) {
     return prisma.clanMember.findUnique({ where: { userId } });
@@ -220,7 +235,7 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: LIST_CLAN_INCLUDE,
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
