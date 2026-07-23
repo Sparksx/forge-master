@@ -3,8 +3,6 @@ import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
 import {
-    isFiniteNumber,
-    isNonNegativeNumber,
     isValidEquipment,
     isValidCombat,
     isValidForgeUpgrade,
@@ -57,7 +55,8 @@ router.get('/state', requireAuth, async (req, res) => {
 
 // PUT /api/game/state — save player's game state
 router.put('/state', requireAuth, async (req, res) => {
-    const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
+    const { equipment, forgeUpgrade, combat, player, research, forgeHighestLevel, skills } = req.body;
+    // gold, diamonds, essence, forgeLevel are handled separately below (anti-cheat)
 
     try {
         const data = {};
@@ -67,23 +66,27 @@ router.put('/state', requireAuth, async (req, res) => {
             }
             data.equipment = equipment;
         }
-        if (gold !== undefined) {
-            if (!isNonNegativeNumber(gold)) {
-                return res.status(400).json({ error: 'Gold must be a non-negative number' });
+        // Currency & forge level: accept from client only if it decreased (spending).
+        // The client can spend gold (forge upgrades, cosmetics) but never inflate it.
+        // Server-side grants (payments, expeditions, admin) use atomic increments.
+        if (req.body.gold !== undefined || req.body.diamonds !== undefined ||
+            req.body.essence !== undefined || req.body.forgeLevel !== undefined) {
+            const current = await prisma.gameState.findUnique({
+                where: { userId: req.user.userId },
+                select: { gold: true, diamonds: true, essence: true, forgeLevel: true },
+            });
+            if (current) {
+                const g = Math.floor(Number(req.body.gold));
+                if (Number.isFinite(g) && g >= 0 && g <= current.gold) data.gold = g;
+                const d = Math.floor(Number(req.body.diamonds));
+                if (Number.isFinite(d) && d >= 0 && d <= current.diamonds) data.diamonds = d;
+                const e = Math.floor(Number(req.body.essence));
+                if (Number.isFinite(e) && e >= 0 && e <= current.essence) data.essence = e;
+                const fl = Math.floor(Number(req.body.forgeLevel));
+                if (Number.isFinite(fl) && fl >= 1 && fl >= current.forgeLevel && fl <= MAX_FORGE_LEVEL) {
+                    data.forgeLevel = fl;
+                }
             }
-            data.gold = Math.floor(gold);
-        }
-        if (diamonds !== undefined) {
-            if (!isNonNegativeNumber(diamonds)) {
-                return res.status(400).json({ error: 'Diamonds must be a non-negative number' });
-            }
-            data.diamonds = Math.floor(diamonds);
-        }
-        if (forgeLevel !== undefined) {
-            if (!isFiniteNumber(forgeLevel) || forgeLevel < 1 || forgeLevel > MAX_FORGE_LEVEL) {
-                return res.status(400).json({ error: 'Invalid forge level' });
-            }
-            data.forgeLevel = Math.floor(forgeLevel);
         }
         if (forgeUpgrade !== undefined) {
             if (!isValidForgeUpgrade(forgeUpgrade)) {
@@ -96,12 +99,6 @@ router.put('/state', requireAuth, async (req, res) => {
                 return res.status(400).json({ error: 'Invalid combat structure' });
             }
             data.combat = combat;
-        }
-        if (essence !== undefined) {
-            if (!isNonNegativeNumber(essence)) {
-                return res.status(400).json({ error: 'Essence must be a non-negative number' });
-            }
-            data.essence = Math.floor(essence);
         }
         if (player !== undefined) {
             if (!isValidPlayer(player)) {
@@ -134,12 +131,10 @@ router.put('/state', requireAuth, async (req, res) => {
             create: {
                 userId: req.user.userId,
                 equipment: equipment || {},
-                gold: typeof gold === 'number' ? Math.floor(gold) : 100, // STARTING_GOLD
-                diamonds: typeof diamonds === 'number' ? Math.floor(diamonds) : 100,
-                forgeLevel: forgeLevel || 1,
+                gold: 100, // STARTING_GOLD — server-authoritative
+                forgeLevel: 1,
                 forgeUpgrade: forgeUpgrade || null,
                 combat: combat || { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
-                essence: typeof essence === 'number' ? Math.floor(essence) : 0,
                 player: player || { level: 1, xp: 0, profilePicture: 'wizard' },
                 research: research || { completed: {}, active: null, queue: [] },
                 forgeHighestLevel: forgeHighestLevel || {},

@@ -4,11 +4,7 @@ const prisma = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
 });
 
-function gracefulShutdown(signal) {
-    console.log(`${signal} received — closing Prisma connection`);
-    prisma.$disconnect().then(() => process.exit(0));
-}
-process.on('SIGINT', gracefulShutdown);
-process.on('SIGTERM', gracefulShutdown);
+// Shutdown is handled by server/index.js which closes HTTP, Socket.IO,
+// then calls prisma.$disconnect() in the correct order.
 
 export default prisma;

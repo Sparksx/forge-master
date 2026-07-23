@@ -7,7 +7,7 @@ import { renderItemCard, renderDeltaBadge, renderItemComparison, powerDelta } fr
 import { EQUIPMENT_TYPES, MAX_FORGE_LEVEL, TIERS, avatarEmoji, stageInfo, arenaXp, arenaFallbackRank } from '../game/config.js';
 import { slotIcon, itemIcon, slotLabel, rarityColor, rarityName, itemName } from '../game/items.js';
 import {
-    getEquipment, getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
+    getEquippedItem, getForgeLevel, getForgeUpgradeCost, getForgeChances,
     upgradeForge, equipItem, trashItem, getGold,
     getArenaRank, setArenaRank, getPowerScore, getAvatar, getCombatStats, grantGold,
     grantPlayerXp, getForgeLevelProgress, getForgeSpeedPct, getForgeBestOf,
@@ -478,7 +478,6 @@ function showSlotDetail(type) {
                 onclick: async () => {
                     const ok = await confirmDialog({ title: 'Trash equipped item?', message: `${itemName(item)} will be removed for good — gear can't be sold for gold.`, confirmText: 'Trash' });
                     if (ok) {
-                        getEquipment()[type] = null;
                         trashItem(item);
                         closeModal();
                         toast(`Trashed ${itemName(item)}`, 'info');
