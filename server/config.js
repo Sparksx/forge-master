@@ -4,13 +4,13 @@ export const PORT = process.env.PORT || 3000;
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 
 export const JWT_SECRET = process.env.JWT_SECRET || (NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET env var is required in production'); })() : 'dev-jwt-secret-change-in-production');
-export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (NODE_ENV === 'production' ? (() => { throw new Error('JWT_REFRESH_SECRET env var is required in production'); })() : 'dev-jwt-secret-change-in-production');
+export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (NODE_ENV === 'production' ? (() => { throw new Error('JWT_REFRESH_SECRET env var is required in production'); })() : 'dev-jwt-REFRESH-secret-change-in-production');
 export const JWT_ACCESS_EXPIRY = '15m';
 export const JWT_REFRESH_EXPIRY = '30d';
 
 export const DATABASE_URL = process.env.DATABASE_URL;
 
-export const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' ? 'https://web-production-aeea.up.railway.app' : '*');
+export const CORS_ORIGIN = process.env.CORS_ORIGIN || (NODE_ENV === 'production' ? 'https://web-production-aeea.up.railway.app' : 'http://localhost:5173');
 
 // OAuth — Discord
 export const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
