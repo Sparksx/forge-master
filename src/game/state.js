@@ -456,12 +456,25 @@ export async function loadFromServer() {
 
 // Flush pending save on tab hide / unload.
 if (typeof document !== 'undefined') {
-    const flush = () => {
-        if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
-            if (saveTimer) clearTimeout(saveTimer);
+    const flush = (keepalive = false) => {
+        if (!(saveTimer || dirtyWhileSaving) || !getAccessToken()) return;
+        if (saveTimer) clearTimeout(saveTimer);
+        if (keepalive) {
+            const token = getAccessToken();
+            try {
+                fetch('/api/game/state', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(buildSave()),
+                    keepalive: true,
+                });
+            } catch { /* keepalive may fail if payload > 64 KiB; localStorage save is the fallback */ }
+            saveTimer = null;
+            dirtyWhileSaving = false;
+        } else {
             saveToServer();
         }
     };
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
-    window.addEventListener('beforeunload', flush);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(true); });
+    window.addEventListener('beforeunload', () => flush(true));
 }
