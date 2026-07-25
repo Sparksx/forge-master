@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
             include: { spriteSheet: true },
             orderBy: [{ spriteSheet: { type: 'asc' } }, { name: 'asc' }],
         });
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json({ sprites });
     } catch (err) {
         console.error('Sprites list error:', err);
@@ -91,21 +92,20 @@ router.put('/admin/:id', requireAuth, requireRole('admin'), async (req, res) => 
 
     const { name, spriteX, spriteY, spriteW, spriteH, spriteSheetId } = req.body;
 
-    const data = {};
-    if (name !== undefined) data.name = name.trim();
-    if (spriteX !== undefined) data.spriteX = parseInt(spriteX);
-    if (spriteY !== undefined) data.spriteY = parseInt(spriteY);
-    if (spriteW !== undefined) data.spriteW = parseInt(spriteW);
-    if (spriteH !== undefined) data.spriteH = parseInt(spriteH);
-    if (spriteSheetId !== undefined) {
-        const sheet = await prisma.spriteSheet.findUnique({ where: { id: parseInt(spriteSheetId) } });
-        if (!sheet) {
-            return res.status(400).json({ error: 'Sprite sheet not found' });
-        }
-        data.spriteSheetId = sheet.id;
-    }
-
     try {
+        const data = {};
+        if (name !== undefined) data.name = name.trim();
+        if (spriteX !== undefined) data.spriteX = parseInt(spriteX);
+        if (spriteY !== undefined) data.spriteY = parseInt(spriteY);
+        if (spriteW !== undefined) data.spriteW = parseInt(spriteW);
+        if (spriteH !== undefined) data.spriteH = parseInt(spriteH);
+        if (spriteSheetId !== undefined) {
+            const sheet = await prisma.spriteSheet.findUnique({ where: { id: parseInt(spriteSheetId) } });
+            if (!sheet) {
+                return res.status(400).json({ error: 'Sprite sheet not found' });
+            }
+            data.spriteSheetId = sheet.id;
+        }
         const sprite = await prisma.sprite.update({
             where: { id },
             data,

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { PORT, NODE_ENV, CORS_ORIGIN } from './config.js';
 import { setupSocket } from './socket/index.js';
@@ -52,6 +53,9 @@ app.use(helmet({
 // CORS
 app.use(cors(CORS_ORIGIN === '*' ? { maxAge: 86400 } : { origin: CORS_ORIGIN, maxAge: 86400 }));
 
+// Compress responses (gzip/brotli)
+app.use(compression());
+
 // Rate limiting on API routes (100 requests/min per IP)
 const apiLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -87,9 +91,13 @@ app.get('/api/health', (req, res) => {
 // Setup Socket.io
 const io = setupSocket(server);
 
-// Serve static frontend in production
+// Serve static frontend — hashed assets get long-lived cache, HTML gets short cache
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+}));
+app.use(express.static(distPath, { maxAge: '10m' }));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {

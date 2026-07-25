@@ -152,18 +152,17 @@ router.put('/admin/:id', requireAuth, requireRole('admin'), async (req, res) => 
 
     const { slug, name, isDefault, spriteId } = req.body;
 
-    const data = {};
-    if (slug !== undefined) data.slug = slug.trim();
-    if (name !== undefined) data.name = name.trim();
-    if (isDefault !== undefined) data.isDefault = isDefault === true;
-    if (spriteId !== undefined) {
-        const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
-        if (!sprite) return res.status(400).json({ error: 'Sprite not found' });
-        data.spriteId = sprite.id;
-        data.spriteSheetId = sprite.spriteSheetId;
-    }
-
     try {
+        const data = {};
+        if (slug !== undefined) data.slug = slug.trim();
+        if (name !== undefined) data.name = name.trim();
+        if (isDefault !== undefined) data.isDefault = isDefault === true;
+        if (spriteId !== undefined) {
+            const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
+            if (!sprite) return res.status(400).json({ error: 'Sprite not found' });
+            data.spriteId = sprite.id;
+            data.spriteSheetId = sprite.spriteSheetId;
+        }
         const player = await prisma.playerTemplate.update({
             where: { id },
             data,

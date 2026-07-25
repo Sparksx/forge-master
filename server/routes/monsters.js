@@ -35,6 +35,7 @@ router.get('/templates', async (req, res) => {
                 : null,
         }));
 
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json({ spriteSheet, templates });
     } catch (err) {
         console.error('Monster templates error:', err);
@@ -114,23 +115,22 @@ router.put('/admin/:id', requireAuth, requireRole('admin'), async (req, res) => 
 
     const { slug, name, emoji, color, wave, hpMultiplier, dmgMultiplier, speedModifier, spriteId } = req.body;
 
-    const data = {};
-    if (slug !== undefined) data.slug = slug.trim();
-    if (name !== undefined) data.name = name.trim();
-    if (emoji !== undefined) data.emoji = emoji;
-    if (color !== undefined) data.color = color;
-    if (wave !== undefined) data.wave = parseInt(wave);
-    if (hpMultiplier !== undefined) data.hpMultiplier = parseFloat(hpMultiplier);
-    if (dmgMultiplier !== undefined) data.dmgMultiplier = parseFloat(dmgMultiplier);
-    if (speedModifier !== undefined) data.speedModifier = parseInt(speedModifier);
-    if (spriteId !== undefined) {
-        const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
-        if (!sprite) return res.status(400).json({ error: 'Sprite not found' });
-        data.spriteId = sprite.id;
-        data.spriteSheetId = sprite.spriteSheetId;
-    }
-
     try {
+        const data = {};
+        if (slug !== undefined) data.slug = slug.trim();
+        if (name !== undefined) data.name = name.trim();
+        if (emoji !== undefined) data.emoji = emoji;
+        if (color !== undefined) data.color = color;
+        if (wave !== undefined) data.wave = parseInt(wave);
+        if (hpMultiplier !== undefined) data.hpMultiplier = parseFloat(hpMultiplier);
+        if (dmgMultiplier !== undefined) data.dmgMultiplier = parseFloat(dmgMultiplier);
+        if (speedModifier !== undefined) data.speedModifier = parseInt(speedModifier);
+        if (spriteId !== undefined) {
+            const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
+            if (!sprite) return res.status(400).json({ error: 'Sprite not found' });
+            data.spriteId = sprite.id;
+            data.spriteSheetId = sprite.spriteSheetId;
+        }
         const monster = await prisma.monsterTemplate.update({
             where: { id },
             data,

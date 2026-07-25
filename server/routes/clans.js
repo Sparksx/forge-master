@@ -497,6 +497,8 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 });
 
+const CLAN_CREATE_COST = 500;
+
 // POST /api/clans — create a clan (creator becomes owner)
 router.post('/', requireAuth, async (req, res) => {
     const fieldError = validClanFields(req.body || {});
@@ -508,19 +510,28 @@ router.post('/', requireAuth, async (req, res) => {
     const description = (req.body.description || '').toString();
 
     try {
-        const existing = await getMembership(req.user.userId);
-        if (existing) return res.status(409).json({ error: 'You are already in a clan' });
+        const clan = await prisma.$transaction(async (tx) => {
+            const existing = await tx.clanMember.findUnique({ where: { userId: req.user.userId } });
+            if (existing) throw Object.assign(new Error('You are already in a clan'), { status: 409 });
 
-        const clan = await prisma.clan.create({
-            data: {
-                name, tag, emblem, description,
-                ownerId: req.user.userId,
-                members: { create: { userId: req.user.userId, role: 'owner' } },
-            },
-            include: FULL_CLAN_INCLUDE,
+            const gs = await tx.gameState.findUnique({ where: { userId: req.user.userId }, select: { gold: true } });
+            if (!gs || gs.gold < CLAN_CREATE_COST) {
+                throw Object.assign(new Error(`You need ${CLAN_CREATE_COST} gold to found a clan`), { status: 400 });
+            }
+            await tx.gameState.update({ where: { userId: req.user.userId }, data: { gold: { decrement: CLAN_CREATE_COST } } });
+
+            return tx.clan.create({
+                data: {
+                    name, tag, emblem, description,
+                    ownerId: req.user.userId,
+                    members: { create: { userId: req.user.userId, role: 'owner' } },
+                },
+                include: FULL_CLAN_INCLUDE,
+            });
         });
         res.status(201).json(serializeClan(clan, { withMembers: true }));
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         if (err.code === 'P2002') {
             return res.status(409).json({ error: 'A clan with that name or tag already exists' });
         }
