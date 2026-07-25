@@ -145,32 +145,30 @@ router.put('/admin/items/:id', requireAuth, requireRole('admin'), async (req, re
 
     const { type, tier, skin, name, spriteId } = req.body;
 
-    const data = {};
-    if (type !== undefined) data.type = type;
-    if (tier !== undefined) {
-        if (tier < 1 || tier > 7) return res.status(400).json({ error: 'tier must be between 1 and 7' });
-        data.tier = parseInt(tier);
-    }
-    if (skin !== undefined) data.skin = skin.trim();
-    if (name !== undefined) data.name = name.trim();
-    if (spriteId !== undefined) {
-        const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
-        if (!sprite) {
-            return res.status(400).json({ error: 'Sprite not found' });
-        }
-        data.spriteId = sprite.id;
-    }
-
-    // If type changed, update sprite sheet reference
-    if (type !== undefined) {
-        const sheet = await prisma.spriteSheet.findUnique({ where: { type } });
-        if (!sheet) {
-            return res.status(400).json({ error: `No sprite sheet found for type "${type}"` });
-        }
-        data.spriteSheetId = sheet.id;
-    }
-
     try {
+        const data = {};
+        if (type !== undefined) data.type = type;
+        if (tier !== undefined) {
+            if (tier < 1 || tier > 7) return res.status(400).json({ error: 'tier must be between 1 and 7' });
+            data.tier = parseInt(tier);
+        }
+        if (skin !== undefined) data.skin = skin.trim();
+        if (name !== undefined) data.name = name.trim();
+        if (spriteId !== undefined) {
+            const sprite = await prisma.sprite.findUnique({ where: { id: parseInt(spriteId) } });
+            if (!sprite) {
+                return res.status(400).json({ error: 'Sprite not found' });
+            }
+            data.spriteId = sprite.id;
+        }
+
+        if (type !== undefined) {
+            const sheet = await prisma.spriteSheet.findUnique({ where: { type } });
+            if (!sheet) {
+                return res.status(400).json({ error: `No sprite sheet found for type "${type}"` });
+            }
+            data.spriteSheetId = sheet.id;
+        }
         const item = await prisma.itemTemplate.update({
             where: { id },
             data,
