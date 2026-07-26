@@ -59,7 +59,7 @@ export const attackPeriod = (c) => BASE_ATTACK_PERIOD / (1 + (c.attackSpeed || 0
  *            attackerHp, targetHp }] in time order. `by`/`target` are entity ids.
  */
 export function simulateBattle(allies, enemies, seed) {
-    const rnd = seed == null ? Math.random : seededRng(seed);
+    const rnd = seed === null || seed === undefined ? Math.random : seededRng(seed);
     const mk = (c, side, i) => ({
         ...c,
         id: c.id || `${side}${i}`,

@@ -563,30 +563,30 @@ router.post('/:id/join', requireAuth, async (req, res) => {
 // POST /api/clans/leave — leave the current clan (owner transfers or disbands)
 router.post('/leave', requireAuth, async (req, res) => {
     try {
-        const membership = await getMembership(req.user.userId);
-        if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
+        await prisma.$transaction(async (tx) => {
+            const membership = await tx.clanMember.findUnique({ where: { userId: req.user.userId } });
+            if (!membership) throw Object.assign(new Error('You are not in a clan'), { status: 400 });
 
-        const clanId = membership.clanId;
-        await prisma.clanMember.delete({ where: { userId: req.user.userId } });
+            const clanId = membership.clanId;
+            await tx.clanMember.delete({ where: { userId: req.user.userId } });
 
-        // If the owner left, transfer ownership to the next-oldest member, or disband if empty.
-        const clan = await prisma.clan.findUnique({ where: { id: clanId } });
-        if (clan && clan.ownerId === req.user.userId) {
-            const next = await prisma.clanMember.findFirst({
-                where: { clanId },
-                orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
-            });
-            if (next) {
-                await prisma.$transaction([
-                    prisma.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } }),
-                    prisma.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
-                ]);
-            } else {
-                await prisma.clan.delete({ where: { id: clanId } });
+            const clan = await tx.clan.findUnique({ where: { id: clanId } });
+            if (clan && clan.ownerId === req.user.userId) {
+                const next = await tx.clanMember.findFirst({
+                    where: { clanId },
+                    orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
+                });
+                if (next) {
+                    await tx.clan.update({ where: { id: clanId }, data: { ownerId: next.userId } });
+                    await tx.clanMember.update({ where: { id: next.id }, data: { role: 'owner' } });
+                } else {
+                    await tx.clan.delete({ where: { id: clanId } });
+                }
             }
-        }
+        });
         res.json({ ok: true });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         console.error('Leave clan error:', err);
         res.status(500).json({ error: 'Failed to leave clan' });
     }

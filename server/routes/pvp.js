@@ -2,6 +2,7 @@
 // server-side with the shared deterministic combat engine (anti-cheat) and
 // replayed identically on the client. No live opponent, no real-time timers.
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { computeStatsFromEquipment, playerPowerScore } from '../../shared/stats.js';
@@ -10,6 +11,14 @@ import { clanPerks, clanLevelFromXp } from '../../shared/clan-config.js';
 import { pickOpponent, attackerEloChange } from '../lib/pvp-match.js';
 
 const router = Router();
+
+const pvpLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many fights, slow down' },
+});
 
 const CANDIDATE_POOL = 100; // recent players considered as opponents per fight
 
@@ -85,7 +94,7 @@ export function mirrorBot(attacker) {
 }
 
 // POST /api/pvp/fight — resolve one async fight and (for real opponents) apply Elo.
-router.post('/fight', requireAuth, async (req, res) => {
+router.post('/fight', pvpLimiter, requireAuth, async (req, res) => {
     try {
         const me = await prisma.user.findUnique({
             where: { id: req.user.userId },
@@ -128,14 +137,19 @@ router.post('/fight', requireAuth, async (req, res) => {
         let newRating = attacker.rating;
         if (!friendly && !opponent.isBot) {
             ratingChange = attackerEloChange(attacker.rating, opponent.rating, win, attacker.power, opponent.power);
-            newRating = Math.max(0, attacker.rating + ratingChange);
-            await prisma.user.update({
+            const updated = await prisma.user.update({
                 where: { id: me.id },
                 data: {
-                    pvpRating: newRating,
+                    pvpRating: { increment: ratingChange },
                     ...(win ? { pvpWins: { increment: 1 } } : { pvpLosses: { increment: 1 } }),
                 },
+                select: { pvpRating: true },
             });
+            newRating = Math.max(0, updated.pvpRating);
+            if (updated.pvpRating < 0) {
+                await prisma.user.update({ where: { id: me.id }, data: { pvpRating: 0 } });
+                newRating = 0;
+            }
         }
 
         res.json({

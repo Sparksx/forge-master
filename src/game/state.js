@@ -361,14 +361,27 @@ function buildSave() {
 let saveTimer = null;
 let saveInFlight = false;
 let dirtyWhileSaving = false;
+let localSaveTimer = null;
 const SAVE_DEBOUNCE = 1500;
+const LOCAL_SAVE_DEBOUNCE = 300;
 
 export function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); } catch { /* ignore */ }
+    if (!localSaveTimer) {
+        localSaveTimer = setTimeout(() => {
+            localSaveTimer = null;
+            try { localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); } catch { /* ignore */ }
+        }, LOCAL_SAVE_DEBOUNCE);
+    }
     if (!getAccessToken()) return;
     if (saveInFlight) { dirtyWhileSaving = true; return; }
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE);
+}
+
+export function cancelPendingSave() {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    if (localSaveTimer) { clearTimeout(localSaveTimer); localSaveTimer = null; }
+    dirtyWhileSaving = false;
 }
 
 async function saveToServer() {
@@ -457,6 +470,8 @@ export async function loadFromServer() {
 // Flush pending save on tab hide / unload.
 if (typeof document !== 'undefined') {
     const flush = () => {
+        if (localSaveTimer) { clearTimeout(localSaveTimer); localSaveTimer = null; }
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); } catch { /* ignore */ }
         if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
             if (saveTimer) clearTimeout(saveTimer);
             saveToServer();
