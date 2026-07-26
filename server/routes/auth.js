@@ -465,14 +465,14 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
     }
 
     try {
-        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
 
         // Check token exists in DB (not revoked)
         const stored = await prisma.refreshToken.findUnique({
@@ -606,9 +606,18 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    // Only allow known settings keys to prevent data pollution.
+    const ALLOWED_KEYS = ['theme', 'soundEnabled', 'musicEnabled', 'notifications', 'language', 'autoForge'];
     const VALID_THEMES = ['dark', 'light'];
-    if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
+    const filtered = {};
+    for (const key of Object.keys(settings)) {
+        if (!ALLOWED_KEYS.includes(key)) continue;
+        filtered[key] = settings[key];
+    }
+    if (Object.keys(filtered).length === 0) {
+        return res.status(400).json({ error: 'No valid settings provided' });
+    }
+    if (filtered.theme !== undefined && !VALID_THEMES.includes(filtered.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
     }
 
@@ -621,7 +630,7 @@ router.put('/settings', requireAuth, async (req, res) => {
             });
 
             const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-            const merged = { ...current, ...settings };
+            const merged = { ...current, ...filtered };
 
             return tx.user.update({
                 where: { id: req.user.userId },

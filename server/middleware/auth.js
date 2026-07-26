@@ -14,9 +14,17 @@ export function requireAuth(req, res, next) {
 
     const token = header.slice(7);
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         req.user = { userId: payload.userId, username: payload.username };
-        next();
+        getActiveBan(payload.userId).then((ban) => {
+            if (ban) {
+                const expiry = ban.expiresAt
+                    ? `until ${ban.expiresAt.toISOString()}`
+                    : 'permanently';
+                return res.status(403).json({ error: `You are banned ${expiry}` });
+            }
+            next();
+        }).catch(() => next());
     } catch (err) {
         if (err.name === 'TokenExpiredError') {
             return res.status(401).json({ error: 'Token expired' });
@@ -41,11 +49,30 @@ export function requireRole(...roles) {
             }
             req.user.role = user.role;
             next();
-        } catch (err) {
-            console.error('Role check error:', err);
+        } catch (e) {
+            console.error('Role check error:', e);
             return res.status(500).json({ error: 'Internal server error' });
         }
     };
+}
+
+/**
+ * Express middleware — rejects requests from banned users.
+ * Skips silently if no user is attached (pre-auth routes).
+ */
+export function requireNotBanned(req, res, next) {
+    if (!req.user) return next();
+    getActiveBan(req.user.userId).then((ban) => {
+        if (ban) {
+            const expiry = ban.expiresAt
+                ? `until ${ban.expiresAt.toISOString()}`
+                : 'permanently';
+            return res.status(403).json({ error: `You are banned ${expiry}` });
+        }
+        next();
+    }).catch(() => {
+        res.status(500).json({ error: 'Internal server error' });
+    });
 }
 
 /**
@@ -106,10 +133,10 @@ export function socketAuth(socket, next) {
     }
 
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         socket.user = { userId: payload.userId, username: payload.username };
         next();
-    } catch (err) {
+    } catch (_err) {
         next(new Error('Invalid or expired token'));
     }
 }

@@ -32,7 +32,7 @@ router.get('/templates', async (req, res) => {
             let spriteData;
             if (item.sprite) {
                 spriteData = { x: item.sprite.spriteX, y: item.sprite.spriteY, w: item.sprite.spriteW, h: item.sprite.spriteH };
-            } else if (item.spriteX != null) {
+            } else if (item.spriteX !== null && item.spriteX !== undefined) {
                 spriteData = { x: item.spriteX, y: item.spriteY, w: item.spriteW, h: item.spriteH };
             } else {
                 spriteData = { x: 0, y: 0, w: 0, h: 0 };
