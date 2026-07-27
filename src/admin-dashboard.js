@@ -797,7 +797,7 @@ function openSpriteModal(spriteId) {
     const sheetSelect = document.getElementById('adm-spr-sheet');
     sheetSelect.innerHTML = '';
     spriteSheets.forEach(s => {
-        sheetSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.type)} (${s.file})</option>`;
+        sheetSelect.innerHTML += `<option value="${s.id}">${escapeHtml(s.type)} (${escapeHtml(s.file)})</option>`;
     });
 
     if (spriteId) {

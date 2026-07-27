@@ -487,8 +487,8 @@ router.delete('/users/:id/reset-state', requireRole('admin'), async (req, res) =
             where: { userId },
             data: {
                 equipment: {},
-                gold: 0,
-                diamonds: 100,
+                gold: 100,
+                diamonds: 0,
                 forgeLevel: 1,
                 forgeUpgrade: null,
                 combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },

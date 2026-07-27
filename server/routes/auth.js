@@ -580,12 +580,6 @@ router.post('/change-username', requireAuth, [
     const { username } = req.body;
 
     try {
-        // Check if username is taken
-        const existing = await prisma.user.findUnique({ where: { username } });
-        if (existing && existing.id !== req.user.userId) {
-            return res.status(409).json({ error: 'Username already taken' });
-        }
-
         await prisma.user.update({
             where: { id: req.user.userId },
             data: { username },
@@ -593,6 +587,9 @@ router.post('/change-username', requireAuth, [
 
         res.json({ message: 'Username changed', username });
     } catch (err) {
+        if (err.code === 'P2002') {
+            return res.status(409).json({ error: 'Username already taken' });
+        }
         console.error('Change username error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }

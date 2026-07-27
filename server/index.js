@@ -20,6 +20,8 @@ import pvpRoutes from './routes/pvp.js';
 import prisma from './lib/prisma.js';
 import { seedEquipmentIfEmpty } from './lib/seed-equipment.js';
 import { migrateSpritesIfNeeded } from './lib/migrate-sprites.js';
+import { requireNotBanned } from './middleware/auth.js';
+import compression from 'compression';
 
 process.on('unhandledRejection', (reason) => {
     console.error('Unhandled promise rejection:', reason);
@@ -65,23 +67,29 @@ app.use('/api/', apiLimiter);
 // Stripe webhook needs raw body for signature verification — must be registered before express.json()
 app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
 
+app.use(compression());
 app.use(express.json({ limit: '16kb' }));
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/game', requireNotBanned, gameRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment', requireNotBanned, paymentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/sprites', spriteRoutes);
 app.use('/api/monsters', monsterRoutes);
 app.use('/api/players', playerRoutes);
-app.use('/api/clans', clanRoutes);
-app.use('/api/pvp', pvpRoutes);
+app.use('/api/clans', requireNotBanned, clanRoutes);
+app.use('/api/pvp', requireNotBanned, pvpRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'error', detail: 'database unreachable' });
+    }
 });
 
 // Setup Socket.io
@@ -89,7 +97,9 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+const assetsPath = path.join(distPath, 'assets');
+app.use('/assets', express.static(assetsPath, { maxAge: '1y', immutable: true }));
+app.use(express.static(distPath, { maxAge: '1h' }));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {
@@ -112,11 +122,13 @@ app.use((err, req, res, _next) => {
 server.listen(PORT, async () => {
     console.log(`Gear Master server running on port ${PORT} (${NODE_ENV})`);
 
-    // Migrate existing sprites if upgrading from old schema
-    await migrateSpritesIfNeeded();
-
-    // Seed equipment templates into DB if tables are empty (first run)
-    await seedEquipmentIfEmpty();
+    try {
+        await migrateSpritesIfNeeded();
+        await seedEquipmentIfEmpty();
+    } catch (err) {
+        console.error('Startup migration/seed failed:', err);
+        process.exit(1);
+    }
 
     // Cleanup expired refresh tokens on startup + every 24h
     async function cleanupExpiredTokens() {
