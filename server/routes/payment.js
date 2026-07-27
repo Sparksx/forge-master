@@ -250,32 +250,31 @@ router.post('/webhook', async (req, res) => {
             });
 
             if (purchase && purchase.status === 'completed') {
-                // Atomically claim the refund so it can't double-reverse.
-                const claim = await prisma.purchase.updateMany({
-                    where: { id: purchase.id, status: 'completed' },
-                    data: { status: 'refunded' },
-                });
+                await prisma.$transaction(async (tx) => {
+                    const claim = await tx.purchase.updateMany({
+                        where: { id: purchase.id, status: 'completed' },
+                        data: { status: 'refunded' },
+                    });
+                    if (claim.count === 0) return;
 
-                if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    const gs = await tx.gameState.findUnique({
                         where: { userId: purchase.userId },
                         select: { gold: true },
                     });
                     const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
+                    await tx.gameState.update({
                         where: { userId: purchase.userId },
                         data: { gold: newGold },
                     });
+                });
 
-                    await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
-                        packId: purchase.packId,
-                        gold: purchase.goldGranted,
-                        stripePaymentId: charge.payment_intent,
-                    });
+                await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
+                    packId: purchase.packId,
+                    gold: purchase.goldGranted,
+                    stripePaymentId: charge.payment_intent,
+                });
 
-                    console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
-                }
+                console.log(`Refund processed: user ${purchase.userId} lost ${purchase.goldGranted} gold`);
             }
         } catch (err) {
             console.error('Refund webhook error:', err);

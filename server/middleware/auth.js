@@ -84,6 +84,26 @@ export async function getActiveMute(userId) {
 }
 
 /**
+ * Express middleware — rejects requests from banned users.
+ * Must be used AFTER requireAuth.
+ */
+export function requireNotBanned(req, res, next) {
+    getActiveBan(req.user.userId).then(ban => {
+        if (ban) {
+            return res.status(403).json({
+                error: 'Your account is banned',
+                reason: ban.reason,
+                expiresAt: ban.expiresAt,
+            });
+        }
+        next();
+    }).catch(err => {
+        console.error('Ban check error:', err);
+        next();
+    });
+}
+
+/**
  * Log an admin/moderator action to the audit log.
  */
 export async function logAudit(actorId, action, targetId = null, details = null) {
