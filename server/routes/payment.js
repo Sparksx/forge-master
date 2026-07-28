@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Stripe from 'stripe';
-import { requireAuth, logAudit } from '../middleware/auth.js';
+import { requireAuth, requireNotBanned, logAudit } from '../middleware/auth.js';
 import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOLD_PACKS, CORS_ORIGIN } from '../config.js';
 import prisma from '../lib/prisma.js';
 
@@ -70,7 +70,7 @@ router.get('/packs', (req, res) => {
 
 // ─── POST /api/payment/create-checkout-session ──────────────────
 // Authenticated: create a Stripe Checkout Session for a gold pack
-router.post('/create-checkout-session', requireAuth, async (req, res) => {
+router.post('/create-checkout-session', requireAuth, requireNotBanned, async (req, res) => {
     const { packId } = req.body;
 
     if (!packId || typeof packId !== 'string') {

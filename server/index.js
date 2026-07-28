@@ -45,7 +45,19 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'blob:'],
+            connectSrc: ["'self'", 'wss:', 'ws:', 'https://accounts.google.com', 'https://discord.com', 'https://checkout.stripe.com'],
+            frameSrc: ["'self'", 'https://accounts.google.com', 'https://checkout.stripe.com'],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -79,9 +91,14 @@ app.use('/api/players', playerRoutes);
 app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+// Health check — verifies DB connectivity so Railway doesn't route to a broken instance
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'unhealthy', reason: 'database unreachable' });
+    }
 });
 
 // Setup Socket.io

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireNotBanned } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { MAX_FORGE_LEVEL } from '../../shared/stats.js';
 import {
@@ -56,7 +56,7 @@ router.get('/state', requireAuth, async (req, res) => {
 });
 
 // PUT /api/game/state — save player's game state
-router.put('/state', requireAuth, async (req, res) => {
+router.put('/state', requireAuth, requireNotBanned, async (req, res) => {
     const { equipment, gold, diamonds, forgeLevel, forgeUpgrade, combat, essence, player, research, forgeHighestLevel, shopState, skills } = req.body;
 
     try {

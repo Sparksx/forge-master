@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireNotBanned } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 import { gearPowerFromEquipment } from '../../shared/stats.js';
 import { clanLevelFromXp, clanPerks, clanLevelProgress } from '../../shared/clan-config.js';
@@ -88,6 +88,9 @@ const MEMBER_INCLUDE = {
 
 const FULL_CLAN_INCLUDE = { ...MEMBER_INCLUDE, _count: { select: { members: true } } };
 
+// Lightweight include for the clan listing — no game state, just counts + basic info
+const LIST_CLAN_INCLUDE = { _count: { select: { members: true } } };
+
 /** Load the requesting user's membership (or null). */
 function getMembership(userId) {
     return prisma.clanMember.findUnique({ where: { userId } });
@@ -169,13 +172,14 @@ export function serializeMission(m) {
  * its locally-authoritative gold without clobbering the reward on its next save.
  */
 async function resolveExpedition(expId, forUserId = null) {
+    // Roll outside the transaction so retries don't change the outcome
+    const roll = Math.random();
     return prisma.$transaction(async (tx) => {
         const exp = await tx.expedition.findUnique({ where: { id: expId }, include: { members: true } });
         if (!exp || exp.status !== 'active') return 0;
         const totalPower = exp.members.reduce((s, m) => s + m.power, 0);
         const filledSlots = exp.members.length;
-        // `exp` carries the stored powerReq + slots, so outcome reflects this run's party size.
-        const outcome = expeditionOutcome(exp, { totalPower, filledSlots }, Math.random());
+        const outcome = expeditionOutcome(exp, { totalPower, filledSlots }, roll);
         const xpGain = Math.round(exp.rewardXp * outcome.rewardMult);
         // rewardGold is the total pot — split it evenly across everyone who joined.
         const goldPot = Math.round(exp.rewardGold * outcome.rewardMult);
@@ -220,7 +224,7 @@ router.get('/', requireAuth, async (req, res) => {
             where,
             orderBy: { xp: 'desc' },
             take: 25,
-            include: FULL_CLAN_INCLUDE,
+            include: LIST_CLAN_INCLUDE,
         });
         res.json(clans.map((c) => serializeClan(c)));
     } catch (err) {
@@ -284,7 +288,7 @@ router.get('/expeditions', requireAuth, async (req, res) => {
 // launch: gated by clan level (harder runs unlock as the clan grows) and a cap on how
 // many can run at once — never by gold, to keep clans non-pay-to-win. Slots scale with
 // clan size and the reward scales with the chosen duration.
-router.post('/expeditions', requireAuth, async (req, res) => {
+router.post('/expeditions', requireAuth, requireNotBanned, async (req, res) => {
     try {
         const membership = await getMembership(req.user.userId);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
@@ -337,7 +341,7 @@ router.post('/expeditions', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/expeditions/:id/join — register into a free slot
-router.post('/expeditions/:id/join', requireAuth, async (req, res) => {
+router.post('/expeditions/:id/join', requireAuth, requireNotBanned, async (req, res) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid expedition id' });
@@ -449,7 +453,7 @@ router.post('/missions', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/missions/progress { type, amount } — report play progress
-router.post('/missions/progress', requireAuth, async (req, res) => {
+router.post('/missions/progress', requireAuth, requireNotBanned, async (req, res) => {
     try {
         const membership = await getMembership(req.user.userId);
         if (!membership) return res.status(400).json({ error: 'You are not in a clan' });
@@ -498,7 +502,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans — create a clan (creator becomes owner)
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requireNotBanned, async (req, res) => {
     const fieldError = validClanFields(req.body || {});
     if (fieldError) return res.status(400).json({ error: fieldError });
 
@@ -530,7 +534,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/:id/join
-router.post('/:id/join', requireAuth, async (req, res) => {
+router.post('/:id/join', requireAuth, requireNotBanned, async (req, res) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid clan id' });
@@ -593,7 +597,7 @@ router.post('/leave', requireAuth, async (req, res) => {
 });
 
 // POST /api/clans/contribute — add gold to the clan bank (treasury; non-power)
-router.post('/contribute', requireAuth, async (req, res) => {
+router.post('/contribute', requireAuth, requireNotBanned, async (req, res) => {
     try {
         const amount = Math.floor(Number(req.body?.amount));
         if (!Number.isInteger(amount) || amount <= 0) {
