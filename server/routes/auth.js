@@ -23,23 +23,27 @@ const authLimiter = rateLimit({
     message: { error: 'Too many attempts, please try again later' },
 });
 
+function hashToken(token) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 function generateAccessToken(user) {
     return jwt.sign(
-        { userId: user.id, username: user.username },
+        { userId: user.id, username: user.username, type: 'access' },
         JWT_SECRET,
-        { expiresIn: JWT_ACCESS_EXPIRY }
+        { expiresIn: JWT_ACCESS_EXPIRY, algorithm: 'HS256' }
     );
 }
 
 function generateRefreshToken(user) {
     return jwt.sign(
-        { userId: user.id, username: user.username },
+        { userId: user.id, username: user.username, type: 'refresh' },
         JWT_REFRESH_SECRET,
-        { expiresIn: JWT_REFRESH_EXPIRY }
+        { expiresIn: JWT_REFRESH_EXPIRY, algorithm: 'HS256' }
     );
 }
 
-/** Store refresh token in DB and return both tokens as JSON */
+/** Store hashed refresh token in DB and return both tokens as JSON */
 async function issueTokens(user, res, statusCode = 200) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
@@ -47,7 +51,7 @@ async function issueTokens(user, res, statusCode = 200) {
     const decoded = jwt.decode(refreshToken);
     await prisma.refreshToken.create({
         data: {
-            token: refreshToken,
+            token: hashToken(refreshToken),
             userId: user.id,
             expiresAt: new Date(decoded.exp * 1000),
         }
@@ -73,7 +77,7 @@ async function createDefaultGameState(userId) {
         data: {
             userId,
             equipment: {},
-            gold: 0,
+            gold: 100, // STARTING_GOLD
             forgeLevel: 1,
             combat: { currentWave: 1, currentSubWave: 1, highestWave: 1, highestSubWave: 1 },
         }
@@ -472,11 +476,15 @@ router.post('/refresh', async (req, res) => {
     }
 
     try {
-        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
+        if (payload.type !== 'refresh') {
+            return res.status(401).json({ error: 'Invalid token type' });
+        }
 
-        // Check token exists in DB (not revoked)
+        // Look up by hash — the raw token is never stored
+        const tokenHash = hashToken(refreshToken);
         const stored = await prisma.refreshToken.findUnique({
-            where: { token: refreshToken }
+            where: { token: tokenHash }
         });
         if (!stored) {
             return res.status(401).json({ error: 'Token revoked' });
@@ -496,7 +504,7 @@ router.post('/refresh', async (req, res) => {
             prisma.refreshToken.delete({ where: { id: stored.id } }),
             prisma.refreshToken.create({
                 data: {
-                    token: newRefreshToken,
+                    token: hashToken(newRefreshToken),
                     userId: user.id,
                     expiresAt: new Date(decoded.exp * 1000),
                 }
@@ -520,7 +528,7 @@ router.post('/logout', requireAuth, async (req, res) => {
     try {
         if (refreshToken) {
             await prisma.refreshToken.deleteMany({
-                where: { token: refreshToken, userId: req.user.userId }
+                where: { token: hashToken(refreshToken), userId: req.user.userId }
             });
         } else {
             // Delete all refresh tokens for this user

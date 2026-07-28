@@ -8,7 +8,10 @@ vi.mock('express', () => {
     return { Router: () => fakeRouter };
 });
 vi.mock('../../lib/prisma.js', () => ({ default: {} }));
-vi.mock('../../middleware/auth.js', () => ({ requireAuth: (_req, _res, next) => next() }));
+vi.mock('../../middleware/auth.js', () => ({
+    requireAuth: (_req, _res, next) => next(),
+    requireNotBanned: (_req, _res, next) => next(),
+}));
 
 import {
     validClanFields,

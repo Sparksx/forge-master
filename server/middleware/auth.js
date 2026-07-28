@@ -14,7 +14,10 @@ export function requireAuth(req, res, next) {
 
     const token = header.slice(7);
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+        if (payload.type && payload.type !== 'access') {
+            return res.status(401).json({ error: 'Invalid token type' });
+        }
         req.user = { userId: payload.userId, username: payload.username };
         next();
     } catch (err) {
@@ -23,6 +26,25 @@ export function requireAuth(req, res, next) {
         }
         return res.status(401).json({ error: 'Invalid token' });
     }
+}
+
+/**
+ * Express middleware — rejects banned users on HTTP routes.
+ * Must be used AFTER requireAuth.
+ */
+export function requireNotBanned(req, res, next) {
+    getActiveBan(req.user.userId).then((ban) => {
+        if (ban) {
+            const expiry = ban.expiresAt
+                ? `until ${ban.expiresAt.toISOString()}`
+                : 'permanently';
+            return res.status(403).json({ error: `You are banned ${expiry}. Reason: ${ban.reason}` });
+        }
+        next();
+    }).catch((err) => {
+        console.error('Ban check error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    });
 }
 
 /**
@@ -106,7 +128,10 @@ export function socketAuth(socket, next) {
     }
 
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+        if (payload.type && payload.type !== 'access') {
+            return next(new Error('Invalid token type'));
+        }
         socket.user = { userId: payload.userId, username: payload.username };
         next();
     } catch (err) {
