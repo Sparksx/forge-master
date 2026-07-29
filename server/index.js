@@ -80,8 +80,13 @@ app.use('/api/clans', clanRoutes);
 app.use('/api/pvp', pvpRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'ok' });
+    } catch {
+        res.status(503).json({ status: 'degraded', reason: 'database unreachable' });
+    }
 });
 
 // Setup Socket.io
@@ -89,7 +94,8 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '30d', immutable: true }));
+app.use(express.static(distPath, { maxAge: '1h' }));
 
 // Admin dashboard — serve admin.html for /admin route
 app.get('/admin', (req, res) => {

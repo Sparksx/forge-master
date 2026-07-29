@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
             include: { spriteSheet: true },
             orderBy: [{ spriteSheet: { type: 'asc' } }, { name: 'asc' }],
         });
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json({ sprites });
     } catch (err) {
         console.error('Sprites list error:', err);

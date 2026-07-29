@@ -71,7 +71,23 @@ router.put('/state', requireAuth, async (req, res) => {
             if (!isNonNegativeNumber(gold)) {
                 return res.status(400).json({ error: 'Gold must be a non-negative number' });
             }
-            data.gold = Math.floor(gold);
+            const requestedGold = Math.floor(gold);
+            const current = await prisma.gameState.findUnique({
+                where: { userId: req.user.userId },
+                select: { gold: true },
+            });
+            const currentGold = current?.gold ?? 100;
+            if (requestedGold > currentGold) {
+                const MAX_CLIENT_GOLD_GAIN = 500;
+                if (requestedGold - currentGold > MAX_CLIENT_GOLD_GAIN) {
+                    console.warn(`Gold anomaly: user ${req.user.userId} tried ${currentGold} → ${requestedGold}`);
+                    data.gold = currentGold;
+                } else {
+                    data.gold = requestedGold;
+                }
+            } else {
+                data.gold = requestedGold;
+            }
         }
         if (diamonds !== undefined) {
             if (!isNonNegativeNumber(diamonds)) {

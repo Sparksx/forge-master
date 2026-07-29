@@ -379,6 +379,7 @@ async function saveToServer() {
         await apiFetch('/api/game/state', { method: 'PUT', body: buildSave() });
     } catch (err) {
         console.error('Save failed:', err);
+        gameEvents.emit(EVENTS.SAVE_FAILED);
     } finally {
         saveInFlight = false;
         if (dirtyWhileSaving) { dirtyWhileSaving = false; saveTimer = setTimeout(saveToServer, SAVE_DEBOUNCE); }

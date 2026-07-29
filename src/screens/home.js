@@ -51,12 +51,15 @@ export const id = 'home';
 export const icon = '🔨';
 export const label = 'Forge';
 
+function onChatUpdated() { syncChat(); }
+
 // ── Render ────────────────────────────────────────────────────────────────
 export function render(container) {
     root = container;
     clear(root);
     root.appendChild(h('div', { className: 'home-screen' }, buildBattle(), buildForge(), buildChat()));
-    gameEvents.on(EVENTS.CHAT_UPDATED, () => syncChat());
+    gameEvents.off(EVENTS.CHAT_UPDATED, onChatUpdated);
+    gameEvents.on(EVENTS.CHAT_UPDATED, onChatUpdated);
     refresh();
 }
 
