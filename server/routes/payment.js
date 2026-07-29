@@ -65,6 +65,7 @@ router.get('/packs', (req, res) => {
         tag: p.tag || null,
         oneTime: p.oneTime || false,
     }));
+    res.set('Cache-Control', 'public, max-age=3600');
     res.json({ packs });
 });
 

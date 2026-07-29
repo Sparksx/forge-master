@@ -29,6 +29,7 @@ model User {
   conversations  ConversationMember[]
 
   @@index([pvpRating])
+  @@index([isGuest])
   refreshTokens  RefreshToken[]
   bans           Ban[]          @relation("bannedUser")
   mutes          Mute[]         @relation("mutedUser")
@@ -59,6 +60,7 @@ model Clan {
 
   @@index([treasury])
   @@index([xp])
+  @@index([ownerId])
 }
 
 model ClanMember {
@@ -322,7 +324,7 @@ model Purchase {
   userId          Int
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   stripeSessionId String   @unique
-  stripePaymentId String?
+  stripePaymentId String?  @unique
   packId          String   @db.VarChar(30)
   goldGranted     Int      @default(0) // default lets `prisma db push` add this column to pre-existing rows (e.g. legacy diamond purchases) without a force-reset; every real insert sets it explicitly
   amountCents     Int

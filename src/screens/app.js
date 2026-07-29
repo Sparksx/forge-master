@@ -1,5 +1,5 @@
 // App shell — header, bottom nav, screen routing, toast/modal roots.
-import { h, clear, fmt, setToastRoot, setModalRoot } from './components.js';
+import { h, clear, fmt, setToastRoot, setModalRoot, toast } from './components.js';
 import { avatarEmoji } from '../game/config.js';
 import { getGold, getPowerScore, getAvatar, getFrame, getPlayerLevel, getPlayerLevelProgress } from '../game/state.js';
 import { gameEvents, EVENTS } from '../events.js';
@@ -56,6 +56,7 @@ export function initApp(mountEl) {
         });
     });
     gameEvents.on(EVENTS.CLAN_CHANGED, updateHeader);
+    gameEvents.on(EVENTS.SAVE_FAILED, () => toast('Progress save failed — retrying…', 'error'));
 
     // Staff-only floating tools button (moderation, resources, stats…).
     initAdminUI(mountEl.querySelector('.app-root'));

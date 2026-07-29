@@ -249,6 +249,9 @@ router.post('/discord', authLimiter, async (req, res) => {
                     throw err;
                 }
             }
+            if (!user) {
+                return res.status(409).json({ error: 'Could not create account — username conflict' });
+            }
             await createDefaultGameState(user.id);
         }
 
@@ -340,6 +343,9 @@ router.post('/google', authLimiter, async (req, res) => {
                     }
                     throw err;
                 }
+            }
+            if (!user) {
+                return res.status(409).json({ error: 'Could not create account — username conflict' });
             }
             await createDefaultGameState(user.id);
         }
@@ -465,7 +471,7 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
@@ -580,12 +586,6 @@ router.post('/change-username', requireAuth, [
     const { username } = req.body;
 
     try {
-        // Check if username is taken
-        const existing = await prisma.user.findUnique({ where: { username } });
-        if (existing && existing.id !== req.user.userId) {
-            return res.status(409).json({ error: 'Username already taken' });
-        }
-
         await prisma.user.update({
             where: { id: req.user.userId },
             data: { username },
@@ -593,6 +593,9 @@ router.post('/change-username', requireAuth, [
 
         res.json({ message: 'Username changed', username });
     } catch (err) {
+        if (err.code === 'P2002') {
+            return res.status(409).json({ error: 'Username already taken' });
+        }
         console.error('Change username error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }

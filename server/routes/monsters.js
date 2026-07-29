@@ -35,6 +35,7 @@ router.get('/templates', async (req, res) => {
                 : null,
         }));
 
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json({ spriteSheet, templates });
     } catch (err) {
         console.error('Monster templates error:', err);
