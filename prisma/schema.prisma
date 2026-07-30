@@ -214,6 +214,7 @@ model RefreshToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([expiresAt])
 }
 
 model Ban {

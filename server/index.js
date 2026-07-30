@@ -45,7 +45,26 @@ app.set('trust proxy', NODE_ENV === 'production' ? 1 : false);
 
 // Security headers
 app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "https://js.stripe.com"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: [
+                "'self'",
+                "https://api.stripe.com",
+                "wss:",
+                "ws:",
+                ...(NODE_ENV !== 'production' ? ["http://localhost:*", "ws://localhost:*"] : []),
+            ],
+            frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+            fontSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+        },
+    },
     hsts: NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
 }));
 
@@ -89,6 +108,7 @@ const io = setupSocket(server);
 
 // Serve static frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
+app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
 app.use(express.static(distPath));
 
 // Admin dashboard — serve admin.html for /admin route

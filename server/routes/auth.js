@@ -88,7 +88,8 @@ function generateGuestUsername() {
 
 // ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', authLimiter, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_-]+$/).withMessage('Username may only contain letters, numbers, underscores, and dashes'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ], async (req, res) => {
@@ -465,14 +466,14 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
     }
 
     try {
-        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
 
         // Check token exists in DB (not revoked)
         const stored = await prisma.refreshToken.findUnique({
@@ -570,7 +571,8 @@ router.get('/me', requireAuth, async (req, res) => {
 
 // ─── POST /api/auth/change-username ─────────────────────────────
 router.post('/change-username', requireAuth, [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
+    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
+        .matches(/^[A-Za-z0-9_-]+$/).withMessage('Username may only contain letters, numbers, underscores, and dashes'),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -604,6 +606,14 @@ router.put('/settings', requireAuth, async (req, res) => {
 
     if (typeof settings !== 'object' || Array.isArray(settings) || settings === null) {
         return res.status(400).json({ error: 'Settings must be an object' });
+    }
+
+    const keys = Object.keys(settings);
+    if (keys.length > 20) {
+        return res.status(400).json({ error: 'Too many settings keys' });
+    }
+    if (JSON.stringify(settings).length > 4096) {
+        return res.status(400).json({ error: 'Settings payload too large' });
     }
 
     // Validate known keys

@@ -6,12 +6,14 @@ import prisma from '../lib/prisma.js';
 
 const router = Router();
 
-// Initialize Stripe (lazy — only when keys are configured)
+// Initialize Stripe (lazy singleton — only when keys are configured)
+let _stripe = null;
 function getStripe() {
     if (!STRIPE_SECRET_KEY) {
         throw new Error('Stripe is not configured');
     }
-    return new Stripe(STRIPE_SECRET_KEY);
+    if (!_stripe) _stripe = new Stripe(STRIPE_SECRET_KEY);
+    return _stripe;
 }
 
 /**

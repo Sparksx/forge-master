@@ -300,7 +300,6 @@ export function equipItem(item) {
 
 /** Discard an item. Gold can't be recovered from gear — gold is deliberately scarce. */
 export function trashItem(item) {
-    save();
     gameEvents.emit(EVENTS.ITEM_TRASHED, { item });
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
