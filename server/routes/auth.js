@@ -465,14 +465,14 @@ router.post('/link-google', requireAuth, async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh ─────────────────────────────────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token required' });
     }
 
     try {
-        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+        const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
 
         // Check token exists in DB (not revoked)
         const stored = await prisma.refreshToken.findUnique({
@@ -606,14 +606,21 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    const ALLOWED_KEYS = ['theme', 'language', 'soundEnabled', 'musicEnabled', 'notifications'];
     const VALID_THEMES = ['dark', 'light'];
-    if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
+
+    const sanitized = {};
+    for (const key of ALLOWED_KEYS) {
+        if (key in settings) sanitized[key] = settings[key];
+    }
+    if (Object.keys(sanitized).length === 0) {
+        return res.status(400).json({ error: 'No valid settings keys provided' });
+    }
+    if (sanitized.theme !== undefined && !VALID_THEMES.includes(sanitized.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
     }
 
     try {
-        // Use a transaction to atomically read-merge-write settings
         const updated = await prisma.$transaction(async (tx) => {
             const user = await tx.user.findUnique({
                 where: { id: req.user.userId },
@@ -621,7 +628,7 @@ router.put('/settings', requireAuth, async (req, res) => {
             });
 
             const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-            const merged = { ...current, ...settings };
+            const merged = { ...current, ...sanitized };
 
             return tx.user.update({
                 where: { id: req.user.userId },

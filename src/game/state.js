@@ -454,12 +454,25 @@ export async function loadFromServer() {
     gameEvents.emit(EVENTS.STATE_CHANGED);
 }
 
-// Flush pending save on tab hide / unload.
+// Flush pending save on tab hide / unload using keepalive so the browser
+// does not cancel the request when the page is being discarded.
 if (typeof document !== 'undefined') {
     const flush = () => {
         if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
             if (saveTimer) clearTimeout(saveTimer);
-            saveToServer();
+            saveTimer = null;
+            const payload = JSON.stringify(buildSave());
+            try {
+                fetch('/api/game/state', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAccessToken()}`,
+                    },
+                    body: payload,
+                    keepalive: true,
+                });
+            } catch { /* best-effort */ }
         }
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
