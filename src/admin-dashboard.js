@@ -260,13 +260,13 @@ function renderPlayerResults(users) {
     let html = '<div class="adm-player-list">';
     users.forEach(u => {
         const roleBadge = u.role !== 'user'
-            ? `<span class="adm-role-tag adm-role-${u.role}">${u.role}</span>`
+            ? `<span class="adm-role-tag adm-role-${escapeHtml(u.role)}">${escapeHtml(u.role)}</span>`
             : '';
         const guestTag = u.isGuest ? '<span class="adm-guest-tag">invite</span>' : '';
-        html += `<div class="adm-player-item" data-uid="${u.id}">` +
+        html += `<div class="adm-player-item" data-uid="${Number(u.id)}">` +
             `<span class="adm-player-name">${escapeHtml(u.username)}</span>` +
             `${roleBadge}${guestTag}` +
-            `<span class="adm-player-meta">ID: ${u.id} | PvP: ${u.pvpRating}</span>` +
+            `<span class="adm-player-meta">ID: ${Number(u.id)} | PvP: ${Number(u.pvpRating)}</span>` +
         `</div>`;
     });
     html += '</div>';
@@ -307,7 +307,7 @@ function renderPlayerDetail(container, data) {
     // Header
     html += '<div class="adm-detail-header">';
     html += `<h3>${escapeHtml(user.username)}</h3>`;
-    html += `<span class="adm-role-tag adm-role-${user.role}">${user.role}</span>`;
+    html += `<span class="adm-role-tag adm-role-${escapeHtml(user.role)}">${escapeHtml(user.role)}</span>`;
     if (user.isGuest) html += '<span class="adm-guest-tag">invite</span>';
     html += '</div>';
 
@@ -671,7 +671,8 @@ function buildSpriteCSSFromData(sheetFile, sheetW, sheetH, sx, sy, sw, sh) {
     const sizeY = (sheetH / sh) * 100;
     const posX = sw < sheetW ? (sx / (sheetW - sw)) * 100 : 0;
     const posY = sh < sheetH ? (sy / (sheetH - sh)) * 100 : 0;
-    return `background-image: url(${sheetFile}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
+    const safeFile = sheetFile.replace(/[()'"\\]/g, '\\$&');
+    return `background-image: url(${safeFile}); background-size: ${sizeX}% ${sizeY}%; background-position: ${posX}% ${posY}%; background-repeat: no-repeat;`;
 }
 
 function buildSpriteCSSFromSprite(sprite) {
