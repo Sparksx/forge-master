@@ -55,6 +55,7 @@ async function creditPurchase(purchase, paymentIntent) {
 // ─── GET /api/payment/packs ─────────────────────────────────────
 // Public: return available gold packs (frontend needs this to render the shop)
 router.get('/packs', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600');
     const packs = GOLD_PACKS.map(p => ({
         id: p.id,
         gold: p.gold,
@@ -250,24 +251,28 @@ router.post('/webhook', async (req, res) => {
             });
 
             if (purchase && purchase.status === 'completed') {
-                // Atomically claim the refund so it can't double-reverse.
-                const claim = await prisma.purchase.updateMany({
-                    where: { id: purchase.id, status: 'completed' },
-                    data: { status: 'refunded' },
-                });
+                // Atomically claim the refund and clawback gold in one transaction
+                // so the balance can't go negative or race with a concurrent spend.
+                const claimed = await prisma.$transaction(async (tx) => {
+                    const claim = await tx.purchase.updateMany({
+                        where: { id: purchase.id, status: 'completed' },
+                        data: { status: 'refunded' },
+                    });
+                    if (claim.count === 0) return false;
 
-                if (claim.count > 0) {
-                    // Clawback the gold, clamped so the balance can't go negative.
-                    const gs = await prisma.gameState.findUnique({
+                    const gs = await tx.gameState.findUnique({
                         where: { userId: purchase.userId },
                         select: { gold: true },
                     });
                     const newGold = Math.max(0, (gs?.gold ?? 0) - purchase.goldGranted);
-                    await prisma.gameState.update({
+                    await tx.gameState.update({
                         where: { userId: purchase.userId },
                         data: { gold: newGold },
                     });
+                    return true;
+                });
 
+                if (claimed) {
                     await logAudit(purchase.userId, 'refund_gold', purchase.userId, {
                         packId: purchase.packId,
                         gold: purchase.goldGranted,

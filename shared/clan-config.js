@@ -9,6 +9,7 @@
 // So cumulative XP for level L is CLAN_XP_BASE * (L-1)*L/2.
 export const CLAN_XP_BASE = 1000;
 export const CLAN_MAX_LEVEL = 30;
+export const CLAN_CREATE_COST = 500;
 
 /** Cumulative clan XP required to reach a given clan level (level >= 1). */
 export function xpForLevel(level) {
