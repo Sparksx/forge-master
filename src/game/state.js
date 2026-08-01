@@ -459,7 +459,14 @@ if (typeof document !== 'undefined') {
     const flush = () => {
         if ((saveTimer || dirtyWhileSaving) && getAccessToken()) {
             if (saveTimer) clearTimeout(saveTimer);
-            saveToServer();
+            try {
+                fetch('/api/game/state', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAccessToken()}` },
+                    body: JSON.stringify(buildSave()),
+                    keepalive: true,
+                });
+            } catch { /* best effort */ }
         }
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });

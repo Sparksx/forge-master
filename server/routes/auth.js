@@ -606,9 +606,16 @@ router.put('/settings', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Settings must be an object' });
     }
 
-    // Validate known keys
+    const ALLOWED_KEYS = ['theme', 'soundEnabled', 'musicEnabled', 'language', 'notifications'];
+    const filtered = Object.fromEntries(
+        Object.entries(settings).filter(([k]) => ALLOWED_KEYS.includes(k))
+    );
+    if (Object.keys(filtered).length === 0) {
+        return res.status(400).json({ error: 'No valid settings keys provided' });
+    }
+
     const VALID_THEMES = ['dark', 'light'];
-    if (settings.theme !== undefined && !VALID_THEMES.includes(settings.theme)) {
+    if (filtered.theme !== undefined && !VALID_THEMES.includes(filtered.theme)) {
         return res.status(400).json({ error: 'Invalid theme value' });
     }
 
@@ -621,7 +628,7 @@ router.put('/settings', requireAuth, async (req, res) => {
             });
 
             const current = (user?.settings && typeof user.settings === 'object') ? user.settings : {};
-            const merged = { ...current, ...settings };
+            const merged = { ...current, ...filtered };
 
             return tx.user.update({
                 where: { id: req.user.userId },

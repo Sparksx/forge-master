@@ -324,36 +324,39 @@ export function registerChatHandlers(io, socket) {
 
     // Share a PVP combat in chat
     socket.on('chat:share-combat', async (data) => {
-        const { combatId, channel = 'general' } = data || {};
-        if (!combatId || typeof combatId !== 'string') return;
-        const target = await resolveChannel(userId, channel);
-        if (!target) return;
+        try {
+            const { combatId, channel = 'general' } = data || {};
+            if (!combatId || typeof combatId !== 'string') return;
+            const target = await resolveChannel(userId, channel);
+            if (!target) return;
 
-        const log = getCombatLog(combatId);
-        if (!log) {
-            socket.emit('chat:error', { message: 'Combat log expired or not found' });
-            return;
+            const log = getCombatLog(combatId);
+            if (!log) {
+                socket.emit('chat:error', { message: 'Combat log expired or not found' });
+                return;
+            }
+
+            io.to(target.room).emit('chat:combat', {
+                combatId,
+                channel: target.stored,
+                createdAt: new Date().toISOString(),
+                sharedBy: socket.user.username,
+                player1: {
+                    userId: log.player1.userId,
+                    username: log.player1.username,
+                    avatar: log.player1.avatar,
+                },
+                player2: {
+                    userId: log.player2.userId,
+                    username: log.player2.username,
+                    avatar: log.player2.avatar,
+                },
+                winnerId: log.winnerId,
+                reason: log.reason,
+            });
+        } catch (err) {
+            console.error('Share combat error:', err);
         }
-
-        // Broadcast combat message to channel
-        io.to(target.room).emit('chat:combat', {
-            combatId,
-            channel: target.stored,
-            createdAt: new Date().toISOString(),
-            sharedBy: socket.user.username,
-            player1: {
-                userId: log.player1.userId,
-                username: log.player1.username,
-                avatar: log.player1.avatar,
-            },
-            player2: {
-                userId: log.player2.userId,
-                username: log.player2.username,
-                avatar: log.player2.avatar,
-            },
-            winnerId: log.winnerId,
-            reason: log.reason,
-        });
     });
 
     // Fetch a combat log for replay
@@ -539,11 +542,15 @@ export function registerChatHandlers(io, socket) {
 
     // Join a specific channel and replay its history.
     socket.on('chat:join', async (data) => {
-        const { channel } = data || {};
-        const target = await resolveChannel(userId, channel);
-        if (!target) return;
-        socket.join(target.room);
-        sendHistory(socket, target.stored);
+        try {
+            const { channel } = data || {};
+            const target = await resolveChannel(userId, channel);
+            if (!target) return;
+            socket.join(target.room);
+            sendHistory(socket, target.stored);
+        } catch (err) {
+            console.error('Chat join error:', err);
+        }
     });
 }
 

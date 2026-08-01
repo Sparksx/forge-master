@@ -232,10 +232,8 @@ export function arenaFallbackRank(rank) {
     return Math.max(1, chapterFloor, rank - 1);
 }
 
-// Cost to found a clan (deducted from gold, client-side). A genuine long-haul
-// goal given how slowly gold trickles in — reachable by dedicated players over
-// time, or sooner by buying gold in the shop.
-export const CLAN_CREATE_COST = 500;
+// Re-export from shared so existing client imports still work.
+export { CLAN_CREATE_COST } from '../../shared/clan-config.js';
 
 // Avatar choices (emoji).
 export const AVATARS = [
